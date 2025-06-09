@@ -1,143 +1,108 @@
-# Концепция LLM-управляемой Кассовой Системы (POS) - "ecKasse"
+# ecKasse - LLM-Powered Point of Sale (POS) System
 
-## 0. Брендинг и Инфраструктура Проекта
+## Project Status: In Development (Initial Phase - Concept & Setup)
 
-*   **Название проекта:** ecKasse
-*   **Домены для комьюнити и информации:**
+## 0. Project Branding and Infrastructure
+
+*   **Project Name:** ecKasse
+*   **Community & Information Domains:**
     *   ecKasse.com
     *   ecKasse.de
     *   ecKasse.eu
-*   **Связь с экосистемой:**
-    *   ecKasse будет частью или дополнением к пакету **eckWms** (Warehouse Management System).
-    *   Точная модель интеграции (входит в пакет или дополняет) будет определена позже.
-*   **Серверная инфраструктура (для хранения данных кассы, бэкапов, облачных функций):**
+*   **GitHub Repository:** [https://github.com/xelth-com/ecKasse](https://github.com/xelth-com/ecKasse)
+*   **Ecosystem Link:**
+    *   ecKasse is planned to be part of or a complement to the **eckWms** (Warehouse Management System) suite.
+    *   The exact integration model (included in the suite or as an add-on) will be determined later.
+*   **Server Infrastructure (for optional cloud features, backups, synchronization):**
     *   eck1.com
     *   eck2.com
     *   eck3.com
-    *(Примечание: Эти серверы будут использоваться для опциональных облачных функций, основная работа кассы может быть оффлайн, данные хранятся локально).*
+    *(Note: These servers will be used for optional cloud functionalities. The core POS operations are designed to work offline with local data storage).*
 
-## 1. Философия и Цель
+## 1. Philosophy and Goals
 
-*   **Основная идея:** Создание интеллектуального интерфейса для управления кассовыми операциями в рамках проекта ecKasse, абстрагирующего сложность традиционных POS-систем.
-*   **Цель:** Заменить рутинные и сложные настройки интуитивно понятным диалогом с LLM-агентом, минимизируя потребность в сервис-техниках.
-*   **УТП (Уникальное Торговое Предложение):** "Разговорная коммерция" с ecKasse, "zero-config" для базовых операций.
+*   **Core Idea:** To create an intelligent, intuitive interface for managing POS operations within the ecKasse project, abstracting away the complexity of traditional POS systems.
+*   **Objective:** To replace complex menus and manual configurations with natural language dialogues মানুষ_LLM_assistant, minimizing the need for service technicians for routine tasks.
+*   **USP (Unique Selling Proposition):** "Conversational Commerce" with ecKasse, striving for "zero-config" for basic operations, and being open source.
 
-## 2. Архитектура и Стек
+## 2. Architecture and Technology Stack
 
-*   **Backend (логика и API):** Node.js
-*   **Frontend (интерфейс):** Electron.js (для десктопного приложения ecKasse)
-    *   UI должен быть динамическим, управляемым данными (React, Vue, Svelte).
-*   **База данных (локальная):** SQLite (для старта), с возможностью миграции на PostgreSQL. Рассмотреть `knex.js` для миграций.
-*   **LLM API:** Google AI SDK (Gemini Flash для бесплатной версии, Gemini Pro для платной).
-*   **Инструмент для создания LLM-агента:** LangChain.js
-    *   Управление промптами, цепочками (Chains), инструментами (Tools), памятью, агентами.
-*   **Компоненты системы ecKasse:**
-    1.  **UI (Electron Renderer Process):** Отображение данных, прием текстового/голосового ввода, отправка на бэкенд. Основной элемент – чат-интерфейс.
-    2.  **Backend (Node.js / Electron Main Process):**
-        *   Прием запросов от UI.
-        *   Формирование промпта для LLM с описанием доступных API-функций (инструментов).
-        *   Взаимодействие с Gemini API (через LangChain.js).
-        *   Получение и валидация JSON-RPC ответа от LLM.
-        *   Выполнение соответствующей функции (обращение к локальной БД, изменение конфигурации UI).
-        *   Отправка результата/обновлений в UI (например, через WebSocket/IPC).
-        *   (Опционально) Синхронизация данных с серверами eck1.com, eck2.com, eck3.com для бэкапов или облачных функций (если пользователь активировал).
-    3.  **База данных (локальная, SQLite):** Хранение товаров, цен, категорий, пользователей, ролей, отчетов, настроек UI, макросов.
+*   **Core Application:** Cross-platform desktop application built with **Electron.js**.
+*   **Frontend (User Interface):** **React** (in Electron's Renderer Process).
+    *   Dynamic, data-driven UI.
+    *   Component-based architecture.
+    *   Interacts with the backend via a local HTTP API.
+*   **Backend (Logic & API):** **Node.js** with **Express.js** (running in Electron's Main Process or as a separate local server managed by Electron).
+    *   Provides a structured local API (not strictly JSON-RPC, but protocols understandable by Gemini via "Tool Use").
+    *   Handles all business logic, database interactions, and LLM communication.
+*   **Database (Local):** **SQLite** (using `sqlite3` and `knex.js` for migrations and queries).
+*   **LLM Integration:**
+    *   **Model:** Google **Gemini Flash** (for the free version), Google **Gemini Pro** (for the Pro version).
+    *   **SDK:** `@google/generative-ai`.
+    *   **Agent Framework:** **LangChain.js** for managing prompts, tools, chains, and agent memory.
+*   **Logging:** Structured logging using **Pino** (and `pino-pretty` for development) to facilitate log analysis, including by the LLM agent.
 
-## 3. Ключевые Функции (Заимствованные и Улучшенные)
+## 3. Current Status and Work Done
 
-*   **Stammdaten (Основные данные):**
-    *   **Товары (PLU/Artikel):** Создание, редактирование, удаление, поиск (через `products.*` API).
-    *   **Категории (Warengruppen):** Группировка, назначение общих свойств (через `categories.*` API).
-    *   **Пользователи и Роли:** Управление доступом, правами (через `users.*`, `roles.*` API).
-    *   **Способы оплаты (Zahlungsarten):** Настройка (через `payment_methods.*` API).
-*   **Kernlogik (Основная логика):**
-    *   **Модификаторы (Modifiers):** Правила изменения чека/товара по условиям (время, день недели, комбинации товаров). Основа для "Happy Hour", наценок/скидок. *Критически важная функция для упрощения через LLM.*
-    *   **Гарниры/Допы (Condiments/PLU Links):** Связь товаров (основное блюдо + гарнир/соус). *Критически важная функция для гастрономии.*
-    *   **Управление столами (Tischfunktionen):** Открытие, закрытие, перенос позиций, разделение счета (через `orders.splitBill`, `orders.moveItems`).
-*   **Berichte & Verwaltung (Отчеты и управление):**
-    *   **X/Z-Отчеты:** Стандартные отчеты (через `reports.getXReport`, `reports.getZReport`).
-    *   **Фискальный экспорт (DSFinV-K / GoBD):** Экспорт данных для налоговых органов (через `fiscal.exportDSFinVK`). LLM помогает с проверкой данных.
-    *   **Динамическая настройка UI:** Изменение расположения кнопок, тем через LLM (через `ui.*` API, изменяющие JSON-конфигурацию интерфейса).
-*   **Макросы:** Автоматизация последовательностей действий.
-    *   **Формат:** JSON с расширенной структурой (условия, циклы, переменные, вызовы API).
-    *   **Продвинутый режим (для шефа):** Возможность написания макросов на JavaScript (с обязательной надежной песочницей и строго ограниченным `eckasse.api`).
-    *   LLM помогает в создании и JSON, и JS макросов.
-*   **Хранение данных и бэкапы (опционально, через eck1/2/3.com):**
-    *   Возможность синхронизации основных данных (товары, настройки) с облаком.
-    *   Автоматические или ручные бэкапы данных кассы на серверы.
+*   **Initialized Git repository** and hosted on GitHub.
+*   **Created a basic `package.json`** and installed core dependencies for:
+    *   Electron (`electron`, `electron-builder`) and development utilities (`concurrently`, `nodemon`, `wait-on`, `cross-env`).
+    *   Frontend (`react`, `react-dom`, `react-router-dom`, `axios`).
+    *   Backend (`express`, `cors`, `@google/generative-ai`, `langchain`, `sqlite3`, `knex`, `dotenv`, `pino`, `pino-pretty`).
+    *   Development tools (`eslint`, `prettier`, `typescript` and related plugins).
+*   **Defined an initial project folder structure.**
+*   **Formulated a detailed project concept**, including key features, LLM interaction architecture, distribution models, and development phases (this `README.md`).
+*   **Configured `.gitignore`** to exclude unnecessary files from the repository.
+*   **License:** MIT License (see `LICENSE` file).
 
-## 4. Взаимодействие с LLM (Агент в ecKasse)
+## 4. Key Features (Planned)
 
-*   **LLM как "умный агент":** Понимает намерение, ведет диалог, уточняет, предлагает решения, объясняет функции.
-*   **API-команды:** Единый внутренний API в формате JSON-RPC для всех операций.
-*   **LangChain.js для построения агента:**
-    *   **Инструменты (Tools):** Каждая API-функция ecKasse описывается как инструмент для LangChain/Gemini. (name, description, JSON schema для параметров).
-    *   **Промпты:** Системный промпт описывает роль агента и доступные инструменты.
-    *   **Память:** Для сохранения контекста диалога.
-*   **Информация, передаваемая LLM:**
-    *   Название и версия ПО: "Вы работаете с кассовой системой ecKasse vX.Y".
-    *   Краткое описание концепции системы.
-    *   Список доступных API-функций (инструментов) с их схемами.
-    *   (Опционально) Краткая документация по ключевым сценариям (для RAG или в промпт).
-    *   Контекст текущей операции (ID стола, открытый чек и т.д.).
-    *   Информация о текущем пользователе и его правах.
-*   **Обработка неоднозначностей и ошибок:** LLM должен быть настроен на уточняющие вопросы. Бэкенд валидирует все команды от LLM.
-*   **Проактивность LLM:** Может предлагать создать макросы для часто выполняемых последовательностей или оптимизировать настройки.
+*   **Master Data Management (Stammdaten):** Products (PLUs), categories (Warengruppen), users & roles, payment methods.
+*   **Core Sales Logic:**
+    *   Modifiers for conditional promotions, discounts, surcharges.
+    *   Condiments/PLU Links for gastronomy.
+    *   Table Management (Tischfunktionen): splitting bills, moving items.
+*   **Reporting & Administration:**
+    *   Standard X/Z-Reports.
+    *   Fiscal Export (e.g., DSFinV-K for Germany).
+    *   Dynamic POS UI configuration via LLM.
+*   **Macros:** Custom automation via JSON structures or (for advanced users) JavaScript in a secure sandbox.
+*   **Offline Functionality:** Core POS operations will not require a constant internet connection.
+*   **Companion App:** For settings and reports (possibly part of eckWms).
+*   **Cloud Features (via eck1/2/3.com, optional/Pro):** Backups, data synchronization.
 
-## 5. Оффлайн-функциональность и Ручная Настройка
+## 5. LLM Agent Interaction
 
-*   **Принцип:** Единый внутренний API, команды могут поступать от LLM (онлайн), приложения-компаньона или через ручной интерфейс на кассе (оффлайн).
-*   **Ручная настройка на кассе ecKasse:**
-    *   "Мастер настройки" / "Конструктор команд": UI, который под капотом генерирует те же JSON-RPC команды.
-    *   Интерфейс с предопределенными функциями (ближе к традиционным кассам).
-*   **Приложение-компаньон на телефоне шефа (возможно, часть eckWms или отдельное):**
-    *   UI для всех настроек и отчетов.
-    *   Синхронизация с кассой: по локальной сети (Wi-Fi), Bluetooth, USB-OTG, QR-коды, файлы конфигурации.
-    *   Может использовать LLM для генерации команд, которые потом отправляются на кассу.
-    *   Может взаимодействовать с серверами eck1/2/3.com для управления данными нескольких касс.
+*   The LLM acts as an intelligent assistant, understanding natural language.
+*   Interaction via Gemini's "Tool Use" mechanism: LLM calls POS API functions described as "tools".
+*   LangChain.js is used to build and manage the agent's logic.
+*   The agent should be capable of dialogue, clarifying requests, proposing solutions, and explaining functionalities.
 
-## 6. Модель Распространения и Расходов
+## 6. Distribution Model and Cost Management
 
-*   **Бесплатная версия ecKasse (Open Source):**
-    *   Лицензия: MIT, Apache 2.0, GPL (требуется выбрать).
-    *   Использует Gemini Flash.
-    *   **Покрытие расходов LLM:**
-        *   **BYOK (Bring Your Own Key):** Пользователь вводит свой API-ключ от Google AI Studio. Ключ хранится локально и безопасно в Electron. *Основной рекомендуемый метод.*
-        *   Очень строгие лимиты на общем ключе (если предоставляется для демо).
-        *   Донаты/Спонсорство.
-*   **Pro-версия ecKasse (платная):**
-    *   Использует Gemini Pro.
-    *   Дополнительный функционал: продвинутая генерация макросов, "умные" отчеты, проактивные предложения, интеграции.
-    *   Облачные функции через eck1/2/3.com (бэкапы, синхронизация, удаленный доступ к отчетам) могут быть частью Pro-версии.
-    *   Монетизация: единоразовая покупка или подписка.
+*   **ecKasse (Free Version):**
+    *   Open Source (MIT License).
+    *   LLM: Gemini Flash.
+    *   LLM Cost Coverage: **BYOK (Bring Your Own Key)** – users provide their own Google AI API key.
+*   **ecKasse Pro (Paid Version):**
+    *   LLM: Gemini Pro.
+    *   Enhanced functionality, cloud services.
+    *   Monetization: Subscription or one-time purchase.
 
-## 7. Безопасность
+## 7. Next Steps (Immediate)
 
-*   **LLM не должен иметь прямого доступа к ОС или файловой системе.** Все операции только через строго определенное внутреннее API.
-*   **Валидация всех команд от LLM** на стороне бэкенда.
-*   **Запрос подтверждения у пользователя** для критических или конфигурационных изменений, инициированных LLM.
-*   **Безопасность JS-макросов (если реализуются):**
-    *   Надежная "песочница" (sandbox) для выполнения JS.
-    *   Строго ограниченный `eckasse.api` (или аналогичный), доступный из скрипта.
-    *   Тайм-ауты на выполнение.
-    *   По умолчанию могут быть разрешены только JSON-макросы, JS – через "режим разработчика".
-*   **Безопасность данных при передаче на серверы eck1/2/3.com:** Шифрование, аутентификация.
+1.  **Create the base folder structure** as outlined in the project plan.
+2.  **Set up the React application** (e.g., using Create React App or Vite).
+3.  **Write basic code for `electron/main.js`** to launch the window and load the React app.
+4.  **Write basic code for the Backend API using Express.js** (`src/backend/`).
+5.  **Configure Knex.js** for SQLite database migrations and initial seeding.
+6.  **Implement a first simple "tool" for the LLM agent** (e.g., fetching a list of products) and integrate it via LangChain.js.
+7.  **Create a basic chat interface** in React to interact with the LLM agent.
 
-## 8. Пользовательский Опыт (UX)
+## 8. How to Contribute
 
-*   **Четкая обратная связь** от системы о выполненных действиях или ошибках.
-*   Возможность **"Undo" / "Отмена"** для некоторых операций.
-*   **Обучение пользователя через LLM:** Агент может объяснять функции системы.
-*   Интерфейс для ручной настройки должен быть интуитивным для целевых операций.
+*(This section will be filled in later when the project is ready to accept external contributions. It will include developer guidelines, coding style, and the Pull Request process).*
 
-## 9. Фазы Разработки (Дорожная карта)
+## 9. License
 
-1.  **Фаза 0: Фундамент:** Настройка проекта, базовое окно Electron, подключение к Gemini API, базовая структура API-сервера, настройка БД (SQLite, knex.js), создание базового описания API для LLM.
-2.  **Фаза 1: MVP:** Проведение полной продажи (создание/редактирование товаров/категорий через LLM, вывод на экран, чек, оплата "Наличные", простой Z-отчет).
-3.  **Фаза 2: Основная логика для Гастрономии:** Управление столами, базовые Модификаторы и Гарниры/Допы, настройка Принтеров, другие Способы оплаты.
-4.  **Фаза 3: Продвинутые функции и управление:** Полная система Модификаторов, Пользователи и Роли, динамическая настройка UI через LLM, продвинутые Отчеты, базовые JSON-макросы.
-5.  **Фаза 4: Юридическая и фискальная часть (специфично для региона, например, Германия):** TSE, DSFinV-K, GoBD.
-6.  **Фаза 5: Интеграция с eckWms и облачными сервисами (eck1/2/3.com):** Разработка API для синхронизации, бэкапов. Реализация функций Pro-версии.
-7.  **Фаза 6: Полировка и развертывание:** UX/UI, обработка ошибок, установщик, документация для пользователей и комьюнити (сайты ecKasse.com/de/eu).
-
-**Параллельные задачи:** Разработка системы промптов, тестирование интерпретации LLM, создание документации для пользователей и контрибьюторов, обеспечение безопасности JS-макросов (если будут).
+This project is licensed under the MIT License. See the `LICENSE` file for details.

@@ -144,3 +144,6 @@ build/Release
 # API Keys / Secrets (на всякий случай, их не должно быть в репозитории)
 *.key
 secrets.json
+
+# feur mich
+ideasHistory.md
