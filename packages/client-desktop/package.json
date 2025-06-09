@@ -1,0 +1,48 @@
+{
+  "name": "@eckasse/client-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop client for ecKasse POS system",
+  "main": "electron/main.js", 
+  "scripts": {
+    "dev:react": "npm start --prefix src/renderer", 
+    "dev:electron:watch": "nodemon --watch electron --exec \"electron electron/main.js\"", 
+    "dev": "concurrently -k -n \"REACT,ELECTRON\" -c \"bgGreen.bold,bgMagenta.bold\" \"npm:dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron:watch\"",
+    "start": "npm run dev", 
+
+    "build:react": "npm run build --prefix src/renderer",
+    "build": "npm run build:react && electron-builder", 
+    "dist": "npm run build",
+    "package-win": "npm run build:react && electron-builder --win --x64",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md,css,scss}\""
+  },
+  "dependencies": {
+    "axios": "^1.9.0" 
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.1.0",
+    "electron-builder": "^24.13.3",
+    "nodemon": "^3.1.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": { 
+    "appId": "com.eckasse.client.desktop",
+    "productName": "ecKasse",
+    "files": [
+      "electron/**/*",
+      "src/renderer/build/**/*", 
+      "node_modules/**/*", 
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets/build", 
+      "output": "release/"
+    },
+    "win": { "icon": "assets/build/icon.ico" },
+    "mac": { "icon": "assets/build/icon.icns" },
+    "linux": { "icon": "assets/build/icons" }
+  }
+}
