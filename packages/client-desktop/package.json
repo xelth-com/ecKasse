@@ -6,7 +6,7 @@
   "main": "electron/main.js", 
   "scripts": {
     "dev:react": "npm start --prefix src/renderer", 
-      "dev:electron:watch": "nodemon --watch electron --exec \"cmd /c echo Running: electron electron/main.js && electron electron/main.js\"",
+   "dev:electron:watch": "nodemon --watch electron --exec \"electron electron/main.js\"",
     "dev": "concurrently -k -n \"REACT,ELECTRON\" -c \"bgGreen.bold,bgMagenta.bold\" \"npm:dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron:watch\"",
     "start": "npm run dev", 
 
