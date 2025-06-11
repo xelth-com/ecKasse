@@ -1,10 +1,13 @@
+const path = require('path'); // Add this line
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); // Add this line
+// Ensure this is BEFORE any other require that might need env variables, like your llm.service.js
+
 // packages/backend/src/server.js
 const http = require('http');
 // Исправленный импорт для совместимости с разными версиями ws
 const WebSocket = require('ws');
 const app = require('./app'); // Ваше Express-приложение
 const logger = require('./config/logger');
-const path = require('path');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 

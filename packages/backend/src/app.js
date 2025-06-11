@@ -3,7 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const logger = require('./config/logger'); // Путь к вашему логгеру
-// const mainRoutes = require('./routes/index'); // Главный роутер
+// const mainRoutes = require('./routes/index'); // THIS SHOULD BE COMMENTED OR REMOVED
+const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
+
 
 const app = express();
 
@@ -28,7 +30,7 @@ app.use((req, res, next) => {
     operationId,
     method: req.method,
     url: req.originalUrl,
-    body: req.body,
+    body: req.body, // Be careful logging full bodies in production
     query: req.query,
     ip: req.ip
   });
@@ -37,6 +39,8 @@ app.use((req, res, next) => {
 
 // Подключение маршрутов API
 // app.use('/api', mainRoutes); // Когда у вас будут роуты
+app.use('/api/llm', llmRoutes); // Mount the LLM routes
+
 
 // Пример простого маршрута для теста
 app.get('/api/ping', (req, res) => {
