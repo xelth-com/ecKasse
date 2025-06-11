@@ -3,25 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "description": "LLM-Powered Open Source POS System. This is the monorepo root.",
- "scripts": {
+  "scripts": {
     "dev:client:desktop:react": "npm start --workspace=@eckasse/renderer-ui",
     "build:client:desktop:react": "npm run build --workspace=@eckasse/renderer-ui",
     "start:backend": "npm start --workspace=@eckasse/backend",
     "dev:backend": "npm run dev --workspace=@eckasse/backend",
     "migrate:backend": "npm run db:migrate:latest --workspace=@eckasse/backend",
     "seed:backend": "npm run db:seed:run --workspace=@eckasse/backend",
-
-
-
-
     "dev:electron:wait-and-watch": "wait-on http://localhost:3000 && npm run dev:electron:watch --workspace=@eckasse/client-desktop",
-
     "build:client:desktop": "npm run build --workspace=@eckasse/client-desktop",
     "dist:client:desktop": "npm run dist --workspace=@eckasse/client-desktop",
-
-    
     "dev:desktop:full": "concurrently -k -n \"BACKEND,REACT,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm:dev:backend\" \"npm:dev:client:desktop:react\" \"npm:dev:electron:wait-and-watch\"",
-
     "dev": "npm run dev:desktop:full",
     "lint:all": "npm run lint --workspaces --if-present",
     "format:all": "prettier --write \"packages/**/*.{js,jsx,ts,tsx,json,md,css,scss}\" \"shared/**/*.{js,jsx,ts,tsx,json,md,css,scss}\" \"*.{json,md}\"",
@@ -69,5 +61,8 @@
     "prettier": "^3.3.2",
     "typescript": "^5.4.5",
     "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.2"
   }
 }

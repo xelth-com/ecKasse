@@ -1,6 +1,7 @@
 // packages/backend/src/server.js
 const http = require('http');
-const { WebSocketServer } = require('ws');
+// Исправленный импорт для совместимости с разными версиями ws
+const WebSocket = require('ws');
 const app = require('./app'); // Ваше Express-приложение
 const logger = require('./config/logger');
 const path = require('path');
@@ -10,7 +11,9 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 const PORT = process.env.BACKEND_PORT || 3030;
 console.log(`[DEBUG] Node.js version active for this script: ${process.version}`);
 const httpServer = http.createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+
+// Используем правильный конструктор WebSocket Server
+const wss = new WebSocket.Server({ server: httpServer });
 
 // Хранилище для отслеживания активных/обработанных operationId (упрощенно)
 const processedOperationIds = new Set();
