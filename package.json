@@ -1,5 +1,5 @@
 {
-  "name": "eckasse-monorepo",
+  "name": "eckasse",
   "private": true,
   "version": "0.1.0",
   "description": "LLM-Powered Open Source POS System. This is the monorepo root.",
@@ -56,14 +56,6 @@
   },
   "homepage": "https://github.com/xelth-com/ecKasse#readme",
   "devDependencies": {
-    "@babel/eslint-parser": "^7.27.5",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.14.2",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@typescript-eslint/eslint-plugin": "^7.13.0",
-    "@typescript-eslint/parser": "^7.13.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
