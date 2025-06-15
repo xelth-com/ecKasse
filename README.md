@@ -53,7 +53,7 @@
 *   **Defined an initial project folder structure.**
 *   **Formulated a detailed project concept**, including key features, LLM interaction architecture, distribution models, and development phases (this `README.md`).
 *   **Configured `.gitignore`** to exclude unnecessary files from the repository.
-*   **License:** MIT License (see `LICENSE` file).
+
 
 ## 4. Key Features (Planned)
 
@@ -81,7 +81,7 @@
 ## 6. Distribution Model and Cost Management
 
 *   **ecKasse (Free Version):**
-    *   Open Source (MIT License).
+    *   Open Source (EUPL-1.2 License).
     *   LLM: Gemini Flash.
     *   LLM Cost Coverage: **BYOK (Bring Your Own Key)** – users provide their own Google AI API key.
 *   **ecKasse Pro (Paid Version):**
@@ -105,4 +105,10 @@
 
 ## 9. License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+Copyright 2025 Betruger Sp. z o.o.  
+Original work by Dmytro Surovtsev  
+Licensed under the EUPL-1.2
+
+This project is licensed under the European Union Public Licence v. 1.2. 
+See the [LICENSE.md](LICENSE.md) file for details.

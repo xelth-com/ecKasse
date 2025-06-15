@@ -1,8 +1,9 @@
+
 {
   "name": "eckasse",
   "private": true,
   "version": "0.1.0",
-  "description": "LLM-Powered Open Source POS System. This is the monorepo root.",
+  "description": "LLM-Powered Open Source POS System by Betruger. This is the monorepo root.",
   "scripts": {
     "dev:client:desktop:react": "npm start --workspace=@eckasse/renderer-ui",
     "build:client:desktop:react": "npm run build --workspace=@eckasse/renderer-ui",
@@ -28,7 +29,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xelth-com/ecKasse.git"
+    "url": "git+https://github.com/betruger/eckasse.git"
   },
   "keywords": [
     "pos",
@@ -39,14 +40,20 @@
     "langchain",
     "eckasse",
     "monorepo",
-    "typescript"
+    "typescript",
+    "betruger",
+    "point-of-sale",
+    "open-source"
   ],
-  "author": "Dmytro Surovtsev",
-  "license": "MIT",
+  "author": "Betruger Sp. z o.o. <contact@betruger.com>",
+  "contributors": [
+    "Dmytro Surovtsev <dmytro@betruger.com>"
+  ],
+  "license": "EUPL-1.2",
+  "homepage": "https://betruger.com",
   "bugs": {
-    "url": "https://github.com/xelth-com/ecKasse/issues"
+    "url": "https://github.com/betruger/eckasse/issues"
   },
-  "homepage": "https://github.com/xelth-com/ecKasse#readme",
   "devDependencies": {
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
