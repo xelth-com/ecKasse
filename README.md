@@ -1,114 +1,242 @@
-# ecKasse - LLM-Powered Point of Sale (POS) System
+# ecKasse - LLM-Powered Point of Sale System
 
-## Project Status: In Development (Initial Phase - Concept & Setup)
+**Status:** In Development | **License:** EUPL-1.2 | **Developer:** Betruger Sp. z o.o.
 
-## 0. Project Branding and Infrastructure
+LLM-powered desktop POS system built with Electron, React, and Node.js. Features natural language configuration via Google Gemini and German fiscal compliance (TSE/DSFinV-K).
 
-*   **Project Name:** ecKasse
-*   **Community & Information Domains:**
-    *   ecKasse.com
-    *   ecKasse.de
-    *   ecKasse.eu
-*   **GitHub Repository:** [https://github.com/xelth-com/ecKasse](https://github.com/xelth-com/ecKasse)
-*   **Ecosystem Link:**
-    *   ecKasse is planned to be part of or a complement to the **eckWms** (Warehouse Management System) suite.
-    *   The exact integration model (included in the suite or as an add-on) will be determined later.
-*   **Server Infrastructure (for optional cloud features, backups, synchronization):**
-    *   eck1.com
-    *   eck2.com
-    *   eck3.com
-    *(Note: These servers will be used for optional cloud functionalities. The core POS operations are designed to work offline with local data storage).*
+## Architecture
 
-## 1. Philosophy and Goals
+### Technology Stack
+- **Desktop:** Electron.js with React frontend
+- **Backend:** Node.js + Express.js (local HTTP API)
+- **Database:** SQLite with Knex.js migrations
+- **LLM:** Google Gemini (Flash/Pro) via @google/genai
+- **Communication:** WebSocket (primary) + HTTP (fallback)
+- **Logging:** Pino with structured JSON output
 
-*   **Core Idea:** To create an intelligent, intuitive interface for managing POS operations within the ecKasse project, abstracting away the complexity of traditional POS systems.
-*   **Objective:** To replace complex menus and manual configurations with natural language dialogues মানুষ_LLM_assistant, minimizing the need for service technicians for routine tasks.
-*   **USP (Unique Selling Proposition):** "Conversational Commerce" with ecKasse, striving for "zero-config" for basic operations, and being open source.
+### Communication Layers
+1. **WebSocket** - Primary low-latency channel
+2. **HTTP API** - Fallback with same operationId system
+3. **Cloud Proxy** - Optional remote access via eck(1,2,3).com
 
-## 2. Architecture and Technology Stack
+All operations use UUID-based `operationId` for idempotency across channels.
 
-*   **Core Application:** Cross-platform desktop application built with **Electron.js**.
-*   **Frontend (User Interface):** **React** (in Electron's Renderer Process).
-    *   Dynamic, data-driven UI.
-    *   Component-based architecture.
-    *   Interacts with the backend via a local HTTP API.
-*   **Backend (Logic & API):** **Node.js** with **Express.js** (running in Electron's Main Process or as a separate local server managed by Electron).
-    *   Provides a structured local API (not strictly JSON-RPC, but protocols understandable by Gemini via "Tool Use").
-    *   Handles all business logic, database interactions, and LLM communication.
-*   **Database (Local):** **SQLite** (using `sqlite3` and `knex.js` for migrations and queries).
-*   **LLM Integration:**
-    *   **Model:** Google **Gemini Flash** (for the free version), Google **Gemini Pro** (for the Pro version).
-    *   **SDK:** `@google/generative-ai`.
-    *   **Agent Framework:** **LangChain.js** for managing prompts, tools, chains, and agent memory.
-*   **Logging:** Structured logging using **Pino** (and `pino-pretty` for development) to facilitate log analysis, including by the LLM agent.
+## Key Features
 
-## 3. Current Status and Work Done
+### LLM Integration
+- Natural language POS configuration
+- Function calling for direct API execution
+- Multi-language support with automatic adaptation
+- Contextual help and error diagnostics
+- Product and pricing management via conversation
 
-*   **Initialized Git repository** and hosted on GitHub.
-*   **Created a basic `package.json`** and installed core dependencies for:
-    *   Electron (`electron`, `electron-builder`) and development utilities (`concurrently`, `nodemon`, `wait-on`, `cross-env`).
-    *   Frontend (`react`, `react-dom`, `react-router-dom`, `axios`).
-    *   Backend (`express`, `cors`, `@google/generative-ai`, `langchain`, `sqlite3`, `knex`, `dotenv`, `pino`, `pino-pretty`).
-    *   Development tools (`eslint`, `prettier`, `typescript` and related plugins).
-*   **Defined an initial project folder structure.**
-*   **Formulated a detailed project concept**, including key features, LLM interaction architecture, distribution models, and development phases (this `README.md`).
-*   **Configured `.gitignore`** to exclude unnecessary files from the repository.
+### Data Management
+- **Products:** Three naming levels (menu/button/receipt display)
+- **Categories:** Hierarchical with automatic tax assignment  
+- **Users & Roles:** Access control management
+- **Modifiers:** Time/condition-based pricing rules
+- **Table Management:** Bill splitting and item transfers
 
+### Fiscal Compliance (Germany)
+- **TSE Integration:** Technical Security Equipment support
+- **DSFinV-K Export:** Tax authority data format
+- **Time Control:** Mandatory TSE clock verification
+- **Long-term Archival:** Hedera blockchain anchoring
+- **GoBD Compliance:** Proper accounting record principles
 
-## 4. Key Features (Planned)
+### UI Innovation
+- **Geometric Tessellation:** Optimized layout patterns
+  - Hexagons (6.6.6): Categories - maximum space efficiency
+  - Squares (4.4.4): Numbers - familiar input patterns
+  - Octagons (4.8.8): Hierarchical relationships
 
-*   **Master Data Management (Stammdaten):** Products (PLUs), categories (Warengruppen), users & roles, payment methods.
-*   **Core Sales Logic:**
-    *   Modifiers for conditional promotions, discounts, surcharges.
-    *   Condiments/PLU Links for gastronomy.
-    *   Table Management (Tischfunktionen): splitting bills, moving items.
-*   **Reporting & Administration:**
-    *   Standard X/Z-Reports.
-    *   Fiscal Export (e.g., DSFinV-K for Germany).
-    *   Dynamic POS UI configuration via LLM.
-*   **Macros:** Custom automation via JSON structures or (for advanced users) JavaScript in a secure sandbox.
-*   **Offline Functionality:** Core POS operations will not require a constant internet connection.
-*   **Companion App:** For settings and reports (possibly part of eckWms).
-*   **Cloud Features (via eck1/2/3.com, optional/Pro):** Backups, data synchronization.
+## Project Structure
 
-## 5. LLM Agent Interaction
+```
+├── packages/
+│   ├── backend/                 # Node.js Express API
+│   │   ├── src/
+│   │   │   ├── config/         # Logger, database config
+│   │   │   ├── controllers/    # API endpoint handlers
+│   │   │   ├── services/       # Business logic, LLM service
+│   │   │   ├── routes/         # Express route definitions
+│   │   │   └── db/             # Knex migrations and seeds
+│   │   └── package.json
+│   └── client-desktop/         # Electron wrapper
+│       ├── electron/           # Main process, preload scripts
+│       ├── src/renderer/       # React application
+│       │   ├── src/
+│       │   │   ├── hooks/      # Custom React hooks (WebSocket)
+│       │   │   └── components/ # UI components
+│       │   └── package.json
+│       └── package.json
+└── package.json               # Monorepo root
+```
 
-*   The LLM acts as an intelligent assistant, understanding natural language.
-*   Interaction via Gemini's "Tool Use" mechanism: LLM calls POS API functions described as "tools".
-*   LangChain.js is used to build and manage the agent's logic.
-*   The agent should be capable of dialogue, clarifying requests, proposing solutions, and explaining functionalities.
+## Installation & Development
 
-## 6. Distribution Model and Cost Management
+### Prerequisites
+- Node.js 18+ (project tested with v24.2.0)
+- Google Gemini API key
+- Git
 
-*   **ecKasse (Free Version):**
-    *   Open Source (EUPL-1.2 License).
-    *   LLM: Gemini Flash.
-    *   LLM Cost Coverage: **BYOK (Bring Your Own Key)** – users provide their own Google AI API key.
-*   **ecKasse Pro (Paid Version):**
-    *   LLM: Gemini Pro.
-    *   Enhanced functionality, cloud services.
-    *   Monetization: Subscription or one-time purchase.
+### Setup
+```bash
+git clone https://github.com/xelth-com/eckasse.git
+cd eckasse
+npm install
+```
 
-## 7. Next Steps (Immediate)
+### Environment Configuration
+Create `.env` in project root:
+```env
+GEMINI_API_KEY=your_google_gemini_api_key
+BACKEND_PORT=3030
+NODE_ENV=development
+LOG_LEVEL=debug
+DB_FILENAME=./packages/backend/src/db/eckasse_dev.sqlite3
+```
 
-1.  **Create the base folder structure** as outlined in the project plan.
-2.  **Set up the React application** (e.g., using Create React App or Vite).
-3.  **Write basic code for `electron/main.js`** to launch the window and load the React app.
-4.  **Write basic code for the Backend API using Express.js** (`src/backend/`).
-5.  **Configure Knex.js** for SQLite database migrations and initial seeding.
-6.  **Implement a first simple "tool" for the LLM agent** (e.g., fetching a list of products) and integrate it via LangChain.js.
-7.  **Create a basic chat interface** in React to interact with the LLM agent.
+### Development Commands
+```bash
+# Start all services (backend + React + Electron)
+npm run dev
 
-## 8. How to Contribute
+# Individual services
+npm run dev:backend          # Backend API only
+npm run dev:client:desktop:react  # React dev server only
 
-*(This section will be filled in later when the project is ready to accept external contributions. It will include developer guidelines, coding style, and the Pull Request process).*
+# Database management
+npm run migrate:backend      # Run database migrations
+npm run seed:backend        # Seed development data
 
-## 9. License
+# Production builds
+npm run build:client:desktop # Build Electron app
+npm run dist:client:desktop  # Create distributable package
+```
 
+### Testing LLM Features
+1. Start development environment: `npm run dev`
+2. Open Electron app (automatically launches)
+3. Test Gemini integration in the "Gemini Ping-Pong Test" section
+4. Example queries:
+   - "What are the details for product ID 123?"
+   - "Tell me about the Super Widget product"
+   - "Add a new coffee drink called Cappuccino for €3.50"
+
+## API Structure
+
+### LLM Service
+Located in `packages/backend/src/services/llm.service.js`
+
+- **Function Calling:** Direct API execution via Gemini tools
+- **Product Management:** getProductDetails function for inventory queries
+- **Conversation History:** Maintains context across requests
+- **Error Handling:** Multi-model fallback (Gemini 2.5 Flash → 2.0 Flash → 1.5 Flash)
+
+### WebSocket + HTTP Fallback
+Located in `packages/client-desktop/src/renderer/src/hooks/useWebSocket.js`
+
+- **Primary:** WebSocket for real-time communication
+- **Fallback:** HTTP requests with same operationId
+- **Idempotency:** UUID-based operation tracking prevents duplicates
+
+## Development Guidelines
+
+### Code Organization
+- **Backend:** RESTful API design with LLM service layer
+- **Frontend:** React hooks pattern with custom WebSocket management
+- **Database:** Knex.js migrations for schema versioning
+- **Logging:** Structured JSON logs via Pino
+
+### LLM Integration Patterns
+- Function declarations follow Google's official structure
+- System context defines POS-specific behavior
+- All product queries must use available tools
+- Error recovery with model fallback chain
+
+### Communication Protocol
+```javascript
+// Request format
+{
+  operationId: "uuid-v4",
+  command: "ping_ws",
+  payload: { data: "test" }
+}
+
+// Response format  
+{
+  operationId: "uuid-v4",
+  status: "success|error|already_processed",
+  payload: { /* response data */ },
+  channel: "websocket|http"
+}
+```
+
+## Fiscal Compliance
+
+### German Requirements
+- **TSE (Technical Security Equipment):** Required for all cash transactions
+- **DSFinV-K:** Standardized export format for tax authorities
+- **Time Synchronization:** Mandatory TSE clock verification on startup
+- **Data Retention:** Long-term archival with cryptographic integrity
+
+### Implementation Status
+- ✅ Basic LLM integration with product management
+- ✅ WebSocket/HTTP communication system
+- ✅ SQLite database with migrations
+- 🔄 TSE integration (planned)
+- 🔄 DSFinV-K export (planned)
+- 🔄 Hedera blockchain anchoring (planned)
+
+## Distribution
+
+### Free Version
+- **License:** EUPL-1.2 (European Union Public Licence)
+- **LLM:** Google Gemini Flash
+- **Requirement:** User-provided Google API key (BYOK)
+- **Database:** Local SQLite only
+
+### Pro Version (Planned)
+- **LLM:** Google Gemini Pro
+- **Features:** Cloud sync, advanced reporting, priority support
+- **Archival:** Qualified eIDAS timestamps
+- **Pricing:** Subscription-based with transparent cost structure
+
+## Contributing
+
+### Areas of Need
+1. **Fiscal Compliance:** International POS regulations expertise
+2. **UI/UX:** Geometric tessellation interface improvements  
+3. **Testing:** Real-world restaurant environment validation
+4. **Documentation:** User guides and API documentation
+5. **Localization:** Multi-language support and regional adaptations
+
+### Development Setup
+1. Fork repository
+2. Set up development environment as above
+3. Check GitHub Issues for "good first issue" labels
+4. Submit pull requests with clear descriptions
+
+### International Expansion
+Currently focused on German market. Contributors needed for:
+- 🇫🇷 France: Fiscal printer requirements
+- 🇮🇹 Italy: RT compliance and fiscal memory
+- 🇬🇧 UK: Making Tax Digital (MTD) requirements  
+- 🇵🇱 Poland: JPK reporting and online registers
+- 🇺🇸 USA: State-specific sales tax regulations
+
+## License
 
 Copyright 2025 Betruger Sp. z o.o.  
-Original work by Dmytro Surovtsev  
-Licensed under the EUPL-1.2
+Original work by Dmytro Surovtsev
 
-This project is licensed under the European Union Public Licence v. 1.2. 
-See the [LICENSE.md](LICENSE.md) file for details.
+Licensed under the European Union Public Licence v. 1.2 (EUPL-1.2).  
+See [LICENSE](LICENSE) for details.
+
+## Links
+
+- **Repository:** [github.com/xelth-com/eckasse](https://github.com/xelth-com/eckasse)
+- **Documentation:** [eckasse.com](https://eckasse.com) (planned)
+- **Issues:** [GitHub Issues](https://github.com/xelth-com/eckasse/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/xelth-com/eckasse/discussions)
