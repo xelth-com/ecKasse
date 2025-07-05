@@ -92,10 +92,11 @@ Located in `/packages/client-desktop/src/renderer/public/websocket.js`:
 
 ### LLM Integration
 Located in `/packages/backend/src/services/llm.service.js`:
-- Google Gemini function calling for direct API execution
-- Multi-model fallback chain (Flash 2.5 → Flash 2.0 → Flash 1.5)
-- Product management functions with proper tool declaration
-- Conversation history maintenance for context
+- **LangChain ReAct Agent** with Google Gemini integration
+- **Dynamic Tools** for database operations (findProduct, createProduct, createCategory)
+- **Real-time POS management** through natural language commands
+- **SQLite integration** via Knex.js for direct database manipulation
+- **Conversation history** maintenance for context-aware interactions
 
 ### Static File Serving
 Backend Express app serves frontend files:
@@ -174,9 +175,26 @@ DB_FILENAME=./packages/backend/src/db/eckasse_dev.sqlite3
 3. Test areas:
    - WebSocket Ping/HTTP Fallback section
    - Gemini Ping-Pong Test section
-4. Example Gemini queries:
-   - "What are the details for product ID 123?"
-   - "Tell me about the Super Widget product"
+
+### LangChain Agent Testing
+The AI agent can now perform real database operations:
+
+**Product Search:**
+- "Найди товар Кофе" (Find product Coffee)
+- "Покажи товар Пицца" (Show product Pizza)
+
+**Category Creation:**
+- "Создай категорию Напитки типа drink" (Create category Drinks of type drink)
+- "Добавь категорию Основные блюда типа food" (Add category Main dishes of type food)
+
+**Product Creation:**
+- "Создай товар Эспрессо цена 2.50 категория Напитки" (Create product Espresso price 2.50 category Drinks)
+- "Добавь товар Капучино за 3.00 в категорию Напитки" (Add product Cappuccino for 3.00 in category Drinks)
+
+**Prerequisites:**
+- Ensure database is migrated: `npm run migrate:backend`
+- Categories must exist before creating products
+- Agent will guide you through missing requirements
 
 ## Node.js Version Compatibility
 
@@ -202,10 +220,14 @@ This POS system is designed for German fiscal compliance:
 - No build process is required for the frontend
 
 ### LLM Service Architecture
-- Multi-model fallback: `gemini-2.5-flash-preview-05-20` → `gemini-2.0-flash` → `gemini-1.5-flash-latest`
-- Function calling with strict system context requiring internal database checks
-- Custom `executeGetProductDetails` function provides hardcoded test data
-- Conversation history maintained between requests
+- **LangChain ReAct Agent** with `gemini-1.5-flash` model
+- **Three Dynamic Tools** for POS system management:
+  - `findProduct`: Search products by name in database
+  - `createProduct`: Create new products with category linking
+  - `createCategory`: Create new product categories (food/drink)
+- **Real database integration** via Knex.js (no hardcoded data)
+- **Conversation history** maintained between requests
+- **Error handling** with graceful fallbacks
 
 ### WebSocket Implementation Details
 - Custom `WebSocketManager` class with EventEmitter pattern

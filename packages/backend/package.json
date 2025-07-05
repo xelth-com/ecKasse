@@ -9,13 +9,15 @@
     "dev": "node src/server.js",
     "lint": "eslint src/",
     "format": "prettier --write \"src/**/*.js\"",
-    "db:migrate:latest": "npx knex migrate:latest --knexfile ./db/knexfile.js",
-    "db:migrate:rollback": "npx knex migrate:rollback --knexfile ./db/knexfile.js",
-    "db:seed:run": "npx knex seed:run --knexfile ./db/knexfile.js",
+    "db:migrate:latest": "npx knex migrate:latest --knexfile ./src/db/knexfile.js",
+    "db:migrate:rollback": "npx knex migrate:rollback --knexfile ./src/db/knexfile.js",
+    "db:seed:run": "npx knex seed:run --knexfile ./src/db/knexfile.js",
     "test": "echo \"Error: no test specified for @eckasse/backend\" && exit 0"
   },
   "dependencies": {
     "@google/genai": "^1.4.0",
+    "@langchain/core": "^0.3.27",
+    "@langchain/google-genai": "^0.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.19.2",

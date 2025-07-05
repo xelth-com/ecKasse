@@ -1,242 +1,178 @@
 // File: /packages/backend/src/services/llm.service.js
-const {
-  GoogleGenAI,
-  HarmCategory,
-  HarmBlockThreshold,
-  Type,
-  FunctionCallingConfigMode
-} = require("@google/genai");
+
+const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
+const { AgentExecutor, createReactAgent } = require("langchain/agents");
+const { DynamicTool } = require("@langchain/core/tools");
+const { ChatPromptTemplate, MessagesPlaceholder } = require("@langchain/core/prompts");
+
+// Подключаем наш логгер и настроенный Knex
 const logger = require('../config/logger');
+const knex = require('../db/knex'); // Убедитесь, что knexfile.js настроен правильно
 
-const apiKey = process.env.GEMINI_API_KEY;
+const llm = new ChatGoogleGenerativeAI({
+    apiKey: process.env.GEMINI_API_KEY,
+    model: "gemini-1.5-flash", // Используем указанную модель
+    temperature: 0.1,
+});
 
-let genAI;
+const tools = [
+    new DynamicTool({
+        name: "findProduct",
+        description: "Поиск товара в базе данных POS по его названию. Возвращает полную информацию о товаре в формате JSON.",
+        func: async (productName) => {
+            try {
+                const product = await knex('items')
+                    .whereRaw("json_extract(display_names, '$.menu.de') LIKE ?", [`%${productName}%`])
+                    .first();
+                if (product) {
+                    return `Найден товар: ${JSON.stringify(product)}`;
+                }
+                return `Товар с названием '${productName}' не найден.`;
+            } catch (error) {
+                logger.error({ msg: "Ошибка в инструменте findProduct", error });
+                return "Произошла ошибка при поиске товара.";
+            }
+        },
+    }),
+    new DynamicTool({
+        name: "createProduct",
+        description: "Создание нового товара в базе данных POS. Требуются параметры: name (название), price (цена) и categoryName (название категории).",
+        func: async (input) => {
+             try {
+                const { name, price, categoryName } = JSON.parse(input);
+                if (!name || !price || !categoryName) {
+                    return "Ошибка: для создания товара необходимы 'name', 'price' и 'categoryName'.";
+                }
 
-if (apiKey) {
-  genAI = new GoogleGenAI({ vertexai: false, apiKey });
-  logger.info("Google GenAI SDK initialized.");
-} else {
-  logger.warn("Google GenAI SDK not initialized due to missing API key. LLM features will be unavailable.");
+                const category = await knex('categories').whereRaw("json_extract(category_names, '$.de') = ?", [categoryName]).first();
+                if (!category) {
+                    return `Категория '${categoryName}' не найдена. Пожалуйста, сначала создайте категорию с помощью инструмента createCategory.`;
+                }
+
+                const posDeviceId = 1; // Предполагаем, что работаем с Kассой №1
+
+                const newItem = {
+                    pos_device_id: posDeviceId,
+                    associated_category_unique_identifier: category.id,
+                    display_names: JSON.stringify({ menu: { de: name }, button: { de: name.slice(0, 12) }, receipt: { de: name } }),
+                    item_price_value: parseFloat(price),
+                    item_flags: JSON.stringify({ is_sellable: true, has_negative_price: false }),
+                    audit_trail: JSON.stringify({ created_at: new Date().toISOString(), created_by: 'llm_agent', version: 1 }),
+                };
+
+                const [createdItem] = await knex('items').insert(newItem).returning('*');
+                return `Товар '${name}' успешно создан с ID ${createdItem.id} в категории '${categoryName}'.`;
+            } catch (error) {
+                logger.error({ msg: "Ошибка в инструменте createProduct", error, input });
+                return "Ошибка при создании товара. Убедитесь, что вы передали корректный JSON с полями 'name', 'price' и 'categoryName'.";
+            }
+        },
+    }),
+    new DynamicTool({
+        name: "createCategory",
+        description: "Создание новой категории товаров. Требуются параметры: name (название) и type ('food' или 'drink').",
+        func: async (input) => {
+            try {
+                const { name, type } = JSON.parse(input);
+                 if (!name || !type) {
+                    return "Ошибка: для создания категории необходимы 'name' и 'type'.";
+                }
+
+                const posDeviceId = 1; // Предполагаем, что работаем с Kассой №1
+                const newCategory = {
+                    pos_device_id: posDeviceId,
+                    category_names: JSON.stringify({ de: name }),
+                    category_type: type,
+                    audit_trail: JSON.stringify({ created_at: new Date().toISOString(), created_by: 'llm_agent', version: 1 }),
+                };
+                const [createdCategory] = await knex('categories').insert(newCategory).returning('*');
+                return `Категория '${name}' успешно создана с ID ${createdCategory.id}.`;
+            } catch(error) {
+                logger.error({ msg: "Ошибка в инструменте createCategory", error, input });
+                return "Ошибка при создании категории. Убедитесь, что вы передали корректный JSON с полями 'name' и 'type'.";
+            }
+        },
+    }),
+];
+
+const SYSTEM_PROMPT = `Вы - AI-ассистент кассовой системы ecKasse.
+Ваша задача - помогать пользователю управлять его рестораном или магазином через диалог.
+- Всегда используйте доступные инструменты для выполнения задач, связанных с базой данных (поиск, создание товаров/категорий).
+- Если для выполнения задачи не хватает информации (например, при создании товара не указана категория), вежливо запросите её у пользователя.
+- Давайте четкие и подтверждающие ответы после успешного выполнения операций.
+- Если вы не знаете, как выполнить запрос, сообщите об этом.
+
+TOOLS:
+{tools}
+
+Используйте следующий формат:
+
+Question: вопрос пользователя
+Thought: подумайте о том, что вам нужно сделать
+Action: действие из [{tool_names}]
+Action Input: параметры для действия
+Observation: результат действия
+... (эта последовательность Thought/Action/Action Input/Observation может повторяться)
+Thought: теперь я знаю окончательный ответ
+Final Answer: окончательный ответ пользователю`;
+
+const prompt = ChatPromptTemplate.fromMessages([
+    ["system", SYSTEM_PROMPT],
+    new MessagesPlaceholder("chat_history"),
+    ["human", "{input}"],
+    new MessagesPlaceholder("agent_scratchpad"),
+]);
+
+async function createAgent() {
+    const agent = await createReactAgent({
+        llm,
+        tools,
+        prompt,
+    });
+
+    const agentExecutor = new AgentExecutor({
+        agent,
+        tools,
+        verbose: process.env.NODE_ENV !== 'production', // Включаем подробное логирование для разработки
+    });
+
+    return agentExecutor;
 }
 
-// Function declaration using official Google example structure
-const getProductDetailsFunctionDeclaration = {
-  name: "getProductDetails",
-  parameters: {
-    type: Type.OBJECT,
-    description: "Retrieve internal product details from the ecKasse POS system's database using either the product's unique ID or its name. Use this to find information like price, category, and description for items managed by this specific POS system.",
-    properties: {
-      productId: {
-        type: Type.STRING,
-        description: "The unique identifier (ID) of the product."
-      },
-      productName: {
-        type: Type.STRING,
-        description: "The full or partial name of the product."
-      }
-    },
-    required: [] // Making both optional so user can search by either ID or name
-  }
-};
-
-function executeGetProductDetails(args) {
-  logger.info({ msg: "Executing dummy function: getProductDetails", args });
-  const { productId, productName } = args || {};
-  
-  if (productId === "123" || (productName && productName.toLowerCase().includes("super widget"))) {
-    return { id: "123", name: "Super Widget", price: 19.99, category: "Gadgets", description: "The best widget ever!" };
-  } else if (productId === "456" || (productName && productName.toLowerCase().includes("eco mug"))) {
-    return { id: "456", name: "Eco Mug", price: 12.50, category: "Kitchenware", description: "A sustainable and stylish mug." };
-  } else if (productId === "5543") {
-    return { id: "5543", name: "Test Product", price: 25.99, category: "Test Category", description: "This is a test product for demonstration." };
-  }
-  return { error: "Product not found", requestedId: productId, requestedName: productName };
-}
-
-const SYSTEM_CONTEXT = `You are an AI assistant integrated into the ecKasse Point of Sale (POS) system. You have access to internal product database through the getProductDetails function. 
-
-IMPORTANT RULES:
-1. When users ask about products (by ID, name, or description), you MUST use the getProductDetails function to retrieve current information from the ecKasse database.
-2. Never provide generic responses about product databases - always check the internal system first.
-3. If a product is not found in the system, then you can explain that it's not in the current inventory.
-4. Always use the available tools when they are relevant to the user's question.
-
-You are specifically working within the ecKasse POS system context.`;
-
-async function sendMessageToGemini(userMessage, initialChatHistory = []) {
-  if (!genAI) {
-    const errorMsg = "Google GenAI SDK is not initialized.";
-    logger.error(errorMsg);
-    throw new Error(errorMsg);
-  }
-
-  // Try different models in order of preference
-  const models = [
-    "gemini-2.5-flash-preview-05-20", // Your original choice
-      "gemini-2.0-flash",              // Latest stable
-    "gemini-1.5-flash-latest"        // Fallback
-  ];
-
-  for (const modelId of models) {
+async function sendMessage(userMessage, chatHistory = []) {
     try {
-      logger.info(`Attempting with model: ${modelId}`);
-      const result = await attemptWithModel(modelId, userMessage, initialChatHistory);
-      if (result) {
-        logger.info(`Success with model: ${modelId}`);
-        return result;
-      }
-    } catch (error) {
-      logger.warn(`Model ${modelId} failed: ${error.message}`);
-      continue;
-    }
-  }
+        logger.info({ msg: 'Сообщение получено сервисом LangChain', message: userMessage });
 
-  throw new Error("All model versions failed");
-}
+        const agentExecutor = await createAgent();
 
-async function attemptWithModel(modelId, userMessage, initialChatHistory) {
-  // Build conversation history following Google's pattern
-  let contents = [
-    { role: "user", parts: [{ text: SYSTEM_CONTEXT }] },
-    { role: "model", parts: [{ text: "Understood. I am now operating as an AI assistant within the ecKasse POS system. I will use the getProductDetails function whenever users ask about product information, and I will always check the internal database first before providing any product-related responses." }] },
-    ...initialChatHistory,
-    { role: "user", parts: [{ text: userMessage }] }
-  ];
+        const result = await agentExecutor.invoke({
+            input: userMessage,
+            chat_history: chatHistory.map(msg => ({
+                role: msg.role,
+                content: msg.parts.map(part => part.text).join(''),
+            })),
+        });
 
-  logger.info({ 
-    msg: 'Sending message to Gemini using official API structure', 
-    model: modelId, 
-    messageLength: userMessage.length,
-    historyLength: initialChatHistory.length 
-  });
-
-  try {
-    // Using the official Google API structure
-    const response = await genAI.models.generateContent({
-      model: modelId,
-      contents: contents,
-      config: {
-        tools: [{ functionDeclarations: [getProductDetailsFunctionDeclaration] }],
-        toolConfig: {
-          functionCallingConfig: {
-            mode: FunctionCallingConfigMode.ANY,
-            allowedFunctionNames: ['getProductDetails']
-          }
-        },
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2048,
-        }
-      }
-    });
-
-    logger.info({ msg: "Raw response received", response: JSON.stringify(response, null, 2) });
-
-    // Check if there are function calls in the response
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      logger.info({ msg: "Function calls detected", functionCalls: response.functionCalls });
-
-      // Execute the function calls
-      const functionResults = [];
-      for (const functionCall of response.functionCalls) {
-        if (functionCall.name === "getProductDetails") {
-          const result = executeGetProductDetails(functionCall.args);
-          functionResults.push({
-            name: functionCall.name,
-            response: result
-          });
-        } else {
-          logger.warn({ msg: "Unknown function called", functionName: functionCall.name });
-          functionResults.push({
-            name: functionCall.name,
-            response: { error: `Unknown function: ${functionCall.name}` }
-          });
-        }
-      }
-
-      // Build history with function calls and responses
-      const updatedContents = [
-        ...contents,
-        { 
-          role: "model", 
-          parts: response.functionCalls.map(fc => ({ functionCall: fc }))
-        },
-        {
-          role: "function",
-          parts: functionResults.map(fr => ({ 
-            functionResponse: fr
-          }))
-        }
-      ];
-
-      logger.info({ msg: "Sending function results back to model", functionResults });
-
-      // Get final response after function execution
-      const finalResponse = await genAI.models.generateContent({
-        model: modelId,
-        contents: updatedContents,
-        config: {
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 2048,
-          }
-        }
-      });
-
-      // Extract text from final response
-      const finalText = finalResponse.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (finalText) {
-        logger.info({ msg: "Function call workflow completed", finalText });
-        return { 
-          text: finalText, 
-          history: [...updatedContents, { role: "model", parts: [{ text: finalText }] }]
-        };
-      } else {
-        logger.warn({ msg: "No text in final response after function call", finalResponse });
+        // Обновляем историю для отправки на клиент
+        const newHistory = [
+            ...chatHistory,
+            { role: 'user', parts: [{ text: userMessage }] },
+            { role: 'model', parts: [{ text: result.output }] },
+        ];
+        
         return {
-          text: `Function executed successfully. Results: ${JSON.stringify(functionResults, null, 2)}`,
-          history: updatedContents
+            text: result.output,
+            history: newHistory,
         };
-      }
+    } catch (error) {
+        logger.error({ msg: 'Ошибка в LangChain сервисе', error: error.message, stack: error.stack });
+        return {
+            text: 'Извините, произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте еще раз.',
+            history: chatHistory,
+        };
     }
-
-    // Handle direct text response (no function calls)
-    const candidate = response.candidates?.[0];
-    if (candidate?.content?.parts?.[0]?.text) {
-      const directText = candidate.content.parts[0].text;
-      logger.info({ msg: "Direct text response received", text: directText });
-      
-      const finalHistory = [
-        ...contents, 
-        { role: "model", parts: [{ text: directText }] }
-      ];
-      return { text: directText, history: finalHistory };
-    }
-
-    // Fallback handling
-    logger.warn({ 
-      msg: 'Unexpected response format', 
-      candidates: response.candidates,
-      promptFeedback: response.promptFeedback 
-    });
-    
-    return { 
-      text: "Received response but couldn't extract text content.", 
-      history: contents 
-    };
-
-  } catch (error) {
-    logger.error({ 
-      msg: 'Error with model', 
-      model: modelId, 
-      error: error.message, 
-      stack: error.stack 
-    });
-    throw error;
-  }
 }
 
-module.exports = { 
-  sendMessageToGemini, 
-  DUMMY_TOOLS: [{ functionDeclarations: [getProductDetailsFunctionDeclaration] }]
+module.exports = {
+    sendMessage,
 };

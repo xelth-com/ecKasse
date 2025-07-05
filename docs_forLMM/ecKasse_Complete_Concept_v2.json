@@ -1,0 +1,2225 @@
+{
+  "_format": {
+    "format_version": "1.1",
+    "format_name": "Kompaktes JSON-Format für Dokumentenverarbeitung",
+    "generated_date": "2025-07-05",
+    "generated_timestamp": "2025-07-05T09:43:30.073Z",
+    "abbreviation_legend": {
+      "doc": "document - Einzigartiger Name oder ID des Dokuments",
+      "meta": "metadata - Objekt, das Metadaten über das gesamte Dokument enthält",
+      "pub": "publisher - Herausgeber des Dokuments",
+      "btr": "btr_number - Dokumentennummer oder spezifische Kennung",
+      "t": "title - Haupttitel des Dokuments",
+      "p": "part - Untertitel, Teil oder spezifischere Beschreibung des Inhalts",
+      "v": "version - Versionsnummer des Dokuments",
+      "d": "date - Veröffentlichungsdatum im Format YYYY-MM-DD",
+      "pgs": "pages - Ein Array von Seitenobjekten",
+      "pg": "page_number - Die Seitenzahl (Integer)",
+      "c": "content - Ein Array von Inhaltselement-Objekten auf einer Seite",
+      "type": "element_type - Der Typ des Inhaltselements",
+      "hdr": "header - Ein Überschriften-Element",
+      "pgh": "paragraph - Ein normaler Textabsatz",
+      "tbl": "table - Ein Tabellen-Element",
+      "cap": "caption - Die Beschriftung für ein Element",
+      "hdrs": "headers - Array von Spaltenüberschriften einer Tabelle",
+      "r": "rows - Array von Arrays, das die Zeilen einer Tabelle darstellt",
+      "lst": "list - Ein Listen-Element",
+      "i": "items - Array von Strings oder Objekten (Listenpunkte)",
+      "ord": "ordered - Boolescher Wert, ob Liste nummeriert ist",
+      "cb": "code_block - Ein Code-Block oder vorformatierter Text",
+      "ftn": "footnote_definition - Eine Fußnotendefinition",
+      "m": "marker - Die Markierung einer Fußnote",
+      "toc": "table_of_contents - Ein Inhaltsverzeichnis-Element",
+      "ch": "children - Array von untergeordneten TOC-Einträgen",
+      "ci": "contact_info - Ein Block mit Kontaktinformationen",
+      "tb": "title_block - Der Haupttitelblock auf der Titelseite",
+      "l": "level - Die Hierarchieebene einer Überschrift (Integer)",
+      "n": "number - Die Nummerierung einer Überschrift",
+      "txt": "text - Der eigentliche Textinhalt eines Elements",
+      "img": "image - Ein Bild-Element",
+      "src": "source - Bildquelle oder Referenz",
+      "alt": "alt_text - Alternativer Text für Bilder",
+      "ref": "reference - Referenz oder Verweis",
+      "url": "url - URL oder Link",
+      "anx": "annex - Anhang-Element",
+      "sec": "section - Sektion oder Bereich"
+    },
+    "description": "Dieses Dokument verwendet das kompakte JSON-Format für token-effiziente Dokumentendarstellung",
+    "statistics": {
+      "total_pages": 24,
+      "total_elements": 188,
+      "element_types": {
+        "tb": 1,
+        "hdr": 78,
+        "lst": 24,
+        "pgh": 39,
+        "tbl": 22,
+        "cb": 24
+      },
+      "page_range": {
+        "min": 1,
+        "max": 24
+      },
+      "content_distribution": {
+        "1": 7,
+        "2": 5,
+        "3": 7,
+        "4": 7,
+        "5": 8,
+        "6": 8,
+        "7": 9,
+        "8": 6,
+        "9": 8,
+        "10": 9,
+        "11": 10,
+        "12": 8,
+        "13": 10,
+        "14": 9,
+        "15": 11,
+        "16": 9,
+        "17": 9,
+        "18": 7,
+        "19": 7,
+        "20": 12,
+        "21": 15,
+        "22": 3,
+        "23": 2,
+        "24": 2
+      },
+      "structure_analysis": {
+        "headers_by_level": {
+          "2": 19,
+          "3": 54,
+          "4": 5
+        },
+        "tables_count": 22,
+        "lists_count": 24,
+        "code_blocks_count": 24,
+        "footnotes_count": 0
+      },
+      "avg_elements_per_page": 7.83,
+      "page_coverage": "1-24"
+    },
+    "processing_info": {
+      "chunks_processed": 9,
+      "chunks_total": 9,
+      "processing_date": "2025-07-05T09:43:30.081Z"
+    }
+  },
+  "meta": {
+    "doc": "ecKasse_Complete_Concept_v2",
+    "pub": "Betruger sp. z o.o.",
+    "t": "ecKasse - Vollständige Projektkonzeption",
+    "p": "LLM-gesteuerte Kassensystem mit geometrischer UI-Tesselierung und Blockchain-Verankerung",
+    "v": "2.0.0",
+    "d": "2025-01-10"
+  },
+  "pgs": [
+    {
+      "pg": 1,
+      "c": [
+        {
+          "type": "tb",
+          "txt": "ecKasse - LLM-управляемая Кассовая Система (POS)",
+          "l": 1
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "0",
+          "txt": "Брендинг и Инфраструктура Проекта"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Название проекта: ecKasse",
+            "Домены для комьюнити: ecKasse.com, ecKasse.de, ecKasse.eu",
+            "Репозиторий: github.com/xelth-com/ecKasse",
+            "Разработчик: Betruger sp. z o.o. (провокационное название как маркетинговая стратегия)",
+            "Экосистема: Часть пакета eckWms (Warehouse Management System)",
+            "Облачная инфраструктура: eck1.com, eck2.com, eck3.com (опциональные Pro-функции)"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "1",
+          "txt": "Философия и Уникальное Торговое Предложение"
+        },
+        {
+          "type": "pgh",
+          "txt": "Основная идея: Замена сложных меню и ручных конфигураций естественным диалогом с LLM-агентом. Цель - минимизировать потребность в сервис-техниках для рутинных настроек POS-систем."
+        },
+        {
+          "type": "pgh",
+          "txt": "УТП: 'Разговорная коммерция' + 'zero-config' для базовых операций + открытый исходный код + революционная геометрическая тесселяция интерфейса."
+        },
+        {
+          "type": "pgh",
+          "txt": "Провокационная стратегия брендинга: Название 'Betruger' создает изначальную скептичность, которая при доказательстве исключительной надежности превращается в гораздо более сильное доверие, чем у компаний с 'безопасными' названиями."
+        }
+      ]
+    },
+    {
+      "pg": 2,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "2",
+          "txt": "Целевые Проблемы и Решения"
+        },
+        {
+          "type": "tbl",
+          "cap": "Сравнение традиционных POS и ecKasse",
+          "hdrs": [
+            "Традиционные POS",
+            "Проблема",
+            "Решение ecKasse"
+          ],
+          "r": [
+            [
+              "Square, Toast, Lightspeed",
+              "Меню-ориентированная настройка требует обучения",
+              "Настройка через естественный язык"
+            ],
+            [
+              "Vectron, MICROS, NCR",
+              "Дорогие установки, долгие циклы развертывания",
+              "Самостоятельная установка через LLM"
+            ],
+            [
+              "SumUp, Zettle",
+              "Слишком простые для сложных ресторанов",
+              "Полный функционал + простота использования"
+            ],
+            [
+              "Все системы",
+              "Vendor lock-in, проприетарные форматы",
+              "Универсальный OOP-POS-MDF формат"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "3",
+          "txt": "Революционные Особенности ecKasse"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Первая POS-система с полноценной LLM-интеграцией для настройки и управления",
+            "Уникальная геометрическая тесселяция UI (шестиугольники, квадраты, восьмиугольники)",
+            "Blockchain-якорение через Hedera Consensus Service для неизменяемых аудиторских следов",
+            "Универсальный формат данных OOP-POS-MDF предотвращает vendor lock-in",
+            "Коллективная модель ценообразования TSE - чем больше пользователей, тем дешевле для всех"
+          ],
+          "ord": true
+        },
+        {
+          "type": "pgh",
+          "txt": "Экологический аспект: Отказ от энергоемких Proof-of-Work блокчейнов в пользу Hedera с ультранизким энергопотреблением демонстрирует ответственный подход к технологическим решениям."
+        }
+      ]
+    },
+    {
+      "pg": 3,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "4",
+          "txt": "Техническая Архитектура и Стек Технологий"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "4.1",
+          "txt": "Обновленный Стек Технологий (без React)"
+        },
+        {
+          "type": "tbl",
+          "cap": "Технологический стек ecKasse v2.0",
+          "hdrs": [
+            "Компонент",
+            "Технология",
+            "Обоснование"
+          ],
+          "r": [
+            [
+              "Desktop App",
+              "Electron.js + Vanilla JavaScript + Web Components",
+              "Нативная производительность, отказ от сложности React"
+            ],
+            [
+              "UI Framework",
+              "Lit (lit.dev) для Web Components",
+              "Легковесная альтернатива React, нативные компоненты"
+            ],
+            [
+              "Backend",
+              "Node.js + Express.js",
+              "В Main процессе Electron, проверенное решение"
+            ],
+            [
+              "Database",
+              "SQLite + Knex.js",
+              "Локальное хранение с миграциями"
+            ],
+            [
+              "LLM",
+              "Google Gemini (Flash/Pro)",
+              "Function Calling, многоязычность"
+            ],
+            [
+              "LLM Framework",
+              "LangChain.js",
+              "Управление промптами и инструментами"
+            ],
+            [
+              "Dev Tools",
+              "esbuild + npm scripts",
+              "Замена nodemon, быстрая сборка"
+            ],
+            [
+              "Логирование",
+              "Pino + pino-pretty",
+              "Структурированные логи для анализа"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "4.2",
+          "txt": "Многоуровневая Отказоустойчивая Система Связи"
+        },
+        {
+          "type": "pgh",
+          "txt": "Архитектура автоматического переключения каналов связи обеспечивает максимальную доступность системы даже при сбоях сети или сервера."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Уровень 1 (Основной): Локальные WebSockets - минимальная задержка для операций в реальном времени",
+            "Уровень 2 (Резерв): Локальный HTTP API - fallback при проблемах с WebSocket соединением",
+            "Уровень 3 (Облачный): Прокси через eckX.com - для удаленного доступа и управления несколькими кассами"
+          ],
+          "ord": true
+        },
+        {
+          "type": "cb",
+          "cap": "Пример реализации идемпотентности операций",
+          "c": "// Каждая операция получает уникальный UUID\nconst operationId = crypto.randomUUID();\n\n// Отправка через WebSocket с автоматическим fallback\nasync function executeOperation(operation, data) {\n  const payload = { operationId, operation, data };\n  \n  try {\n    // Попытка через WebSocket\n    return await sendViaWebSocket(payload);\n  } catch (wsError) {\n    console.warn('WebSocket failed, trying HTTP...', wsError);\n    // Автоматический fallback на HTTP\n    return await sendViaHTTP(payload);\n  }\n}\n\n// Сервер дедуплицирует по operationId\nif (processedOperations.has(operationId)) {\n  return { status: 'already_processed', channel: 'previous' };\n}"
+        }
+      ]
+    },
+    {
+      "pg": 4,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "4.3",
+          "txt": "Архитектура Фискализации для Германии"
+        },
+        {
+          "type": "pgh",
+          "txt": "Принцип: 'Один налогоплательщик = одна TSE'. Это оптимизирует расходы для клиентов и соответствует реальным требованиям немецкого законодательства."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Бэкенд выступает как менеджер TSE-инстансов",
+            "Каждый независимый налогоплательщик получает уникальный TSE-инстанс через облачные сервисы (Fiskaly/A-Trust)",
+            "Несколько касс одного налогоплательщика используют общую TSE",
+            "Маппинг: taxpayer_id → tse_instance_id обеспечивает соответствие законодательству",
+            "Автоматическое создание TSE-инстансов при регистрации новых налогоплательщиков"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "4.4",
+          "txt": "Монорепозиторий и Структура Проекта"
+        },
+        {
+          "type": "cb",
+          "cap": "Структура файлов проекта",
+          "c": "ecKasse/\n├── packages/\n│   ├── backend/              # Node.js + Express\n│   │   ├── src/\n│   │   │   ├── api/           # REST API endpoints\n│   │   │   ├── llm/           # LLM integration\n│   │   │   ├── tse/           # TSE manager\n│   │   │   ├── services/      # Business logic\n│   │   │   └── db/            # Database layer\n│   │   └── package.json\n│   ├── client-desktop/       # Electron app\n│   │   ├── src/\n│   │   │   ├── main/          # Electron main process\n│   │   │   ├── renderer/      # UI layer (Vanilla JS + Lit)\n│   │   │   ├── components/    # Web Components\n│   │   │   └── styles/        # CSS for tessellation UI\n│   │   └── package.json\n│   └── shared/               # Common utilities\n│       ├── types/            # TypeScript definitions\n│       └── constants/        # Shared constants\n├── docs/                     # Documentation\n├── scripts/                  # Build and dev scripts\n└── package.json              # Root package.json"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "4.5",
+          "txt": "Система Сборки без Nodemon"
+        },
+        {
+          "type": "tbl",
+          "cap": "Замена Nodemon и React инфраструктуры",
+          "hdrs": [
+            "Было",
+            "Стало",
+            "Преимущества"
+          ],
+          "r": [
+            [
+              "nodemon",
+              "npm scripts + esbuild --watch",
+              "Быстрее, меньше зависимостей"
+            ],
+            [
+              "React dev server",
+              "esbuild serve + custom reload",
+              "Нативная производительность"
+            ],
+            [
+              "React build",
+              "esbuild bundle",
+              "Мгновенная сборка"
+            ],
+            [
+              "webpack/vite",
+              "esbuild",
+              "Минимальная конфигурация"
+            ],
+            [
+              "JSX",
+              "Lit html`` template literals",
+              "Нативные Web Components"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "pg": 5,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "5",
+          "txt": "Ключевые Функции и LLM Интеграция"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "5.1",
+          "txt": "Интеллектуальное Управление Данными через LLM"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse революционизирует управление POS-данными, позволяя настраивать систему через естественный язык вместо сложных меню."
+        },
+        {
+          "type": "tbl",
+          "cap": "Примеры LLM-диалогов для управления системой",
+          "hdrs": [
+            "Пользовательский запрос",
+            "Действие LLM",
+            "Результат"
+          ],
+          "r": [
+            [
+              "Добавь новый кофейный напиток Капучино за €3.50 с НДС 7%",
+              "createProduct(name:'Капучино', price:3.50, taxRate:7, category:'coffee')",
+              "Товар создан и добавлен в категорию кофе"
+            ],
+            [
+              "Сделай скидку 20% на все коктейли с 17:00 до 19:00 в будни",
+              "createModifier(type:'happy_hour', discount:20, categories:['cocktails'], time:'17:00-19:00', days:'mon-fri')",
+              "Модификатор Happy Hour создан"
+            ],
+            [
+              "Какая наша дневная выручка и самый популярный товар?",
+              "getSalesReport(period:'today') + getTopSellingItems(period:'today')",
+              "Отчет: €1,247 выручка, лидер: Латте (23 шт)"
+            ],
+            [
+              "Покажи товары, которые редко заказывают",
+              "getSlowMovingItems(threshold:5, period:'month')",
+              "Список из 8 товаров с продажами < 5 в месяц"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "5.2",
+          "txt": "Система Именования Товаров (Тройная Номенклатура)"
+        },
+        {
+          "type": "pgh",
+          "txt": "Каждый товар в ecKasse имеет три специализированных названия для разных контекстов использования:"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "menu_display_name (до 255 символов): Полное описание для меню и детальных просмотров",
+            "button_display_name (до 20 символов): Краткое название для кнопок сенсорного интерфейса",
+            "receipt_print_name (до 35 символов): Оптимизированное название для печати на чеках"
+          ],
+          "ord": false
+        },
+        {
+          "type": "cb",
+          "cap": "Пример тройной номенклатуры для товара",
+          "c": "{\n  \"item_unique_identifier\": 1001,\n  \"menu_display_name\": \"Капучино с органическим молоком и корицей (большая порция 0.3л)\",\n  \"button_display_name\": \"Капучино L\",\n  \"receipt_print_name\": \"Капучино орг.молоко 0.3л\",\n  \"item_price_value\": 4.20,\n  \"associated_category_unique_identifier\": 2\n}"
+        }
+      ]
+    },
+    {
+      "pg": 6,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "5.3",
+          "txt": "Автоматическая Настройка НДС через LLM"
+        },
+        {
+          "type": "pgh",
+          "txt": "LLM-агент автоматически находит актуальные налоговые ставки, используя web_search для поиска в официальных источниках."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Приоритетные источники: gesetze-im-internet.de (особенно UStG §12), Bundesfinanzministerium",
+            "Анализ контекста применения ставки (например, кофе 'с собой' vs 'в заведении')",
+            "Автоматическое предложение применения ставки к категориям товаров",
+            "Отслеживание изменений в законодательстве и уведомления об обновлениях"
+          ],
+          "ord": false
+        },
+        {
+          "type": "cb",
+          "cap": "Пример диалога с LLM для настройки НДС",
+          "c": "User: \"Какая ставка НДС для кофе на вынос в Германии?\"\n\nLLM: *выполняет web_search('Mehrwertsteuersatz Kaffee zum Mitnehmen Deutschland')*\n\nLLM: \"Согласно §12 UStG, для кофе 'с собой' применяется стандартная ставка 19%. \nДля кофе, употребляемого в заведении, действует льготная ставка 7%.\n\nХотите применить 19% ко всем товарам в категории 'Напитки на вынос'?\"\n\nUser: \"Да, примени\"\n\nLLM: *выполняет updateCategoryTaxRate(category:'takeaway_drinks', taxRate:19)*"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "5.4",
+          "txt": "Система Макросов и Автоматизации"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse поддерживает два уровня автоматизации: JSON-макросы для простых последовательностей и JavaScript-макросы для сложной логики."
+        },
+        {
+          "type": "tbl",
+          "cap": "Сравнение типов макросов",
+          "hdrs": [
+            "JSON-макросы",
+            "JavaScript-макросы"
+          ],
+          "r": [
+            [
+              "Простая структура",
+              "Полная программная логика"
+            ],
+            [
+              "Безопасные по умолчанию",
+              "Выполнение в sandbox"
+            ],
+            [
+              "Создаются LLM автоматически",
+              "Требуют режим разработчика"
+            ],
+            [
+              "Условия, циклы, переменные",
+              "Доступ к eckasse.api объекту"
+            ],
+            [
+              "Для большинства пользователей",
+              "Для продвинутых настроек"
+            ]
+          ]
+        },
+        {
+          "type": "cb",
+          "cap": "Пример JSON-макроса для закрытия смены",
+          "c": "{\n  \"macro_name\": \"close_shift\",\n  \"description\": \"Закрытие смены с печатью отчетов\",\n  \"trigger\": \"manual\",\n  \"actions\": [\n    {\n      \"action\": \"print_x_report\",\n      \"printer\": \"main_receipt_printer\"\n    },\n    {\n      \"action\": \"check_cash_drawer_balance\",\n      \"expected_variance\": 5.00\n    },\n    {\n      \"action\": \"create_backup\",\n      \"destination\": \"cloud\",\n      \"encrypt\": true\n    },\n    {\n      \"action\": \"send_notification\",\n      \"message\": \"Смена закрыта успешно\",\n      \"recipients\": [\"manager\"]\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "pg": 7,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "5.5",
+          "txt": "Продвинутая Логика Продаж"
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "5.5.1",
+          "txt": "Система Модификаторов"
+        },
+        {
+          "type": "pgh",
+          "txt": "Модификаторы - это правила, которые автоматически изменяют цены или поведение товаров на основе различных условий."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Временные модификаторы: Happy Hour, утренние скидки, ночные наценки",
+            "Комбинационные модификаторы: скидки за покупку нескольких товаров",
+            "Сезонные модификаторы: летние/зимние меню, праздничные предложения",
+            "Персональные модификаторы: скидки для постоянных клиентов",
+            "Количественные модификаторы: оптовые скидки, прогрессивные наценки"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "5.5.2",
+          "txt": "PLU Links (Гарниры и Связанные Товары)"
+        },
+        {
+          "type": "pgh",
+          "txt": "Система связей между товарами особенно важна для гастрономии, где многие блюда состоят из основы и дополнений."
+        },
+        {
+          "type": "cb",
+          "cap": "Пример конфигурации PLU Links",
+          "c": "{\n  \"main_item\": {\n    \"id\": 2001,\n    \"name\": \"Стейк\",\n    \"price\": 18.00\n  },\n  \"linked_items\": {\n    \"required_sides\": [\n      {\n        \"category\": \"Гарниры\",\n        \"min_selections\": 1,\n        \"max_selections\": 2,\n        \"options\": [\"Картофель фри\", \"Рис\", \"Овощи гриль\"]\n      }\n    ],\n    \"optional_extras\": [\n      {\n        \"category\": \"Соусы\", \n        \"price_modifier\": \"+0.50\",\n        \"options\": [\"Перечный\", \"Грибной\", \"Барбекю\"]\n      }\n    ]\n  }\n}"
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "5.5.3",
+          "txt": "Управление Столами"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Открытие и закрытие столов с отслеживанием времени",
+            "Перенос позиций между столами",
+            "Разделение счета на несколько частей",
+            "Объединение столов для больших компаний",
+            "Резервирование столов с интеграцией в календарь"
+          ],
+          "ord": false
+        }
+      ]
+    },
+    {
+      "pg": 8,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "6",
+          "txt": "Революционная Геометрическая Тесселяция UI"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse внедряет принципиально новый подход к дизайну POS-интерфейсов, используя различные геометрические формы для создания интуитивно понятной и эргономичной системы управления."
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "6.1",
+          "txt": "Принципы Геометрической Дифференциации"
+        },
+        {
+          "type": "tbl",
+          "cap": "Зоны интерфейса и их геометрические формы",
+          "hdrs": [
+            "Зона",
+            "Геометрия",
+            "Применение",
+            "Обоснование"
+          ],
+          "r": [
+            [
+              "Цифровая клавиатура",
+              "4.4.4 (Квадраты)",
+              "Ввод количества, цен, кодов",
+              "Соответствует привычным раскладкам калькуляторов"
+            ],
+            [
+              "Основной выбор",
+              "6.6.6 (Шестиугольники)",
+              "Категории, популярные товары",
+              "Максимальная плотность заполнения пространства"
+            ],
+            [
+              "Модификаторы",
+              "4.8.8 (Квадраты + восьмиугольники)",
+              "Иерархические выборы",
+              "Визуальная связь родитель-потомок"
+            ],
+            [
+              "Функциональные кнопки",
+              "Прямоугольники",
+              "Системные операции",
+              "Четкое отделение от товарных кнопок"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "6.2",
+          "txt": "Реализация через Web Components"
+        },
+        {
+          "type": "cb",
+          "cap": "Пример Web Component для шестиугольной кнопки",
+          "c": "import { LitElement, html, css } from 'lit';\n\nclass HexButton extends LitElement {\n  static styles = css`\n    .hex-button {\n      width: 100px;\n      height: 87px;\n      position: relative;\n      cursor: pointer;\n      transition: transform 0.2s;\n    }\n    \n    .hex-shape {\n      width: 100%;\n      height: 100%;\n      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);\n      background: var(--hex-bg-color, #4CAF50);\n      display: flex;\n      align-items: center;\n      justify-content: center;\n    }\n    \n    .hex-button:hover {\n      transform: scale(1.1);\n    }\n    \n    .hex-text {\n      color: white;\n      font-weight: bold;\n      text-align: center;\n      font-size: 12px;\n    }\n  `;\n  \n  static properties = {\n    label: { type: String },\n    category: { type: String },\n    color: { type: String }\n  };\n  \n  render() {\n    return html`\n      <div class=\"hex-button\" \n           style=\"--hex-bg-color: ${this.color}\"\n           @click=\"${this._handleClick}\">\n        <div class=\"hex-shape\">\n          <span class=\"hex-text\">${this.label}</span>\n        </div>\n      </div>\n    `;\n  }\n  \n  _handleClick() {\n    this.dispatchEvent(new CustomEvent('category-selected', {\n      detail: { category: this.category }\n    }));\n  }\n}\n\ncustomElements.define('hex-button', HexButton);"
+        }
+      ]
+    },
+    {
+      "pg": 9,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "6.3",
+          "txt": "Адаптивная Тесселяция"
+        },
+        {
+          "type": "pgh",
+          "txt": "Система автоматически адаптирует геометрические паттерны к размеру экрана и количеству элементов, сохраняя оптимальную эргономику."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Автоматическое масштабирование форм при изменении разрешения экрана",
+            "Динамическое перераспределение элементов при добавлении новых категорий",
+            "Сохранение пропорций и визуальной иерархии на всех устройствах",
+            "Адаптация к различным соотношениям сторон (16:9, 4:3, планшеты)",
+            "Поддержка как портретной, так и альбомной ориентации"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "6.4",
+          "txt": "Цветовая Кодировка и Доступность"
+        },
+        {
+          "type": "tbl",
+          "cap": "Цветовая схема для различных типов товаров",
+          "hdrs": [
+            "Категория",
+            "Цвет",
+            "Психологическое воздействие",
+            "Контрастность"
+          ],
+          "r": [
+            [
+              "Напитки холодные",
+              "#4FC3F7 (голубой)",
+              "Свежесть, прохлада",
+              "AAA"
+            ],
+            [
+              "Напитки горячие",
+              "#FF8A65 (оранжевый)",
+              "Тепло, уют",
+              "AAA"
+            ],
+            [
+              "Основные блюда",
+              "#81C784 (зеленый)",
+              "Сытость, натуральность",
+              "AAA"
+            ],
+            [
+              "Десерты",
+              "#F06292 (розовый)",
+              "Сладость, удовольствие",
+              "AA"
+            ],
+            [
+              "Алкоголь",
+              "#9575CD (фиолетовый)",
+              "Премиальность, вечер",
+              "AA"
+            ],
+            [
+              "Закуски",
+              "#FFB74D (желтый)",
+              "Легкость, быстрота",
+              "AAA"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "6.5",
+          "txt": "Анимации и Интерактивность"
+        },
+        {
+          "type": "pgh",
+          "txt": "Геометрические элементы обогащаются тонкими анимациями, которые улучшают пользовательский опыт без отвлечения от основных задач."
+        },
+        {
+          "type": "cb",
+          "cap": "CSS анимации для геометрических переходов",
+          "c": "/* Морфинг квадрата в шестиугольник при активации */\n.square-to-hex {\n  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);\n  transition: clip-path 0.3s ease-in-out;\n}\n\n.square-to-hex.active {\n  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);\n}\n\n/* Пульсация при добавлении товара в корзину */\n@keyframes item-added {\n  0% { transform: scale(1); }\n  50% { transform: scale(1.2); filter: brightness(1.3); }\n  100% { transform: scale(1); }\n}\n\n.item-added-animation {\n  animation: item-added 0.4s ease-out;\n}\n\n/* Волновой эффект при категорийном переходе */\n.tessellation-wave {\n  animation: wave-propagation 0.6s ease-out;\n}\n\n@keyframes wave-propagation {\n  0% { transform: translateY(0) rotate(0deg); opacity: 1; }\n  50% { transform: translateY(-10px) rotate(2deg); opacity: 0.8; }\n  100% { transform: translateY(0) rotate(0deg); opacity: 1; }\n}"
+        }
+      ]
+    },
+    {
+      "pg": 10,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "6.6",
+          "txt": "Эргономические Преимущества"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Снижение когнитивной нагрузки: мгновенное распознавание зон по форме",
+            "Уменьшение ошибок нажатия: четкие границы между функциональными областями",
+            "Повышение скорости работы: интуитивная навигация без обучения",
+            "Снижение утомляемости: разнообразие форм предотвращает монотонность",
+            "Улучшение запоминания: геометрическая память сильнее текстовой"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "7",
+          "txt": "Пользовательский Опыт (UX) и Взаимодействие"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "7.1",
+          "txt": "Многомодальное Взаимодействие"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse поддерживает несколько способов взаимодействия одновременно, позволяя пользователям выбирать наиболее удобный метод для каждой ситуации."
+        },
+        {
+          "type": "tbl",
+          "cap": "Методы взаимодействия с системой",
+          "hdrs": [
+            "Метод",
+            "Применение",
+            "Преимущества",
+            "Ограничения"
+          ],
+          "r": [
+            [
+              "Голосовой ввод + LLM",
+              "Сложные настройки, поиск",
+              "Руки свободны, естественность",
+              "Шум в зале"
+            ],
+            [
+              "Тач-интерфейс",
+              "Быстрые продажи",
+              "Скорость, привычность",
+              "Загрязнение экрана"
+            ],
+            [
+              "Сканер штрих-кодов",
+              "Товары с кодами",
+              "Точность, скорость",
+              "Не все товары"
+            ],
+            [
+              "Клавиатура/горячие клавиши",
+              "Частые операции",
+              "Профессиональная скорость",
+              "Требует запоминания"
+            ],
+            [
+              "Жесты",
+              "Навигация",
+              "Интуитивность",
+              "Случайные активации"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "7.2",
+          "txt": "Контекстная Помощь и Обучение"
+        },
+        {
+          "type": "pgh",
+          "txt": "LLM-агент не только выполняет команды, но и активно помогает пользователям изучать систему и оптимизировать рабочие процессы."
+        },
+        {
+          "type": "cb",
+          "cap": "Примеры проактивной помощи от LLM",
+          "c": "// Анализ паттернов использования\nif (detectPattern('coffee_pastry_combo', frequency: 'high')) {\n  suggestToUser({\n    message: \"Я заметил, что кофе и выпечку часто заказывают вместе. \n             Создать комбо-предложение со скидкой?\",\n    actions: ['create_combo', 'dismiss', 'remind_later']\n  });\n}\n\n// Обучающие подсказки\nif (userLevel === 'beginner' && action === 'first_z_report') {\n  showGuidedTutorial({\n    title: \"Закрытие кассовой смены\",\n    steps: [\n      \"Z-отчет подводит итоги дня\",\n      \"Проверьте наличность в кассе\",\n      \"Отчет автоматически отправится в налоговую\"\n    ]\n  });\n}\n\n// Предупреждения о потенциальных проблемах\nif (lowStock(['coffee_beans', 'milk']) && timeUntil('morning_rush') < 2.hours) {\n  alertUser({\n    priority: 'high',\n    message: \"Заканчиваются кофейные зерна и молоко перед утренним пиком!\",\n    suggestions: ['order_supplies', 'limit_coffee_menu', 'contact_supplier']\n  });\n}"
+        }
+      ]
+    },
+    {
+      "pg": 11,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "8",
+          "txt": "Универсальный Формат Данных: OOP-POS-MDF"
+        },
+        {
+          "type": "pgh",
+          "txt": "Object-Oriented POS Master Data Format - революционное решение проблемы vendor lock-in в индустрии POS-систем."
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "8.1",
+          "txt": "Проблема Vendor Lock-in"
+        },
+        {
+          "type": "pgh",
+          "txt": "Традиционно, при переходе от одной POS-системы к другой (например, от Vectron к Square), владельцы теряют все настроенные меню, категории и конфигурации. Каждая система использует собственный проприетарный формат."
+        },
+        {
+          "type": "tbl",
+          "cap": "Проблемы миграции между POS-системами",
+          "hdrs": [
+            "Аспект",
+            "Традиционный подход",
+            "Решение ecKasse"
+          ],
+          "r": [
+            [
+              "Формат данных",
+              "Проприетарный для каждой системы",
+              "Универсальный OOP-POS-MDF"
+            ],
+            [
+              "Миграция меню",
+              "Ручная перенастройка",
+              "Автоматический конвертер"
+            ],
+            [
+              "Сохранение настроек",
+              "Невозможно",
+              "Полное сохранение"
+            ],
+            [
+              "Время миграции",
+              "Недели",
+              "Часы"
+            ],
+            [
+              "Потеря данных",
+              "Значительная",
+              "Отсутствует"
+            ],
+            [
+              "Стоимость перехода",
+              "Высокая",
+              "Минимальная"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "8.2",
+          "txt": "Архитектура OOP-POS-MDF"
+        },
+        {
+          "type": "pgh",
+          "txt": "Формат построен на принципах объектно-ориентированного программирования с четкой иерархией и самодокументируемыми именами полей."
+        },
+        {
+          "type": "cb",
+          "cap": "Структура иерархии OOP-POS-MDF",
+          "c": "Company (Компания)\n├── GlobalConfigurations (Глобальные настройки)\n│   ├── TaxRateDefinitions (Определения налоговых ставок)\n│   ├── MainGroupDefinitions (Основные группы товаров)\n│   ├── PaymentMethodDefinitions (Способы оплаты)\n│   └── PrintFormatProfiles (Профили печати)\n├── Branches (Филиалы)\n│   └── POSDevices (POS-устройства)\n│       ├── HardwareInterfaces (Аппаратные интерфейсы)\n│       ├── BuiltInDisplays (Встроенные дисплеи)\n│       │   └── DisplayActivities (Экранные активности)\n│       │       └── UIElements (Элементы интерфейса)\n│       ├── ConnectedPeripherals (Периферия)\n│       ├── Categories (Категории товаров)\n│       └── Items (Товары/артикулы)"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "8.3",
+          "txt": "Самодокументируемые Поля"
+        },
+        {
+          "type": "tbl",
+          "cap": "Примеры самодокументируемых названий полей",
+          "hdrs": [
+            "Традиционное POS",
+            "OOP-POS-MDF",
+            "Описание"
+          ],
+          "r": [
+            [
+              "id",
+              "item_unique_identifier",
+              "Уникальный идентификатор товара"
+            ],
+            [
+              "name",
+              "menu_display_name",
+              "Название для отображения в меню"
+            ],
+            [
+              "price",
+              "item_price_value",
+              "Цена товара"
+            ],
+            [
+              "cat_id",
+              "associated_category_unique_identifier",
+              "Ссылка на категорию"
+            ],
+            [
+              "tax",
+              "linked_tax_rate_unique_identifier",
+              "Ссылка на налоговую ставку"
+            ],
+            [
+              "printer",
+              "linked_print_format_profile_unique_identifier",
+              "Профиль печати"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "pg": 12,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "8.4",
+          "txt": "Конвертеры для Целевых Систем"
+        },
+        {
+          "type": "pgh",
+          "txt": "Для каждой популярной POS-системы создается специализированный конвертер, который преобразует OOP-POS-MDF в нативный формат целевой системы."
+        },
+        {
+          "type": "cb",
+          "cap": "Пример конвертера для Vectron Commander",
+          "c": "class VectronConverter {\n  convertToVectronFormat(oopPosData) {\n    const vectronLines = [];\n    \n    // Конвертация категорий\n    oopPosData.categories_for_this_pos.forEach(category => {\n      vectronLines.push(\n        `301,NR:${category.category_unique_identifier}`,\n        `302,TX:\"${category.category_name_full}\"`,\n        `303,WG:${this.mapToVectronMainGroup(category.default_linked_main_group_unique_identifier)}`\n      );\n    });\n    \n    // Конвертация товаров\n    oopPosData.items_for_this_pos.forEach(item => {\n      vectronLines.push(\n        `101,NR:${item.item_unique_identifier}`,\n        `102,TX:\"${item.receipt_print_name}\"`,\n        `103,PR:${(item.item_price_value * 100).toFixed(0)}`, // Центы\n        `104,MG:${this.findTaxGroup(item.associated_category_unique_identifier)}`\n      );\n    });\n    \n    return vectronLines.join('\\n');\n  }\n  \n  mapToVectronMainGroup(mainGroupId) {\n    const mapping = {\n      1: 1, // Getränke\n      2: 2, // Speisen\n      3: 3  // Sonstiges\n    };\n    return mapping[mainGroupId] || 3;\n  }\n}"
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "9",
+          "txt": "Фискализация и Юридическое Соответствие"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "9.1",
+          "txt": "TSE (Технические Устройства Безопасности) для Германии"
+        },
+        {
+          "type": "pgh",
+          "txt": "Соответствие немецкому законодательству о кассовых системах (KassenSichV) через интеграцию с сертифицированными TSE-провайдерами."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Автоматический контроль времени TSE при каждом запуске системы",
+            "Обязательные блокирующие уведомления пользователю о сбоях батареи TSE",
+            "Менеджер TSE по налогоплательщикам - один TSE на налогоплательщика",
+            "Поддержка облачных TSE (Fiskaly, A-Trust) для масштабируемости",
+            "Автоматическая коррекция времени при обнаружении расхождений"
+          ],
+          "ord": false
+        },
+        {
+          "type": "cb",
+          "cap": "Алгоритм контроля времени TSE",
+          "c": "async function checkTSETime() {\n  const tseTime = await tse.getCurrentTime();\n  const systemTime = new Date();\n  const timeDiff = Math.abs(tseTime - systemTime);\n  \n  // Критический порог - 5 минут\n  const CRITICAL_THRESHOLD = 5 * 60 * 1000;\n  \n  if (timeDiff > CRITICAL_THRESHOLD) {\n    // Автоматическая коррекция\n    await tse.setTime(systemTime);\n    \n    // ОБЯЗАТЕЛЬНОЕ уведомление пользователю\n    showBlockingAlert({\n      title: \"ВНИМАНИЕ! Сбой часов TSE\",\n      message: `Обнаружен сбой часов в фискальном модуле.\n               Дата была сброшена с ${tseTime} на ${systemTime}.\n               \n               Система автоматически установила правильное время.\n               \n               ВАЖНО: Этот сбой указывает на возможное истощение \n               батареи TSE. Рекомендуется обратиться к сервисному \n               партнеру для диагностики оборудования.`,\n      buttons: [\"Понятно, продолжить работу\"],\n      blocking: true,\n      logLevel: 'CRITICAL'\n    });\n  }\n  \n  return timeDiff <= CRITICAL_THRESHOLD;\n}"
+        }
+      ]
+    },
+    {
+      "pg": 13,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "9.2",
+          "txt": "Долгосрочная Архивация: Концепция 'Таймкапсуль'"
+        },
+        {
+          "type": "pgh",
+          "txt": "Обеспечение доказательной ценности фискальных данных на десятилетия через создание самодостаточных архивных пакетов."
+        },
+        {
+          "type": "tbl",
+          "cap": "Состав архивной 'таймкапсуль'",
+          "hdrs": [
+            "Компонент",
+            "Назначение",
+            "Формат"
+          ],
+          "r": [
+            [
+              "TSE-экспорт",
+              "Криптографически подписанные записи операций",
+              "Нативный формат TSE"
+            ],
+            [
+              "DSFinV-K экспорт",
+              "Структурированные данные для налоговых органов",
+              "CSV + index.xml"
+            ],
+            [
+              "Цепочка сертификатов",
+              "Полная иерархия от Root CA до TSE",
+              "X.509 PEM"
+            ],
+            [
+              "CRL/OCSP ответы",
+              "Доказательство отсутствия отзыва сертификатов",
+              "DER/PEM"
+            ],
+            [
+              "Процедурная документация",
+              "Описание бизнес-процессов (GoBD)",
+              "PDF/A"
+            ],
+            [
+              "Техническая документация",
+              "Версии ПО, конфигурации",
+              "JSON + README"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "9.3",
+          "txt": "Два Уровня Защиты Целостности"
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "9.3.1",
+          "txt": "Базовый уровень: Hedera Consensus Service"
+        },
+        {
+          "type": "pgh",
+          "txt": "Доступен всем пользователям бесплатно. Обеспечивает высочайший технический уровень доказательности."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Ультранизкое энергопотребление по сравнению с Bitcoin/Ethereum",
+            "Быстрая финальность транзакций (3-5 секунд)",
+            "Модель управления корпоративного уровня",
+            "Предсказуемые комиссии (центы за якорение)",
+            "Публично верифицируемые доказательства",
+            "Независимость от центральных органов"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "9.3.2",
+          "txt": "Pro-уровень: Квалифицированные eIDAS Метки Времени"
+        },
+        {
+          "type": "pgh",
+          "txt": "Для пользователей, поддерживающих проект. Обеспечивает максимальную юридическую силу в ЕС."
+        },
+        {
+          "type": "cb",
+          "cap": "Процесс получения квалифицированной метки времени",
+          "c": "async function createQualifiedTimestamp(archiveHash) {\n  // 1. Создание хэша архива\n  const hash = crypto.createHash('sha256')\n    .update(archiveBuffer)\n    .digest('hex');\n    \n  // 2. Отправка к QTSP (Qualified Trust Service Provider)\n  const timestampRequest = {\n    hashAlgorithm: 'SHA-256',\n    hashedMessage: hash,\n    requestPolicy: 'urn:oid:1.3.6.1.4.1.42553.1.3.1' // eIDAS timestamp policy\n  };\n  \n  const qualifiedTimestamp = await qtspClient.requestTimestamp(timestampRequest);\n  \n  // 3. Проверка подписи QTSP\n  const isValid = await verifyQTSPSignature(qualifiedTimestamp);\n  \n  if (!isValid) {\n    throw new Error('Неверная подпись QTSP');\n  }\n  \n  // 4. Сохранение в архив\n  archive.addFile('qualified_timestamp.tst', qualifiedTimestamp);\n  archive.addFile('qtsp_certificate_chain.pem', qtspCertChain);\n  \n  return {\n    timestamp: qualifiedTimestamp,\n    legalWeight: 'QUALIFIED_EIDAS',\n    validUntil: calculateExpiryDate(qualifiedTimestamp)\n  };\n}"
+        }
+      ]
+    },
+    {
+      "pg": 14,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "10",
+          "txt": "Модель Распространения и Монетизации"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "10.1",
+          "txt": "Бесплатная Версия (Open Source)"
+        },
+        {
+          "type": "tbl",
+          "cap": "Характеристики бесплатной версии ecKasse",
+          "hdrs": [
+            "Аспект",
+            "Детали",
+            "Обоснование"
+          ],
+          "r": [
+            [
+              "Лицензия",
+              "EUPL (European Union Public Licence)",
+              "Соответствие европейскому правовому полю"
+            ],
+            [
+              "LLM",
+              "Google Gemini Flash",
+              "Высокое качество при низкой стоимости"
+            ],
+            [
+              "Покрытие расходов LLM",
+              "BYOK - пользователь предоставляет API-ключ",
+              "Прозрачность и контроль расходов"
+            ],
+            [
+              "Архивация",
+              "Hedera Consensus Service",
+              "Техническая надежность без рекурентных платежей"
+            ],
+            [
+              "Поддержка",
+              "Community-driven",
+              "Сильное сообщество разработчиков"
+            ],
+            [
+              "Обновления",
+              "Автоматические",
+              "Безопасность и новые функции"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "10.2",
+          "txt": "Pro-версия: Модель 'Благодарственного Евро'"
+        },
+        {
+          "type": "pgh",
+          "txt": "Философия: Программное обеспечение остается полностью бесплатным, но квалифицированные метки времени и премиум-поддержка требуют ресурсов."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Добровольный взнос: €1-5 в месяц",
+            "Прозрачное использование: все средства публично отслеживаются",
+            "Направления расходов: квалифицированные eIDAS метки времени для всех пользователей (включая бесплатных), облачная инфраструктура, поддержка разработчиков",
+            "Дополнительные преимущества: облачные бэкапы, приоритетная поддержка, ранний доступ к новым функциям",
+            "Принцип справедливости: если средств от добровольных взносов не хватает, Betruger sp. z o.o. покрывает недостающие расходы"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "10.3",
+          "txt": "Коллективная Модель Ценообразования TSE"
+        },
+        {
+          "type": "pgh",
+          "txt": "Принцип 'Чем больше нас, тем дешевле для всех' создает стимул для роста сообщества и справедливого распределения расходов."
+        },
+        {
+          "type": "cb",
+          "cap": "Алгоритм коллективных переговоров с TSE-провайдерами",
+          "c": "class TSECommunityPricing {\n  async evaluateNegotiationOpportunity() {\n    const activeUsers = await this.getActiveUserCount();\n    const currentMonthlyCost = await this.getCurrentTSECosts();\n    \n    const thresholds = [\n      { users: 100, discount: 0.05, savings: '5%' },\n      { users: 500, discount: 0.15, savings: '15%' },\n      { users: 1000, discount: 0.25, savings: '25%' },\n      { users: 2500, discount: 0.35, savings: '35%' }\n    ];\n    \n    const applicableThreshold = thresholds\n      .reverse()\n      .find(t => activeUsers >= t.users);\n      \n    if (applicableThreshold) {\n      return this.initiateNegotiation({\n        userCount: activeUsers,\n        expectedDiscount: applicableThreshold.discount,\n        monthlyVolume: currentMonthlyCost,\n        communityBenefit: applicableThreshold.savings\n      });\n    }\n    \n    return { status: 'threshold_not_reached', nextThreshold: thresholds[0] };\n  }\n  \n  async applyNegotiatedDiscount(newRate) {\n    const savings = this.calculateSavings(newRate);\n    \n    // Немедленная передача экономии сообществу\n    await this.updateCommunityPricing({\n      newMonthlyRate: newRate,\n      effectiveDate: new Date(),\n      transparencyReport: {\n        previousRate: this.currentRate,\n        newRate: newRate,\n        monthlySavings: savings,\n        affectedUsers: await this.getActiveUserCount()\n      }\n    });\n    \n    // Уведомление сообщества\n    await this.notifyCommunity(\n      `🎉 Достигнута новая групповая скидка! \n       TSE расходы снижены на ${savings.percentage}% \n       (экономия €${savings.monthly}/месяц)`\n    );\n  }\n}"
+        }
+      ]
+    },
+    {
+      "pg": 15,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "11",
+          "txt": "Безопасность и Доверие"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "11.1",
+          "txt": "Самоподписанные Сертификаты vs PKI"
+        },
+        {
+          "type": "pgh",
+          "txt": "Отказ от зависимости от централизованной PKI в пользу цифровых подписей полезных данных с самоподписанными сертификатами."
+        },
+        {
+          "type": "tbl",
+          "cap": "Сравнение подходов к доверию",
+          "hdrs": [
+            "Аспект",
+            "Let's Encrypt / CA",
+            "Самоподписанные сертификаты ecKasse"
+          ],
+          "r": [
+            [
+              "Срок действия",
+              "90 дней",
+              "Настраивается (годы)"
+            ],
+            [
+              "Автоматическое обновление",
+              "Требуется",
+              "По необходимости"
+            ],
+            [
+              "Возможность подписи данных",
+              "CA:FALSE - запрещено",
+              "Полная свобода"
+            ],
+            [
+              "Зависимость от третьих лиц",
+              "Критическая",
+              "Отсутствует"
+            ],
+            [
+              "Подходит для TLS",
+              "Отлично",
+              "Ограниченно"
+            ],
+            [
+              "Подходит для подписи данных",
+              "Нет",
+              "Идеально"
+            ],
+            [
+              "Проверка доверия",
+              "Автоматическая в браузерах",
+              "Ручная валидация fingerprint'ов"
+            ]
+          ]
+        },
+        {
+          "type": "cb",
+          "cap": "Структура подписанного payload с самоподписанным сертификатом",
+          "c": "{\n  \"payload\": {\n    \"subject\": \"eckasse-installation-uuid-12345\",\n    \"issued_by\": \"betruger.com\",\n    \"issued_at\": \"2025-01-10T12:00:00Z\",\n    \"expires_at\": \"2025-12-31T23:59:59Z\",\n    \"public_key\": \"LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0...\",\n    \"permissions\": [\n      \"tse_access\",\n      \"cloud_backup\", \n      \"premium_support\"\n    ],\n    \"installation_fingerprint\": \"sha256:a1b2c3d4...\"\n  },\n  \"certificate\": \"-----BEGIN CERTIFICATE-----\\n...\\n-----END CERTIFICATE-----\",\n  \"signature\": \"MEUCIQDXm8K9p...\"\n}\n\n// Процесс проверки:\n// 1. Извлечь публичный ключ из certificate\n// 2. Проверить срок действия и issued_by\n// 3. Проверить цифровую подпись payload\n// 4. (Опционально) Сверить fingerprint с доверенным списком"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "11.2",
+          "txt": "Принципы Инициализации Системы"
+        },
+        {
+          "type": "pgh",
+          "txt": "Автономная генерация идентичности для максимальной отказоустойчивости и независимости от внешних сервисов."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Автономная генерация UUID: каждая инсталляция создает уникальный серийный номер полностью оффлайн",
+            "Вероятность коллизий UUID настолько мала (1:5.3×10³⁶), что предварительная проверка не требуется",
+            "Опциональная облачная регистрация: только после успешной локальной инициализации",
+            "Обработка теоретических коллизий: ответственность клиента за перегенерацию при крайне редких конфликтах",
+            "Привязка к оборудованию: возможность связи UUID с аппаратными характеристиками для предотвращения простого копирования"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "11.3",
+          "txt": "Устойчивость к Деградации Носителей"
+        },
+        {
+          "type": "pgh",
+          "txt": "Флеш-носители подвержены деградации со временем. Цифровые подписи чувствительны к изменению даже одного бита."
+        },
+        {
+          "type": "cb",
+          "cap": "Стратегия защиты от деградации данных",
+          "c": "class DataIntegrityManager {\n  async createResilientArchive(data) {\n    // 1. Кодирование с избыточностью Reed-Solomon\n    const encodedData = this.reedSolomonEncode(data, {\n      dataShards: 10,    // Исходные блоки\n      parityShards: 4    // Избыточные блоки для восстановления\n    });\n    \n    // 2. Создание множественных копий\n    const copies = [\n      { location: 'local_ssd', priority: 1 },\n      { location: 'local_backup_drive', priority: 2 },\n      { location: 'cloud_encrypted', priority: 3 },\n      { location: 'offline_media', priority: 4 }\n    ];\n    \n    // 3. Запланированная проверка целостности\n    await this.scheduleIntegrityChecks({\n      frequency: 'monthly',\n      actions: ['verify_hashes', 'test_recovery', 'refresh_if_needed']\n    });\n    \n    return {\n      primaryLocation: copies[0],\n      backupLocations: copies.slice(1),\n      integrityProtection: 'reed_solomon_10_4',\n      nextCheck: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)\n    };\n  }\n  \n  async periodicIntegrityCheck() {\n    const results = await Promise.all(\n      this.monitoredArchives.map(async archive => {\n        const isValid = await this.verifyArchiveIntegrity(archive);\n        \n        if (!isValid) {\n          // Попытка восстановления из избыточных блоков\n          const recovered = await this.recoverFromParity(archive);\n          \n          if (recovered) {\n            await this.refreshArchive(archive, recovered);\n            return { status: 'recovered', archive: archive.id };\n          } else {\n            return { status: 'critical_failure', archive: archive.id };\n          }\n        }\n        \n        return { status: 'ok', archive: archive.id };\n      })\n    );\n    \n    // Уведомление пользователя о критических проблемах\n    const failures = results.filter(r => r.status === 'critical_failure');\n    if (failures.length > 0) {\n      await this.alertUser({\n        severity: 'HIGH',\n        message: `Обнаружена критическая деградация архивов: ${failures.map(f => f.archive).join(', ')}`,\n        action: 'Требуется создание новых резервных копий'\n      });\n    }\n  }\n}"
+        }
+      ]
+    },
+    {
+      "pg": 16,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "12",
+          "txt": "Дорожная Карта Разработки"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "12.1",
+          "txt": "Фаза 1: MVP (2-3 месяца)"
+        },
+        {
+          "type": "pgh",
+          "txt": "Создание минимально жизнеспособного продукта с полным циклом продаж и базовой LLM-интеграцией."
+        },
+        {
+          "type": "tbl",
+          "cap": "Ключевые задачи MVP",
+          "hdrs": [
+            "Компонент",
+            "Задачи",
+            "Критерии готовности"
+          ],
+          "r": [
+            [
+              "База данных",
+              "SQLite + Knex.js миграции, базовые таблицы",
+              "Товары, категории, заказы сохраняются"
+            ],
+            [
+              "LLM интеграция",
+              "Function Calling, базовые инструменты",
+              "Создание товара через диалог работает"
+            ],
+            [
+              "UI без React",
+              "Vanilla JS + Lit компоненты",
+              "Интерфейс продаж функционален"
+            ],
+            [
+              "Система связи",
+              "WebSocket + HTTP fallback",
+              "Идемпотентность операций"
+            ],
+            [
+              "Полный цикл продаж",
+              "Корзина → Оплата → Чек",
+              "Транзакция от начала до конца"
+            ],
+            [
+              "Базовые отчеты",
+              "Z-отчет, дневная выручка",
+              "Простая отчетность работает"
+            ]
+          ]
+        },
+        {
+          "type": "cb",
+          "cap": "Критерии готовности MVP",
+          "c": "MVP_CRITERIA = {\n  core_functionality: [\n    \"Создание товара через LLM: 'Добавь Латте за €3.50'\",\n    \"Полная продажа: выбор товара → корзина → оплата → чек\",\n    \"Базовая отчетность: Z-отчет с итогами дня\",\n    \"Оффлайн работа: все операции без интернета\"\n  ],\n  \n  technical_requirements: [\n    \"WebSocket соединение с HTTP fallback\",\n    \"Идемпотентные операции через operationId\", \n    \"SQLite база с миграциями Knex.js\",\n    \"Electron app запускается на Windows/Mac/Linux\"\n  ],\n  \n  user_experience: [\n    \"Установка за < 10 минут\",\n    \"Настройка первых 10 товаров через LLM за < 15 минут\",\n    \"Проведение продажи за < 30 секунд\",\n    \"Понятные сообщения об ошибках\"\n  ],\n  \n  quality_gates: [\n    \"Стабильная работа 8 часов подряд\",\n    \"Восстановление после сбоя WebSocket < 5 секунд\",\n    \"Размер установочного файла < 200 MB\",\n    \"Время запуска приложения < 10 секунд\"\n  ]\n};"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "12.2",
+          "txt": "Фаза 2: Геометрический UI (1-2 месяца)"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Реализация тесселяции: шестиугольники для категорий, квадраты для цифр, восьмиугольники для модификаторов",
+            "CSS/SVG компоненты с адаптивным масштабированием",
+            "Анимации переходов между геометрическими формами",
+            "Цветовая кодировка и схемы доступности (AAA контрастность)",
+            "Облачный прокси-канал (Уровень 3 связи) через eckX.com",
+            "Оффлайн-режим с автоматической синхронизацией при восстановлении связи"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "12.3",
+          "txt": "Фаза 3: Продвинутые Функции (2-3 месяца)"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Полная система модификаторов с условной логикой",
+            "PLU Links для гарниров и связанных товаров",
+            "Управление столами: разделение счетов, перенос позиций",
+            "Реализация универсального формата OOP-POS-MDF",
+            "Конвертеры для импорта/экспорта в популярные POS-системы (Vectron, Square)",
+            "JSON и JavaScript макросы с безопасной песочницей",
+            "Пользователи и роли с системой прав доступа"
+          ],
+          "ord": false
+        }
+      ]
+    },
+    {
+      "pg": 17,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "12.4",
+          "txt": "Фаза 4: Фискализация (2-4 месяца)"
+        },
+        {
+          "type": "pgh",
+          "txt": "Критически важная фаза для легального использования в Германии и подготовка к международному расширению."
+        },
+        {
+          "type": "tbl",
+          "cap": "Задачи фискализации по приоритету",
+          "hdrs": [
+            "Приоритет",
+            "Задача",
+            "Сложность",
+            "Влияние на бизнес"
+          ],
+          "r": [
+            [
+              "Критичный",
+              "TSE интеграция (Fiskaly/A-Trust)",
+              "Высокая",
+              "Блокер для Германии"
+            ],
+            [
+              "Критичный",
+              "Менеджер TSE для налогоплательщиков",
+              "Средняя",
+              "Масштабируемость"
+            ],
+            [
+              "Высокий",
+              "DSFinV-K экспорт",
+              "Средняя",
+              "Соответствие GoBD"
+            ],
+            [
+              "Высокий",
+              "Контроль времени TSE с уведомлениями",
+              "Низкая",
+              "Надежность"
+            ],
+            [
+              "Средний",
+              "Таймкапсуль архивация",
+              "Высокая",
+              "Долгосрочное доверие"
+            ],
+            [
+              "Средний",
+              "Hedera якорение",
+              "Средняя",
+              "Техническая уникальность"
+            ],
+            [
+              "Низкий",
+              "eIDAS квалифицированные метки",
+              "Низкая",
+              "Pro-функция"
+            ]
+          ]
+        },
+        {
+          "type": "cb",
+          "cap": "Архитектура менеджера TSE",
+          "c": "class TSEManager {\n  constructor() {\n    this.taxpayerTSEMap = new Map();\n    this.activeConnections = new Map();\n  }\n  \n  async assignTSEToTaxpayer(taxpayerId) {\n    // Проверяем, есть ли уже TSE для этого налогоплательщика\n    if (this.taxpayerTSEMap.has(taxpayerId)) {\n      return this.taxpayerTSEMap.get(taxpayerId);\n    }\n    \n    // Создаем новый TSE-инстанс через облачного провайдера\n    const tseInstance = await this.createCloudTSE({\n      taxpayerId: taxpayerId,\n      provider: 'fiskaly', // или 'a-trust'\n      region: 'de'\n    });\n    \n    // Сохраняем маппинг\n    this.taxpayerTSEMap.set(taxpayerId, tseInstance.id);\n    this.activeConnections.set(tseInstance.id, tseInstance);\n    \n    // Персистентное сохранение\n    await db('taxpayer_tse_mapping').insert({\n      taxpayer_id: taxpayerId,\n      tse_instance_id: tseInstance.id,\n      created_at: new Date(),\n      provider: 'fiskaly'\n    });\n    \n    return tseInstance.id;\n  }\n  \n  async processTransaction(posDeviceId, transactionData) {\n    // Определяем налогоплательщика по POS-устройству\n    const taxpayerId = await this.getTaxpayerByPOSDevice(posDeviceId);\n    \n    // Получаем соответствующий TSE\n    const tseId = await this.assignTSEToTaxpayer(taxpayerId);\n    const tse = this.activeConnections.get(tseId);\n    \n    // Проверяем время TSE перед операцией\n    await this.validateTSETime(tse);\n    \n    // Обрабатываем транзакцию\n    return await tse.signTransaction(transactionData);\n  }\n}"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "12.5",
+          "txt": "Фаза 5: Экосистема и Международное Расширение (1-2 месяца)"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Интеграция с eckWms: синхронизация товаров, управление складом",
+            "Полнофункциональные облачные сервисы на eck1/2/3.com",
+            "Мультикасса управление для сетей ресторанов",
+            "Реализация модели 'благодарственного евро'",
+            "Запуск программы международных контрибьюторов",
+            "Создание документации для локализации под различные страны"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "13",
+          "txt": "Международное Расширение и Локализация"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "13.1",
+          "txt": "Текущие Ограничения"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse изначально разработана с учетом немецкого фискального законодательства, поскольку основатель проекта имеет глубокую экспертизу именно в этой области."
+        }
+      ]
+    },
+    {
+      "pg": 18,
+      "c": [
+        {
+          "type": "tbl",
+          "cap": "Текущая экспертиза vs потребности международного расширения",
+          "hdrs": [
+            "Страна/Регион",
+            "Известные требования",
+            "Уровень экспертизы",
+            "Приоритет"
+          ],
+          "r": [
+            [
+              "Германия",
+              "TSE, GoBD, DSFinV-K, UStG",
+              "Экспертный",
+              "Реализовано"
+            ],
+            [
+              "Франция",
+              "Фискальные принтеры, timbrage, НДС",
+              "Отсутствует",
+              "Высокий"
+            ],
+            [
+              "Италия",
+              "RT compliance, фискальная память",
+              "Отсутствует",
+              "Высокий"
+            ],
+            [
+              "Великобритания",
+              "Making Tax Digital (MTD)",
+              "Базовый",
+              "Средний"
+            ],
+            [
+              "Польша",
+              "JPK отчетность, онлайн-кассы",
+              "Отсутствует",
+              "Средний"
+            ],
+            [
+              "США",
+              "Различия по штатам, sales tax",
+              "Отсутствует",
+              "Низкий"
+            ],
+            [
+              "Испания",
+              "TicketBAI, AEAT",
+              "Отсутствует",
+              "Средний"
+            ],
+            [
+              "Нидерланды",
+              "Сертификация ПО",
+              "Отсутствует",
+              "Низкий"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "13.2",
+          "txt": "Стратегия Привлечения Международных Экспертов"
+        },
+        {
+          "type": "pgh",
+          "txt": "Для успешного международного расширения ecKasse критически необходимы локальные эксперты по фискальному законодательству и POS-требованиям."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Целевая аудитория: владельцы ресторанов, бухгалтеры, POS-техники, юристы с практическим опытом",
+            "Модель сотрудничества: знания в обмен на приоритетную реализацию для страны",
+            "Документирование требований: создание подробных спецификаций для каждой юрисдикции",
+            "Валидация интерпретации: проверка понимания местных регуляций",
+            "Тестирование в реальных условиях: проверка соответствия в реальных заведениях",
+            "Поддержка сертификации: помощь в получении необходимых разрешений и сертификатов"
+          ],
+          "ord": false
+        },
+        {
+          "type": "cb",
+          "cap": "Шаблон для документирования страновых требований",
+          "c": "{\n  \"country\": \"France\",\n  \"fiscal_requirements\": {\n    \"mandatory_devices\": [\n      {\n        \"type\": \"fiscal_printer\",\n        \"certification_required\": true,\n        \"approved_models\": [\"Epson TM-T88V-I\", \"Star TSP143IIILAN-FR\"],\n        \"integration_method\": \"direct_serial_communication\"\n      }\n    ],\n    \"receipt_requirements\": {\n      \"mandatory_fields\": [\n        \"business_name\", \"siret_number\", \"vat_number\",\n        \"transaction_date_time\", \"sequential_number\",\n        \"payment_method\", \"vat_breakdown\"\n      ],\n      \"prohibited_operations\": [\n        \"receipt_cancellation_after_print\",\n        \"transaction_modification_after_validation\"\n      ]\n    },\n    \"reporting_obligations\": {\n      \"vat_declaration\": {\n        \"frequency\": \"monthly\",\n        \"format\": \"EDI_TVA\",\n        \"deadline\": \"15th_of_following_month\"\n      },\n      \"timbrage_verification\": {\n        \"frequency\": \"annual\",\n        \"authority\": \"DGFIP\",\n        \"required_documentation\": [\"audit_trail\", \"technical_specifications\"]\n      }\n    }\n  },\n  \"technical_integration\": {\n    \"apis_required\": [\"DGFiP_API\", \"fiscal_printer_drivers\"],\n    \"data_retention\": \"6_years\",\n    \"encryption_requirements\": \"AES_256\"\n  },\n  \"contributor_info\": {\n    \"expert_name\": \"Jean Dupont\",\n    \"expertise\": \"Restaurant owner + accountant, 15 years experience\",\n    \"validation_date\": \"2025-01-15\",\n    \"confidence_level\": \"high\"\n  }\n}"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "13.3",
+          "txt": "Программа Мотивации Международных Контрибьюторов"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Приоритетная реализация: страны с активными экспертами получают функции первыми",
+            "Ранний доступ: бета-версии локализованных функций",
+            "Признание: статус основателя региона, упоминание в документации",
+            "Влияние на развитие: участие в принятии решений по приоритетам локализации",
+            "Образовательные возможности: изучение международных POS-стандартов",
+            "Сетевые эффекты: знакомство с экспертами из других стран"
+          ],
+          "ord": false
+        }
+      ]
+    },
+    {
+      "pg": 19,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "14",
+          "txt": "Конкурентные Преимущества и Позиционирование"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "14.1",
+          "txt": "Уникальные Дифференциаторы ecKasse"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Первая POS-система с нативной LLM-интеграцией для конфигурации (не просто чат-бот)",
+            "Революционная геометрическая тесселяция UI (патентоспособная инновация)",
+            "Универсальный формат OOP-POS-MDF предотвращает vendor lock-in",
+            "Blockchain-якорение через Hedera для неизменяемых аудиторских следов",
+            "Коллективная модель ценообразования создает лояльное сообщество",
+            "Провокационный брендинг 'Betruger' создает более сильное доверие через парадокс",
+            "Экологически ответственный выбор технологий (Hedera vs Bitcoin/Ethereum)"
+          ],
+          "ord": true
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "14.2",
+          "txt": "Сравнение с Конкурентами"
+        },
+        {
+          "type": "tbl",
+          "cap": "Подробное сравнение ecKasse с конкурентами",
+          "hdrs": [
+            "Критерий",
+            "Traditional POS",
+            "Modern POS",
+            "Enterprise POS",
+            "ecKasse"
+          ],
+          "r": [
+            [
+              "Настройка",
+              "Меню + обучение",
+              "Простые шаблоны",
+              "Консультанты",
+              "Естественный язык"
+            ],
+            [
+              "Кастомизация",
+              "Ограниченная",
+              "Базовая",
+              "Полная, но дорогая",
+              "Через LLM-диалог"
+            ],
+            [
+              "Vendor Lock-in",
+              "Критический",
+              "Высокий",
+              "Абсолютный",
+              "Отсутствует (OOP-POS-MDF)"
+            ],
+            [
+              "Время внедрения",
+              "Недели",
+              "Дни",
+              "Месяцы",
+              "Часы"
+            ],
+            [
+              "Оффлайн работа",
+              "Базовая",
+              "Ограниченная",
+              "Хорошая",
+              "Полная + синхронизация"
+            ],
+            [
+              "Фискальность",
+              "Страна-зависима",
+              "Ограниченная",
+              "Полная",
+              "Расширяемая через сообщество"
+            ],
+            [
+              "Стоимость внедрения",
+              "Средняя",
+              "Низкая",
+              "Очень высокая",
+              "Минимальная"
+            ],
+            [
+              "Поддержка",
+              "Платная",
+              "Базовая",
+              "Премиум",
+              "Community + Pro"
+            ],
+            [
+              "Инновации UI",
+              "Отсутствуют",
+              "Минимальные",
+              "Консервативные",
+              "Революционные (тесселяция)"
+            ],
+            [
+              "Аудиторская стойкость",
+              "Базовая",
+              "Средняя",
+              "Высокая",
+              "Максимальная (blockchain)"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "14.3",
+          "txt": "Целевые Сегменты и Use Cases"
+        },
+        {
+          "type": "tbl",
+          "cap": "Сегменты рынка и соответствие ecKasse",
+          "hdrs": [
+            "Сегмент",
+            "Текущие проблемы",
+            "Решение ecKasse",
+            "Конкурентное преимущество"
+          ],
+          "r": [
+            [
+              "Малые рестораны",
+              "Дорогие консультанты, сложная настройка",
+              "LLM-гид, бесплатная версия",
+              "Доступность + простота"
+            ],
+            [
+              "Этнические кухни",
+              "Сложные названия блюд, культурные особенности",
+              "LLM понимает контекст, многоязычность",
+              "Культурная адаптивность"
+            ],
+            [
+              "Кафе и бары",
+              "Частые изменения меню, сезонность",
+              "Мгновенные изменения через диалог",
+              "Гибкость"
+            ],
+            [
+              "Фуд-траки",
+              "Мобильность, оффлайн работа",
+              "Electron app, полная автономность",
+              "Портативность"
+            ],
+            [
+              "Pop-up заведения",
+              "Быстрое развертывание",
+              "Установка и настройка за часы",
+              "Скорость запуска"
+            ],
+            [
+              "Франчайзи",
+              "Стандартизация + локальные особенности",
+              "OOP-POS-MDF шаблоны",
+              "Стандартизация без lock-in"
+            ],
+            [
+              "Tech-savvy владельцы",
+              "Желание контроля и понимания",
+              "Open source, прозрачность",
+              "Доверие через открытость"
+            ],
+            [
+              "Экологически сознательные",
+              "Ответственное потребление",
+              "Hedera вместо Bitcoin",
+              "Экологическая этика"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "pg": 20,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "15",
+          "txt": "Часто Задаваемые Вопросы (FAQ)"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "15.1",
+          "txt": "Для Разработчиков"
+        },
+        {
+          "type": "tbl",
+          "cap": "Технические вопросы разработчиков",
+          "hdrs": [
+            "Вопрос",
+            "Ответ"
+          ],
+          "r": [
+            [
+              "Почему отказались от React?",
+              "Vanilla JS + Lit обеспечивает лучшую производительность и меньший размер bundle'а для Electron-приложения"
+            ],
+            [
+              "Как работает геометрическая тесселяция?",
+              "CSS clip-path + SVG для создания шестиугольников/восьмиугольников, Web Components для инкапсуляции"
+            ],
+            [
+              "Безопасность LLM интеграции?",
+              "Все LLM операции проходят валидацию, прямого доступа к ОС нет, только к строго определенному API"
+            ],
+            [
+              "Почему SQLite, а не PostgreSQL?",
+              "Локальная автономность критична для POS, SQLite + репликация лучше централизованной БД"
+            ],
+            [
+              "Как обеспечить offline-first?",
+              "Service Workers + IndexedDB для кэширования, автосинхронизация при восстановлении связи"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "15.2",
+          "txt": "Для Бизнес-Пользователей"
+        },
+        {
+          "type": "tbl",
+          "cap": "Бизнес-вопросы владельцев заведений",
+          "hdrs": [
+            "Вопрос",
+            "Ответ"
+          ],
+          "r": [
+            [
+              "Действительно ли бесплатно?",
+              "ПО open source, расходы только на обязательные внешние сервисы (TSE, облачные функции)"
+            ],
+            [
+              "Можно ли мигрировать с текущей POS?",
+              "Да, через OOP-POS-MDF конвертеры для большинства популярных систем"
+            ],
+            [
+              "Что если не говорю по-немецки?",
+              "LLM адаптируется к языку пользователя, ищем международных экспертов по фискализации"
+            ],
+            [
+              "Как быть с аудитами налоговой?",
+              "Hedera якорение + eIDAS метки создают неопровержимые доказательства, stronger than traditional TSE"
+            ],
+            [
+              "Нужен ли интернет для работы?",
+              "Нет, основные операции полностью оффлайн, интернет только для LLM-настроек и синхронизации"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "15.3",
+          "txt": "Для Юристов и Налоговых Консультантов"
+        },
+        {
+          "type": "tbl",
+          "cap": "Правовые и фискальные вопросы",
+          "hdrs": [
+            "Вопрос",
+            "Ответ"
+          ],
+          "r": [
+            [
+              "Соответствие немецкому KassenSichV?",
+              "Полное соответствие через сертифицированные TSE-провайдеры (Fiskaly, A-Trust)"
+            ],
+            [
+              "Что с GoBD требованиями?",
+              "Автоматический DSFinV-K экспорт, процедурная документация, неизменяемые архивы"
+            ],
+            [
+              "Правовая сила Hedera якорения?",
+              "Техническое доказательство неизменности, дополняет (не заменяет) официальные TSE требования"
+            ],
+            [
+              "Риски open source для бизнеса?",
+              "EUPL лицензия commercial-friendly, аудируемый код повышает доверие налоговых органов"
+            ],
+            [
+              "Ответственность при сбоях?",
+              "Стандартные ограничения ответственности ПО, рекомендуется страхование киберрисков"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "16",
+          "txt": "Стратегическое Видение и Будущее"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "16.1",
+          "txt": "Долгосрочные Цели (3-5 лет)"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Стать стандартом de facto для малых и средних ресторанов в Европе",
+            "Достичь 10,000+ активных инсталляций с устойчивой экосистемой",
+            "Создать пул из 50+ международных фискальных экспертов",
+            "Развить OOP-POS-MDF в отраслевой стандарт для data portability",
+            "Запустить сертификационную программу для разработчиков POS-интеграций",
+            "Интеграция с IoT: умные холодильники, автоматические весы, AI-камеры для контроля порций"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "16.2",
+          "txt": "Технологические Инновации (следующее поколение)"
+        },
+        {
+          "type": "cb",
+          "cap": "Концепция AI-Driven Restaurant Operations",
+          "c": "// Будущая интеграция: ИИ-оптимизация ресторанных процессов\nclass SmartRestaurantAI {\n  async optimizeOperations() {\n    const predictions = await Promise.all([\n      this.predictDemand(),        // Прогноз популярности блюд\n      this.optimizeInventory(),    // Оптимизация закупок\n      this.suggestPricing(),       // Динамическое ценообразование\n      this.detectFraud(),          // Выявление мошенничества\n      this.personalizeOffers()     // Персонализированные предложения\n    ]);\n    \n    return {\n      demand_forecast: predictions[0],\n      inventory_recommendations: predictions[1],\n      pricing_suggestions: predictions[2],\n      fraud_alerts: predictions[3],\n      customer_personalization: predictions[4]\n    };\n  }\n  \n  // Интеграция с LLM для объяснения рекомендаций\n  async explainRecommendation(recommendation) {\n    return await llm.explain({\n      context: \"restaurant_optimization\",\n      data: recommendation,\n      style: \"business_friendly\",\n      include_action_items: true\n    });\n  }\n}\n\n// Концепция: Голосовое управление полным рестораном\nclass VoiceControlledRestaurant {\n  async processVoiceCommand(command) {\n    const intent = await llm.parseIntent(command);\n    \n    switch(intent.type) {\n      case 'inventory_check':\n        return await this.checkInventory(intent.item);\n      case 'sales_query':\n        return await this.getSalesData(intent.period);\n      case 'staff_schedule':\n        return await this.manageStaffing(intent.action);\n      case 'menu_update':\n        return await this.updateMenu(intent.changes);\n    }\n  }\n}"
+        }
+      ]
+    },
+    {
+      "pg": 21,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "16.3",
+          "txt": "Влияние на Индустрию"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse стремится инициировать фундаментальные изменения в индустрии POS-систем, устанавливая новые стандарты открытости, пользовательского опыта и технологической ответственности."
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Демократизация доступа к продвинутым POS-функциям для малого бизнеса",
+            "Установление precedent'а для data portability в POS-индустрии",
+            "Доказательство жизнеспособности community-driven моделей в enterprise софтваре",
+            "Популяризация экологически ответственных blockchain-решений",
+            "Создание новых паттернов UI/UX для professional-grade приложений",
+            "Вдохновение других отраслей на adoption LLM-native интерфейсов"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "17",
+          "txt": "Заключение и Призыв к Действию"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse представляет собой не просто новую POS-систему, а парадигмальный сдвиг в подходе к созданию business-критичного программного обеспечения. Сочетая революционные технологии (LLM, геометрическая тесселяция, blockchain) с проверенными принципами (open source, community-driven развитие, фискальная ответственность), проект создает уникальную экосистему ценностей."
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "17.1",
+          "txt": "Ключевые Достижения Концепции"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Определена четкая техническая архитектура без React/Nodemon для оптимальной производительности",
+            "Проработана революционная система геометрической тесселяции UI с научным обоснованием",
+            "Создана стратегия поэтапного развития с конкретными критериями готовности",
+            "Решена проблема vendor lock-in через универсальный формат OOP-POS-MDF",
+            "Обеспечено соответствие немецкому фискальному законодательству с планами международного расширения",
+            "Разработана устойчивая модель монетизации, сочетающая open source и коммерческую жизнеспособность",
+            "Продумана стратегия привлечения международного сообщества разработчиков и экспертов"
+          ],
+          "ord": true
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "17.2",
+          "txt": "Следующие Шаги"
+        },
+        {
+          "type": "tbl",
+          "cap": "Immediate Action Items для запуска проекта",
+          "hdrs": [
+            "Действие",
+            "Ответственный",
+            "Срок",
+            "Критерий успеха"
+          ],
+          "r": [
+            [
+              "Создание MVP архитектуры",
+              "Core team",
+              "2 недели",
+              "Компилируется и запускается"
+            ],
+            [
+              "Настройка Electron + Lit",
+              "Frontend dev",
+              "1 неделя",
+              "Hello World с геометрией"
+            ],
+            [
+              "Базовая LLM интеграция",
+              "Backend dev",
+              "1 неделя",
+              "Простой диалог работает"
+            ],
+            [
+              "SQLite + миграции",
+              "Backend dev",
+              "3 дня",
+              "Товары сохраняются в БД"
+            ],
+            [
+              "Первый геометрический компонент",
+              "UI/UX dev",
+              "1 неделя",
+              "Кликабельный шестиугольник"
+            ],
+            [
+              "GitHub setup + CI/CD",
+              "DevOps",
+              "2 дня",
+              "Auto-build на коммит"
+            ],
+            [
+              "Техническая документация",
+              "Tech writer",
+              "1 неделя",
+              "Contributing guide готов"
+            ],
+            [
+              "Поиск международных экспертов",
+              "Community manager",
+              "ongoing",
+              "5+ контактов из разных стран"
+            ]
+          ]
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "17.3",
+          "txt": "Приглашение к Участию"
+        },
+        {
+          "type": "pgh",
+          "txt": "ecKasse - это не просто стартап или pet project. Это попытка изменить индустрию через коллективные усилия и открытые принципы. Мы приглашаем:"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Разработчиков - помочь создать техническое чудо",
+            "Дизайнеров - воплотить революционную геометрическую концепцию",
+            "Владельцев ресторанов - предоставить реальную обратную связь",
+            "Юристов и бухгалтеров - обеспечить фискальное соответствие в разных странах",
+            "Переводчиков - сделать систему доступной по всему миру",
+            "Энтузиастов open source - поддержать принципы открытого развития"
+          ],
+          "ord": false
+        },
+        {
+          "type": "cb",
+          "cap": "Контактная информация и способы участия",
+          "c": "// Основные каналы коммуникации\ncontact_info = {\n  github: \"https://github.com/xelth-com/ecKasse\",\n  email: \"contribute@eckasse.com\",\n  discord: \"https://discord.gg/eckasse\",\n  website: \"https://eckasse.com\",\n  \n  // Специализированные каналы\n  fiscal_experts: \"fiscal@eckasse.com\",\n  developers: \"dev@eckasse.com\",\n  business_users: \"business@eckasse.com\",\n  translators: \"i18n@eckasse.com\"\n};\n\n// Способы начать участие\nways_to_contribute = {\n  immediate: [\n    \"Star репозиторий на GitHub\",\n    \"Присоединиться к Discord для обсуждений\",\n    \"Изучить техническую документацию\",\n    \"Попробовать alpha-версию (когда будет готова)\"\n  ],\n  \n  ongoing: [\n    \"Код-ревью и pull requests\",\n    \"Тестирование в реальных условиях\",\n    \"Документирование фискальных требований вашей страны\",\n    \"Распространение информации в professional сетях\"\n  ],\n  \n  leadership: [\n    \"Стать country lead для вашего региона\",\n    \"Модерация community каналов\",\n    \"Ментолинг новых контрибьюторов\",\n    \"Представление проекта на конференциях\"\n  ]\n};\n\nconsole.log(\"Готовы изменить будущее POS-систем вместе с нами?\");"
+        },
+        {
+          "type": "pgh",
+          "txt": "Революции начинаются с идей, но воплощаются руками сообщества. ecKasse - это наша общая возможность создать что-то действительно значимое для миллионов владельцев малого бизнеса по всему миру."
+        },
+        {
+          "type": "pgh",
+          "txt": "Время действовать. Время строить будущее. Время ecKasse."
+        }
+      ]
+    },
+    {
+      "pg": 22,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 2,
+          "n": "18",
+          "txt": "Технические Приложения"
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "18.1",
+          "txt": "Примеры Реализации Web Components для Тесселяции"
+        },
+        {
+          "type": "cb",
+          "cap": "Полная реализация адаптивной гексагональной кнопки",
+          "c": "import { LitElement, html, css } from 'lit';\n\nclass AdaptiveHexButton extends LitElement {\n  static styles = css`\n    :host {\n      display: inline-block;\n      --hex-size: 100px;\n      --hex-color: #4CAF50;\n      --hex-text-color: white;\n      --hex-hover-scale: 1.1;\n      --hex-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);\n    }\n    \n    .hex-container {\n      width: var(--hex-size);\n      height: calc(var(--hex-size) * 0.866); /* √3/2 для правильного шестиугольника */\n      position: relative;\n      cursor: pointer;\n      transition: var(--hex-transition);\n    }\n    \n    .hex-shape {\n      width: 100%;\n      height: 100%;\n      clip-path: polygon(\n        25% 0%, \n        75% 0%, \n        100% 50%, \n        75% 100%, \n        25% 100%, \n        0% 50%\n      );\n      background: var(--hex-color);\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      position: relative;\n      overflow: hidden;\n    }\n    \n    .hex-content {\n      color: var(--hex-text-color);\n      font-weight: 600;\n      text-align: center;\n      font-size: calc(var(--hex-size) * 0.12);\n      line-height: 1.2;\n      padding: 8px;\n      z-index: 2;\n      position: relative;\n    }\n    \n    .hex-ripple {\n      position: absolute;\n      border-radius: 50%;\n      background: rgba(255, 255, 255, 0.3);\n      transform: scale(0);\n      animation: ripple 0.6s linear;\n      pointer-events: none;\n    }\n    \n    .hex-container:hover {\n      transform: scale(var(--hex-hover-scale));\n    }\n    \n    .hex-container:active {\n      transform: scale(0.95);\n    }\n    \n    .hex-badge {\n      position: absolute;\n      top: -8px;\n      right: -8px;\n      background: #f44336;\n      color: white;\n      border-radius: 50%;\n      width: 20px;\n      height: 20px;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-size: 10px;\n      font-weight: bold;\n      z-index: 3;\n    }\n    \n    @keyframes ripple {\n      to {\n        transform: scale(4);\n        opacity: 0;\n      }\n    }\n    \n    @keyframes pulse {\n      0%, 100% { transform: scale(1); }\n      50% { transform: scale(1.05); }\n    }\n    \n    .notification-pulse {\n      animation: pulse 2s infinite;\n    }\n    \n    /* Адаптивность для разных размеров экрана */\n    @media (max-width: 768px) {\n      :host {\n        --hex-size: 80px;\n      }\n    }\n    \n    @media (max-width: 480px) {\n      :host {\n        --hex-size: 60px;\n      }\n    }\n  `;\n  \n  static properties = {\n    label: { type: String },\n    category: { type: String },\n    color: { type: String },\n    badge: { type: Number },\n    disabled: { type: Boolean },\n    notification: { type: Boolean },\n    size: { type: String }\n  };\n  \n  constructor() {\n    super();\n    this.label = '';\n    this.category = '';\n    this.color = '#4CAF50';\n    this.badge = 0;\n    this.disabled = false;\n    this.notification = false;\n    this.size = 'medium';\n  }\n  \n  updated(changedProperties) {\n    if (changedProperties.has('color')) {\n      this.style.setProperty('--hex-color', this.color);\n    }\n    if (changedProperties.has('size')) {\n      const sizes = {\n        small: '60px',\n        medium: '100px',\n        large: '140px'\n      };\n      this.style.setProperty('--hex-size', sizes[this.size] || sizes.medium);\n    }\n  }\n  \n  _handleClick(e) {\n    if (this.disabled) return;\n    \n    // Создание ripple эффекта\n    this._createRipple(e);\n    \n    // Отправка события\n    this.dispatchEvent(new CustomEvent('hex-click', {\n      detail: {\n        category: this.category,\n        label: this.label,\n        timestamp: Date.now()\n      },\n      bubbles: true\n    }));\n  }\n  \n  _createRipple(e) {\n    const rect = this.shadowRoot.querySelector('.hex-shape').getBoundingClientRect();\n    const size = Math.max(rect.width, rect.height);\n    const x = e.clientX - rect.left - size / 2;\n    const y = e.clientY - rect.top - size / 2;\n    \n    const ripple = document.createElement('div');\n    ripple.className = 'hex-ripple';\n    ripple.style.width = ripple.style.height = size + 'px';\n    ripple.style.left = x + 'px';\n    ripple.style.top = y + 'px';\n    \n    const hexShape = this.shadowRoot.querySelector('.hex-shape');\n    hexShape.appendChild(ripple);\n    \n    setTimeout(() => ripple.remove(), 600);\n  }\n  \n  render() {\n    return html`\n      <div class=\"hex-container ${this.notification ? 'notification-pulse' : ''}\"\n           @click=\"${this._handleClick}\"\n           ?disabled=\"${this.disabled}\">\n        <div class=\"hex-shape\">\n          <div class=\"hex-content\">${this.label}</div>\n        </div>\n        ${this.badge > 0 ? html`<div class=\"hex-badge\">${this.badge}</div>` : ''}\n      </div>\n    `;\n  }\n}\n\ncustomElements.define('adaptive-hex-button', AdaptiveHexButton);"
+        }
+      ]
+    },
+    {
+      "pg": 23,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "18.2",
+          "txt": "Архитектура Системы Связи с Детальной Реализацией"
+        },
+        {
+          "type": "cb",
+          "cap": "Полная реализация многоуровневой системы связи",
+          "c": "class MultiLevelCommunicationSystem {\n  constructor(config = {}) {\n    this.config = {\n      wsUrl: config.wsUrl || 'ws://localhost:3030',\n      httpUrl: config.httpUrl || 'http://localhost:3030',\n      cloudProxyUrl: config.cloudProxyUrl || 'https://eck1.com/proxy',\n      timeout: config.timeout || 5000,\n      retryAttempts: config.retryAttempts || 3,\n      ...config\n    };\n    \n    this.currentLevel = 1;\n    this.connectionState = 'disconnected';\n    this.messageQueue = [];\n    this.pendingOperations = new Map();\n    this.reconnectTimer = null;\n    \n    this.initializeConnections();\n  }\n  \n  async initializeConnections() {\n    // Попытка установки соединения начиная с уровня 1\n    await this.connectLevel1();\n  }\n  \n  // Уровень 1: WebSocket соединение\n  async connectLevel1() {\n    try {\n      this.ws = new WebSocket(this.config.wsUrl);\n      \n      this.ws.onopen = () => {\n        console.log('🟢 Level 1 (WebSocket) connected');\n        this.currentLevel = 1;\n        this.connectionState = 'connected';\n        this.flushMessageQueue();\n        this.emit('connection-changed', { level: 1, state: 'connected' });\n      };\n      \n      this.ws.onmessage = (event) => {\n        this.handleMessage(JSON.parse(event.data), 'websocket');\n      };\n      \n      this.ws.onclose = () => {\n        console.log('🔴 Level 1 (WebSocket) disconnected');\n        this.handleDisconnection();\n      };\n      \n      this.ws.onerror = (error) => {\n        console.error('❌ WebSocket error:', error);\n        this.fallbackToLevel2();\n      };\n      \n    } catch (error) {\n      console.error('❌ Failed to initialize WebSocket:', error);\n      this.fallbackToLevel2();\n    }\n  }\n  \n  // Уровень 2: HTTP API\n  async fallbackToLevel2() {\n    console.log('⬇️ Falling back to Level 2 (HTTP API)');\n    this.currentLevel = 2;\n    this.connectionState = 'connected';\n    this.emit('connection-changed', { level: 2, state: 'connected' });\n    \n    // Попытка переподключения WebSocket через 30 секунд\n    this.scheduleReconnect();\n  }\n  \n  // Уровень 3: Cloud Proxy\n  async fallbackToLevel3() {\n    console.log('⬇️ Falling back to Level 3 (Cloud Proxy)');\n    this.currentLevel = 3;\n    this.connectionState = 'connected';\n    this.emit('connection-changed', { level: 3, state: 'connected' });\n  }\n  \n  async sendOperation(operation, data) {\n    const operationId = this.generateOperationId();\n    const message = {\n      operationId,\n      operation,\n      data,\n      timestamp: Date.now(),\n      clientId: this.getClientId()\n    };\n    \n    return new Promise((resolve, reject) => {\n      // Сохраняем операцию для отслеживания\n      this.pendingOperations.set(operationId, {\n        resolve,\n        reject,\n        message,\n        attempts: 0,\n        maxAttempts: this.config.retryAttempts\n      });\n      \n      this.attemptSend(operationId);\n      \n      // Таймаут операции\n      setTimeout(() => {\n        if (this.pendingOperations.has(operationId)) {\n          const pending = this.pendingOperations.get(operationId);\n          this.pendingOperations.delete(operationId);\n          pending.reject(new Error(`Operation timeout: ${operation}`));\n        }\n      }, this.config.timeout);\n    });\n  }\n  \n  async attemptSend(operationId) {\n    const pending = this.pendingOperations.get(operationId);\n    if (!pending) return;\n    \n    const { message } = pending;\n    \n    try {\n      switch (this.currentLevel) {\n        case 1:\n          await this.sendViaWebSocket(message);\n          break;\n        case 2:\n          await this.sendViaHTTP(message);\n          break;\n        case 3:\n          await this.sendViaCloudProxy(message);\n          break;\n        default:\n          throw new Error('No available communication level');\n      }\n    } catch (error) {\n      console.warn(`❌ Send failed on level ${this.currentLevel}:`, error);\n      await this.handleSendError(operationId, error);\n    }\n  }\n  \n  async sendViaWebSocket(message) {\n    if (this.ws.readyState !== WebSocket.OPEN) {\n      throw new Error('WebSocket not connected');\n    }\n    \n    this.ws.send(JSON.stringify(message));\n  }\n  \n  async sendViaHTTP(message) {\n    const response = await fetch(`${this.config.httpUrl}/api/operation`, {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'X-Client-Level': '2'\n      },\n      body: JSON.stringify(message)\n    });\n    \n    if (!response.ok) {\n      throw new Error(`HTTP ${response.status}: ${response.statusText}`);\n    }\n    \n    const result = await response.json();\n    this.handleMessage(result, 'http');\n  }\n  \n  async sendViaCloudProxy(message) {\n    const response = await fetch(`${this.config.cloudProxyUrl}/operation`, {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'X-Client-Level': '3',\n        'Authorization': `Bearer ${this.getCloudToken()}`\n      },\n      body: JSON.stringify(message)\n    });\n    \n    if (!response.ok) {\n      throw new Error(`Cloud Proxy ${response.status}: ${response.statusText}`);\n    }\n    \n    const result = await response.json();\n    this.handleMessage(result, 'cloud_proxy');\n  }\n  \n  handleMessage(message, channel) {\n    const { operationId, status, data, error } = message;\n    \n    if (this.pendingOperations.has(operationId)) {\n      const pending = this.pendingOperations.get(operationId);\n      this.pendingOperations.delete(operationId);\n      \n      if (status === 'success') {\n        pending.resolve({ data, channel, status });\n      } else if (status === 'already_processed') {\n        pending.resolve({ data, channel, status: 'already_processed' });\n      } else {\n        pending.reject(new Error(error || 'Operation failed'));\n      }\n    }\n    \n    // Логирование для аналитики\n    this.logOperation(operationId, channel, status);\n  }\n  \n  async handleSendError(operationId, error) {\n    const pending = this.pendingOperations.get(operationId);\n    if (!pending) return;\n    \n    pending.attempts++;\n    \n    if (pending.attempts < pending.maxAttempts) {\n      // Retry на том же уровне\n      setTimeout(() => this.attemptSend(operationId), 1000 * pending.attempts);\n    } else {\n      // Fallback на следующий уровень\n      if (this.currentLevel < 3) {\n        await this.fallbackToNextLevel();\n        pending.attempts = 0; // Сброс счетчика для нового уровня\n        this.attemptSend(operationId);\n      } else {\n        // Все уровни исчерпаны\n        this.pendingOperations.delete(operationId);\n        pending.reject(new Error('All communication levels failed'));\n      }\n    }\n  }\n  \n  async fallbackToNextLevel() {\n    switch (this.currentLevel) {\n      case 1:\n        await this.fallbackToLevel2();\n        break;\n      case 2:\n        await this.fallbackToLevel3();\n        break;\n      default:\n        throw new Error('No more fallback levels available');\n    }\n  }\n  \n  scheduleReconnect() {\n    if (this.reconnectTimer) {\n      clearTimeout(this.reconnectTimer);\n    }\n    \n    this.reconnectTimer = setTimeout(async () => {\n      if (this.currentLevel > 1) {\n        console.log('🔄 Attempting to reconnect to Level 1...');\n        await this.connectLevel1();\n      }\n    }, 30000); // 30 секунд\n  }\n  \n  generateOperationId() {\n    return crypto.randomUUID();\n  }\n  \n  getClientId() {\n    // Получение уникального ID клиента (может быть из localStorage)\n    return localStorage.getItem('client-id') || this.generateOperationId();\n  }\n  \n  getCloudToken() {\n    // Получение токена для облачного доступа\n    return localStorage.getItem('cloud-token');\n  }\n  \n  logOperation(operationId, channel, status) {\n    console.log(`📊 Operation ${operationId} via ${channel}: ${status}`);\n    // Отправка метрик для аналитики\n  }\n  \n  emit(event, data) {\n    // Простая система событий\n    const eventHandlers = this.eventHandlers || {};\n    if (eventHandlers[event]) {\n      eventHandlers[event].forEach(handler => handler(data));\n    }\n  }\n  \n  on(event, handler) {\n    this.eventHandlers = this.eventHandlers || {};\n    this.eventHandlers[event] = this.eventHandlers[event] || [];\n    this.eventHandlers[event].push(handler);\n  }\n}\n\n// Использование:\nconst comm = new MultiLevelCommunicationSystem();\n\ncomm.on('connection-changed', ({ level, state }) => {\n  console.log(`Connection level changed to ${level}, state: ${state}`);\n});\n\n// Примеры операций\nasync function testOperations() {\n  try {\n    const result = await comm.sendOperation('createProduct', {\n      name: 'Латте',\n      price: 3.50,\n      category: 'coffee'\n    });\n    console.log('Product created:', result);\n  } catch (error) {\n    console.error('Failed to create product:', error);\n  }\n}"
+        }
+      ]
+    },
+    {
+      "pg": 24,
+      "c": [
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "18.3",
+          "txt": "Пример Полной LLM Интеграции с Function Calling"
+        },
+        {
+          "type": "cb",
+          "cap": "Реализация LLM агента с инструментами для ecKasse",
+          "c": "import { GoogleGenerativeAI } from '@google/generative-ai';\n\nclass EcKasseLLMAgent {\n  constructor(apiKey) {\n    this.genAI = new GoogleGenerativeAI(apiKey);\n    this.model = this.genAI.getGenerativeModel({\n      model: 'gemini-2.0-flash',\n      tools: [{ functionDeclarations: this.getAllFunctionDeclarations() }]\n    });\n    \n    this.chatSession = null;\n    this.systemPrompt = this.createSystemPrompt();\n  }\n  \n  createSystemPrompt() {\n    return `Вы - интеллектуальный помощник кассовой системы ecKasse.\n\nВаша роль:\n- Помогать владельцам ресторанов настраивать и управлять их POS-системой\n- Объяснять функции простым языком\n- Предлагать оптимизации на основе данных\n- Обеспечивать соответствие фискальным требованиям\n\nВозможности:\n- Создание и редактирование товаров, категорий\n- Настройка модификаторов и акций\n- Анализ продаж и составление отчетов\n- Диагностика проблем системы\n- Поиск актуальной информации о налогах\n\nВсегда:\n- Спрашивайте уточнения при неясных запросах\n- Предлагайте конкретные действия\n- Объясняйте последствия изменений\n- Используйте дружелюбный, профессиональный тон`;\n  }\n  \n  getAllFunctionDeclarations() {\n    return [\n      // Управление товарами\n      {\n        name: 'createProduct',\n        description: 'Создать новый товар в системе',\n        parameters: {\n          type: 'object',\n          properties: {\n            name: { type: 'string', description: 'Название товара' },\n            price: { type: 'number', description: 'Цена товара' },\n            category: { type: 'string', description: 'Категория товара' },\n            taxRate: { type: 'number', description: 'Ставка НДС в процентах' },\n            description: { type: 'string', description: 'Описание товара' }\n          },\n          required: ['name', 'price']\n        }\n      },\n      \n      {\n        name: 'updateProduct',\n        description: 'Обновить существующий товар',\n        parameters: {\n          type: 'object',\n          properties: {\n            id: { type: 'number', description: 'ID товара' },\n            updates: {\n              type: 'object',\n              properties: {\n                name: { type: 'string' },\n                price: { type: 'number' },\n                category: { type: 'string' },\n                taxRate: { type: 'number' }\n              }\n            }\n          },\n          required: ['id', 'updates']\n        }\n      },\n      \n      {\n        name: 'searchProducts',\n        description: 'Найти товары по названию или категории',\n        parameters: {\n          type: 'object',\n          properties: {\n            query: { type: 'string', description: 'Поисковый запрос' },\n            category: { type: 'string', description: 'Фильтр по категории' },\n            limit: { type: 'number', description: 'Максимальное количество результатов' }\n          },\n          required: ['query']\n        }\n      },\n      \n      // Управление категориями\n      {\n        name: 'createCategory',\n        description: 'Создать новую категорию товаров',\n        parameters: {\n          type: 'object',\n          properties: {\n            name: { type: 'string', description: 'Название категории' },\n            type: { type: 'string', enum: ['food', 'drink', 'other'], description: 'Тип категории' },\n            taxRate: { type: 'number', description: 'Ставка НДС по умолчанию для категории' },\n            color: { type: 'string', description: 'Цвет для UI (hex)' }\n          },\n          required: ['name', 'type']\n        }\n      },\n      \n      // Модификаторы и акции\n      {\n        name: 'createModifier',\n        description: 'Создать модификатор цены (скидка, наценка, Happy Hour)',\n        parameters: {\n          type: 'object',\n          properties: {\n            name: { type: 'string', description: 'Название модификатора' },\n            type: { type: 'string', enum: ['discount', 'surcharge', 'happy_hour'], description: 'Тип модификатора' },\n            value: { type: 'number', description: 'Значение (процент или сумма)' },\n            conditions: {\n              type: 'object',\n              properties: {\n                timeStart: { type: 'string', description: 'Время начала (HH:MM)' },\n                timeEnd: { type: 'string', description: 'Время окончания (HH:MM)' },\n                daysOfWeek: { type: 'array', items: { type: 'string' }, description: 'Дни недели' },\n                categories: { type: 'array', items: { type: 'string' }, description: 'Применимые категории' }\n              }\n            }\n          },\n          required: ['name', 'type', 'value']\n        }\n      },\n      \n      // Отчеты и аналитика\n      {\n        name: 'getSalesReport',\n        description: 'Получить отчет о продажах',\n        parameters: {\n          type: 'object',\n          properties: {\n            period: { type: 'string', enum: ['today', 'yesterday', 'week', 'month'], description: 'Период отчета' },\n            groupBy: { type: 'string', enum: ['category', 'product', 'hour', 'day'], description: 'Группировка данных' }\n          },\n          required: ['period']\n        }\n      },\n      \n      {\n        name: 'getTopSellingItems',\n        description: 'Получить самые популярные товары',\n        parameters: {\n          type: 'object',\n          properties: {\n            period: { type: 'string', enum: ['today', 'week', 'month'], description: 'Период анализа' },\n            limit: { type: 'number', description: 'Количество товаров' }\n          },\n          required: ['period']\n        }\n      },\n      \n      {\n        name: 'getSlowMovingItems',\n        description: 'Найти медленно продающиеся товары',\n        parameters: {\n          type: 'object',\n          properties: {\n            threshold: { type: 'number', description: 'Минимальное количество продаж' },\n            period: { type: 'string', enum: ['week', 'month'], description: 'Период анализа' }\n          },\n          required: ['threshold', 'period']\n        }\n      },\n      \n      // Поиск информации о налогах\n      {\n        name: 'web_search',\n        description: 'Поиск актуальной информации в интернете (например, о налоговых ставках)',\n        parameters: {\n          type: 'object',\n          properties: {\n            query: { type: 'string', description: 'Поисковый запрос' }\n          },\n          required: ['query']\n        }\n      },\n      \n      // Системная диагностика\n      {\n        name: 'checkSystemHealth',\n        description: 'Проверить состояние системы и выявить проблемы',\n        parameters: {\n          type: 'object',\n          properties: {\n            includePerformance: { type: 'boolean', description: 'Включить проверку производительности' },\n            includeTSE: { type: 'boolean', description: 'Проверить состояние TSE' }\n          }\n        }\n      }\n    ];\n  }\n  \n  async startChat() {\n    this.chatSession = this.model.startChat({\n      history: [],\n      systemInstruction: this.systemPrompt\n    });\n  }\n  \n  async processMessage(userMessage) {\n    if (!this.chatSession) {\n      await this.startChat();\n    }\n    \n    try {\n      const result = await this.chatSession.sendMessage(userMessage);\n      const response = result.response;\n      \n      // Проверяем, хочет ли модель вызвать функции\n      const functionCalls = response.functionCalls();\n      \n      if (functionCalls && functionCalls.length > 0) {\n        // Выполняем функции и отправляем результаты обратно\n        const functionResults = await Promise.all(\n          functionCalls.map(async (call) => {\n            const result = await this.executeFunctionCall(call);\n            return {\n              functionResponse: {\n                name: call.name,\n                response: result\n              }\n            };\n          })\n        );\n        \n        // Отправляем результаты функций модели для формирования финального ответа\n        const finalResult = await this.chatSession.sendMessage(functionResults);\n        return {\n          text: finalResult.response.text(),\n          functionsCalled: functionCalls.map(call => call.name)\n        };\n      } else {\n        // Простой текстовый ответ без вызова функций\n        return {\n          text: response.text(),\n          functionsCalled: []\n        };\n      }\n    } catch (error) {\n      console.error('LLM processing error:', error);\n      return {\n        text: 'Извините, произошла ошибка при обработке вашего запроса. Попробуйте еще раз.',\n        error: error.message\n      };\n    }\n  }\n  \n  async executeFunctionCall(call) {\n    const { name, args } = call;\n    \n    try {\n      switch (name) {\n        case 'createProduct':\n          return await this.createProduct(args);\n        case 'updateProduct':\n          return await this.updateProduct(args);\n        case 'searchProducts':\n          return await this.searchProducts(args);\n        case 'createCategory':\n          return await this.createCategory(args);\n        case 'createModifier':\n          return await this.createModifier(args);\n        case 'getSalesReport':\n          return await this.getSalesReport(args);\n        case 'getTopSellingItems':\n          return await this.getTopSellingItems(args);\n        case 'getSlowMovingItems':\n          return await this.getSlowMovingItems(args);\n        case 'web_search':\n          return await this.webSearch(args);\n        case 'checkSystemHealth':\n          return await this.checkSystemHealth(args);\n        default:\n          throw new Error(`Unknown function: ${name}`);\n      }\n    } catch (error) {\n      return {\n        error: `Ошибка выполнения ${name}: ${error.message}`\n      };\n    }\n  }\n  \n  // Реализация функций (примеры)\n  async createProduct(args) {\n    // Здесь будет вызов к API ecKasse\n    const product = {\n      id: Date.now(), // Временная реализация\n      ...args,\n      created_at: new Date().toISOString()\n    };\n    \n    // Имитация сохранения в БД\n    console.log('Creating product:', product);\n    \n    return {\n      success: true,\n      product,\n      message: `Товар \"${args.name}\" успешно создан с ID ${product.id}`\n    };\n  }\n  \n  async getSalesReport(args) {\n    // Имитация отчета о продажах\n    const mockData = {\n      today: { revenue: 1247.50, transactions: 78, avgCheck: 15.99 },\n      week: { revenue: 8732.10, transactions: 542, avgCheck: 16.11 },\n      month: { revenue: 35247.80, transactions: 2156, avgCheck: 16.35 }\n    };\n    \n    return {\n      success: true,\n      period: args.period,\n      data: mockData[args.period] || mockData.today,\n      generatedAt: new Date().toISOString()\n    };\n  }\n  \n  async webSearch(args) {\n    // Имитация веб-поиска (в реальности будет интеграция с поисковыми API)\n    const mockResults = {\n      query: args.query,\n      results: [\n        {\n          title: \"Mehrwertsteuersätze in Deutschland 2025\",\n          url: \"https://www.bundesfinanzministerium.de/...\",\n          snippet: \"Standardsatz 19%, ermäßigter Satz 7% für Lebensmittel...\"\n        }\n      ]\n    };\n    \n    return {\n      success: true,\n      searchResults: mockResults\n    };\n  }\n  \n  // ... Другие функции\n}\n\n// Использование:\nconst llmAgent = new EcKasseLLMAgent(process.env.GEMINI_API_KEY);\n\n// Пример обработки сообщения пользователя\nasync function handleUserMessage(message) {\n  const response = await llmAgent.processMessage(message);\n  console.log('LLM Response:', response.text);\n  if (response.functionsCalled.length > 0) {\n    console.log('Functions called:', response.functionsCalled);\n  }\n  return response;\n}\n\n// Тестовые сценарии\n// handleUserMessage(\"Добавь новый товар Капучино за 3.50 евро\");\n// handleUserMessage(\"Покажи отчет о продажах за сегодня\");\n// handleUserMessage(\"Какая ставка НДС для кофе на вынос в Германии?\");"
+        }
+      ]
+    }
+  ]
+}

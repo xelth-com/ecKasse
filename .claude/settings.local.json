@@ -4,7 +4,12 @@
       "Bash(rm:*)",
       "Bash(npm install)",
       "Bash(npm run dev:backend:*)",
-      "Bash(npm run dev:client:desktop:renderer:*)"
+      "Bash(npm run dev:client:desktop:renderer:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run migrate:backend:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(pkill:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

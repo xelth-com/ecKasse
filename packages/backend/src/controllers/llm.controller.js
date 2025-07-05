@@ -17,7 +17,7 @@ async function handleGeminiPing(req, res, next) {
   const currentHistory = history || globalChatHistory;
 
   try {
-    const geminiServiceResponse = await llmService.sendMessageToGemini(message, currentHistory);
+    const geminiServiceResponse = await llmService.sendMessage(message, currentHistory);
     
     // Update global history (for next turn in this simple demo)
     // In a real app, manage this per session.
