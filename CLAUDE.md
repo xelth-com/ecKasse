@@ -192,3 +192,36 @@ This POS system is designed for German fiscal compliance:
 - DSFinV-K export format for tax authorities
 - Long-term archival with cryptographic integrity
 - Currently in development phase for basic functionality
+
+## Critical Implementation Notes
+
+### Project Migration Status
+- The project **has been migrated** from React to vanilla HTML/CSS/JavaScript
+- The README.md may contain outdated references to React - ignore these
+- The actual implementation uses vanilla JS served directly by the Express backend
+- No build process is required for the frontend
+
+### LLM Service Architecture
+- Multi-model fallback: `gemini-2.5-flash-preview-05-20` → `gemini-2.0-flash` → `gemini-1.5-flash-latest`
+- Function calling with strict system context requiring internal database checks
+- Custom `executeGetProductDetails` function provides hardcoded test data
+- Conversation history maintained between requests
+
+### WebSocket Implementation Details
+- Custom `WebSocketManager` class with EventEmitter pattern
+- 3-second timeout for WebSocket requests
+- Promise-based request/response mapping via operationId
+- Automatic HTTP fallback when WebSocket fails
+- UUID generation using custom implementation (not crypto.randomUUID)
+
+### Backend Request Handling
+- Dual operationId tracking for both HTTP and WebSocket (separate Sets)
+- 60-second TTL for operationId deduplication
+- Structured logging with Pino for all requests/responses
+- Static file serving integrated into same Express instance
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
