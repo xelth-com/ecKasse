@@ -12,10 +12,14 @@
     "db:migrate:latest": "npx knex migrate:latest --knexfile ./src/db/knexfile.js",
     "db:migrate:rollback": "npx knex migrate:rollback --knexfile ./src/db/knexfile.js",
     "db:seed:run": "npx knex seed:run --knexfile ./src/db/knexfile.js",
+    "db:migrate:vec": "node src/scripts/migrate.js",
+    "db:backfill:embeddings": "node src/scripts/backfillEmbeddings.js",
+    "test:hybrid-search": "node src/scripts/testHybridSearch.js",
     "test": "echo \"Error: no test specified for @eckasse/backend\" && exit 0"
   },
   "dependencies": {
     "@google/genai": "^1.4.0",
+    "@journeyapps/sqlcipher": "^5.3.1",
     "@langchain/core": "^0.3.27",
     "@langchain/google-genai": "^0.1.0",
     "cors": "^2.8.5",
@@ -25,6 +29,7 @@
     "langchain": "^0.3.27",
     "pino": "^9.7.0",
     "semver": "^7.5.4",
+    "sqlite-vec": "^0.1.7-alpha.2",
     "sqlite3": "^5.1.7",
     "ws": "^7.5.10"
   },

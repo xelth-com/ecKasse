@@ -8,6 +8,7 @@ const { HumanMessage, AIMessage } = require("@langchain/core/messages");
 
 const logger = require('../config/logger');
 const knex = require('../db/knex');
+const { searchProducts } = require('./search.service');
 
 const llm = new ChatGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY,
@@ -32,25 +33,43 @@ const tools = [
     }),
     new DynamicTool({
         name: "findProduct",
-        description: "Поиск конкретного товара в базе данных POS по его названию с помощью полнотекстового поиска.",
+        description: "Интеллектуальный поиск товара в базе данных POS с использованием гибридного подхода: полнотекстовый поиск, семантический поиск и исправление опечаток.",
         func: async (toolInput) => {
             const productName = (typeof toolInput === 'object' && toolInput.input) ? toolInput.input : toolInput;
-            logger.info({ tool: 'findProduct', input: productName }, '🤖 Агент использует FTS5 для поиска товара...');
+            logger.info({ tool: 'findProduct', input: productName }, '🤖 Агент использует гибридный поиск товара...');
+            
             try {
-                // Используем FTS5 для поиска. Звездочка (*) означает поиск по префиксу.
-                const ftsQuery = `"${productName}"*`;
-                const results = await knex.raw("SELECT rowid as id FROM items_fts WHERE items_fts MATCH ?", [ftsQuery]);
-
-                if (results.length > 0) {
-                    const productIds = results.map(r => r.id);
-                    const products = await knex('items').whereIn('id', productIds);
-                    return `Найдены товары: ${JSON.stringify(products)}`;
+                const searchResult = await searchProducts(productName);
+                
+                // Log search metadata for debugging
+                logger.info({ 
+                    searchMetadata: searchResult.metadata 
+                }, `Поиск завершен: ${searchResult.metadata?.searchMethod}`);
+                
+                if (searchResult.success) {
+                    const product = searchResult.results[0];
+                    const displayNames = JSON.parse(product.display_names);
+                    
+                    return `${searchResult.message}\n\nПодробности:\n- ID: ${product.id}\n- Категория: ${product.category_id}\n- Цена: ${product.price}€\n- Метод поиска: ${searchResult.metadata.searchMethod}\n- Время поиска: ${searchResult.metadata.executionTime}ms`;
+                } else {
+                    // Include suggestions if available
+                    let response = searchResult.message;
+                    if (searchResult.results.length > 0) {
+                        response += `\n\nПохожие товары:\n`;
+                        searchResult.results.forEach((item, index) => {
+                            response += `${index + 1}. ${item.productName} - ${item.price}€`;
+                            if (item.similarity) {
+                                response += ` (схожесть: ${item.similarity}%)`;
+                            }
+                            response += `\n`;
+                        });
+                    }
+                    return response;
                 }
                 
-                return `Товар, похожий на '${productName}', не найден.`;
             } catch (error) {
-                logger.error({ msg: "Ошибка в инструменте findProduct (FTS)", error });
-                return "Произошла ошибка при поиске товара.";
+                logger.error({ msg: "Ошибка в инструменте findProduct (гибридный поиск)", error });
+                return "Произошла ошибка при поиске товара. Попробуйте повторить запрос.";
             }
         },
     }),
