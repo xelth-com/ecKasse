@@ -8,6 +8,7 @@ const { HumanMessage, AIMessage } = require("@langchain/core/messages");
 
 const logger = require('../config/logger');
 const knex = require('../db/knex');
+const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErrorHandler');
 const { searchProducts } = require('./search.service');
 
 const llm = new ChatGoogleGenerativeAI({
@@ -160,10 +161,39 @@ async function sendMessage(userMessage, chatHistory = []) {
         ];
         return { text: result.output, history: newHistory };
     } catch (error) {
-        logger.error({ msg: 'Ошибка в LangChain сервисе', error: error.message, stack: error.stack });
+        // Обработка специфических ошибок Gemini API
+        const geminiErrorInfo = handleGeminiError(error, { 
+            language: 'ru', 
+            includeRetryInfo: true 
+        });
+        
+        // Создаем структурированный лог
+        const errorLog = createGeminiErrorLog(error, {
+            operation: 'llm_chat',
+            userMessage: userMessage.substring(0, 100), // Первые 100 символов для контекста
+            chatHistoryLength: chatHistory.length
+        });
+        
+        // Логируем с соответствующим уровнем
+        if (errorLog.level === 'warn') {
+            logger.warn(errorLog);
+        } else {
+            logger.error(errorLog);
+        }
+        
+        // Возвращаем понятное пользователю сообщение
+        let responseText = geminiErrorInfo.userMessage;
+        
+        // Добавляем информацию о повторе для временных ошибок
+        if (geminiErrorInfo.isTemporary && geminiErrorInfo.retryMessage) {
+            responseText += ' ' + geminiErrorInfo.retryMessage;
+        }
+        
         return {
-            text: 'Извините, произошла ошибка при обработке вашего запроса.',
+            text: responseText,
             history: chatHistory,
+            isTemporary: geminiErrorInfo.isTemporary,
+            errorType: geminiErrorInfo.errorType
         };
     }
 }

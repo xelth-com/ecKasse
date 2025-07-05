@@ -1,6 +1,7 @@
 // File: /packages/backend/src/services/embedding.service.js
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErrorHandler');
 
 const USE_MOCK_EMBEDDINGS = !process.env.GEMINI_API_KEY || process.env.USE_MOCK_EMBEDDINGS === 'true';
 
@@ -51,7 +52,33 @@ async function generateEmbedding(text) {
     const result = await model.embedContent(text);
     return result.embedding.values;
   } catch (error) {
-    console.error('Error generating embedding:', error);
+    // Обработка специфических ошибок Gemini API
+    const geminiErrorInfo = handleGeminiError(error, { 
+      language: 'ru', 
+      includeRetryInfo: true 
+    });
+    
+    // Создаем структурированный лог
+    const errorLog = createGeminiErrorLog(error, {
+      operation: 'embedding_generation',
+      text: text.substring(0, 50), // Первые 50 символов текста
+      isTemporary: geminiErrorInfo.isTemporary
+    });
+    
+    // Выводим лог в консоль с соответствующим уровнем
+    if (errorLog.level === 'warn') {
+      console.warn('🚦 GEMINI EMBEDDING LIMIT:', errorLog.userMessage);
+      console.warn('   Retry in:', errorLog.retryDelay + 's');
+    } else {
+      console.error('❌ GEMINI EMBEDDING ERROR:', errorLog.userMessage);
+    }
+    
+    // Для временных ошибок возвращаем mock embedding как fallback
+    if (geminiErrorInfo.isTemporary) {
+      console.log('🔄 Falling back to mock embedding due to API limit');
+      return generateMockEmbedding(text);
+    }
+    
     throw error;
   }
 }

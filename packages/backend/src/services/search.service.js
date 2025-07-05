@@ -233,10 +233,14 @@ async function searchProducts(productName) {
       };
     }
 
-    // Check for close matches
-    const closeMatches = results.filter(r => 
-      r.isCloseMatch || r.similarity > 80
-    );
+    // Check for close matches (including good vector matches)
+    const closeMatches = results.filter(r => {
+      const isClose = r.isCloseMatch;
+      const isHighSimilarity = r.similarity > 80;
+      const isGoodVector = (r.distance !== undefined && r.distance <= 1.5);  // Has vector distance and close
+      
+      return isClose || isHighSimilarity || isGoodVector;
+    });
 
     if (closeMatches.length > 0) {
       const bestMatch = closeMatches[0];

@@ -194,7 +194,49 @@ class App {
 
       const data = await response.json();
       console.log('Backend Gemini Ping Response:', data);
-      this.setGeminiResponseText(`Backend Response: ${JSON.stringify(data, null, 2)}`);
+      
+      // Обработка специальных типов ошибок Gemini API
+      if (data.isTemporary) {
+        // Временная ошибка - показываем понятное сообщение с иконкой
+        const limitMessage = `🚦 ${data.gemini_response_text}`;
+        this.setGeminiResponseText(limitMessage);
+        
+        // Добавляем визуальное выделение для лимитов
+        const responseDiv = document.getElementById('gemini-response');
+        if (responseDiv) {
+          responseDiv.style.backgroundColor = '#fff3cd';
+          responseDiv.style.border = '1px solid #ffeaa7';
+          responseDiv.style.color = '#856404';
+          
+          // Убираем выделение через 5 секунд
+          setTimeout(() => {
+            responseDiv.style.backgroundColor = '';
+            responseDiv.style.border = '';
+            responseDiv.style.color = '';
+          }, 5000);
+        }
+      } else if (data.errorType) {
+        // Критическая ошибка API
+        const errorMessage = `❌ ${data.gemini_response_text}`;
+        this.setGeminiResponseText(errorMessage);
+        
+        // Красное выделение для критических ошибок
+        const responseDiv = document.getElementById('gemini-response');
+        if (responseDiv) {
+          responseDiv.style.backgroundColor = '#f8d7da';
+          responseDiv.style.border = '1px solid #f5c6cb';
+          responseDiv.style.color = '#721c24';
+          
+          setTimeout(() => {
+            responseDiv.style.backgroundColor = '';
+            responseDiv.style.border = '';
+            responseDiv.style.color = '';
+          }, 8000);
+        }
+      } else {
+        // Обычный ответ
+        this.setGeminiResponseText(`AI: ${data.gemini_response_text || JSON.stringify(data, null, 2)}`);
+      }
     } catch (error) {
       console.error('Backend Gemini Ping Error:', error);
       this.setGeminiResponseText(`Backend Error: ${error.message}`);
