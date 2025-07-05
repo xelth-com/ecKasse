@@ -9,7 +9,9 @@
       "Bash(npm run migrate:backend:*)",
       "Bash(npm rebuild:*)",
       "Bash(pkill:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(sqlite3:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }
