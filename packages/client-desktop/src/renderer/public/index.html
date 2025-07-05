@@ -2,42 +2,58 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="icon" href="favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>React App</title>
+    <meta name="description" content="ecKasse - LLM-Powered Open Source POS System" />
+    <title>ecKasse Client</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
+    <div id="root">
+      <div class="App">
+        <header class="App-header">
+          <p>ecKasse Client</p>
+          <p>Backend URL: <span id="backend-url">Fetching...</span></p>
+          <p>WebSocket URL: <span id="ws-url">Waiting for Backend URL...</span></p>
+          <p>WebSocket Status: <span id="ws-status">Disconnected</span></p>
+          
+          <div class="section">
+            <h4>WebSocket Ping / HTTP Fallback</h4>
+            <input
+              type="text"
+              id="input-value"
+              placeholder="Payload for ping_ws (optional)"
+              style="margin-right: 10px;"
+            />
+            <button id="send-command-btn" disabled>
+              Send Command (WebSocket with HTTP Fallback)
+            </button>
+            <button id="send-http-ping-btn" disabled style="margin-left: 10px;">
+              Send HTTP Ping Directly
+            </button>
+            <p id="last-ws-message"></p>
+            <p>Response: <pre id="response-text"></pre></p>
+          </div>
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+          <div class="section">
+            <h4>Gemini Ping-Pong Test (via Backend)</h4>
+            <input
+              type="text"
+              id="gemini-input"
+              placeholder="Enter message for Gemini"
+              style="margin-right: 10px; min-width: 300px;"
+            />
+            <button id="send-gemini-btn" disabled>
+              Send to Gemini (via Backend)
+            </button>
+            <p>Gemini Response: <pre id="gemini-response"></pre></p>
+          </div>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+        </header>
+      </div>
+    </div>
+    <script src="websocket.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

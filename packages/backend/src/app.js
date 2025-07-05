@@ -37,6 +37,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Раздача статических файлов для фронтенда
+const staticPath = path.join(__dirname, '../../client-desktop/src/renderer/public');
+app.use(express.static(staticPath));
+logger.info(`Serving static files from: ${staticPath}`);
+
 // Подключение маршрутов API
 // app.use('/api', mainRoutes); // Когда у вас будут роуты
 app.use('/api/llm', llmRoutes); // Mount the LLM routes
@@ -73,12 +78,18 @@ app.get('/api/ping', (req, res) => {
   res.json(response);
 });
 
-// Обработка несуществующих роутов (404)
-app.use((req, res, next) => {
-  const error = new Error('Not Found');
-  error.status = 404;
-  logger.warn({ msg: 'Route not found', url: req.originalUrl });
-  next(error);
+// Catch-all route для SPA - возвращаем index.html для всех не-API роутов
+app.get('*', (req, res, next) => {
+  // Если запрос начинается с /api, то это API роут - переходим к 404
+  if (req.originalUrl.startsWith('/api')) {
+    const error = new Error('API Route Not Found');
+    error.status = 404;
+    logger.warn({ msg: 'API route not found', url: req.originalUrl });
+    return next(error);
+  }
+  
+  // Для всех остальных роутов отдаем index.html (для фронтенда)
+  res.sendFile(path.join(staticPath, 'index.html'));
 });
 
 // Глобальный обработчик ошибок

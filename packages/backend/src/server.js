@@ -12,7 +12,17 @@ const logger = require('./config/logger');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 const PORT = process.env.BACKEND_PORT || 3030;
-console.log(`[DEBUG] Node.js version active for this script: ${process.version}`);
+const nodeVersionRequired = '20.0.0';
+const currentVersion = process.version;
+console.log(`[DEBUG] Node.js version active for this script: ${currentVersion}`);
+
+// Проверка версии Node.js для совместимости с v24
+const semver = require('semver');
+if (semver.major(currentVersion) < 20) {
+  console.warn(`[WARNING] Node.js version ${currentVersion} may not be fully compatible. Recommended: v20+ or v24+`);
+} else {
+  console.log(`[INFO] Node.js version ${currentVersion} is compatible.`);
+}
 const httpServer = http.createServer(app);
 
 // Используем правильный конструктор WebSocket Server

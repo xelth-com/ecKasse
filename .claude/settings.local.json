@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:backend:*)",
+      "Bash(npm run dev:client:desktop:renderer:*)"
+    ],
+    "deny": []
+  }
+}

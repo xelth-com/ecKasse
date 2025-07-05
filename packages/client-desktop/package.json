@@ -5,15 +5,14 @@
   "description": "Desktop client for ecKasse POS system",
   "main": "electron/main.js", 
   "scripts": {
-    "dev:react": "npm start --prefix src/renderer", 
-   "dev:electron:watch": "nodemon --watch electron --exec \"electron electron/main.js\"",
-    "dev": "concurrently -k -n \"REACT,ELECTRON\" -c \"bgGreen.bold,bgMagenta.bold\" \"npm:dev:react\" \"wait-on http://localhost:3000 && npm run dev:electron:watch\"",
+    "dev:electron:watch": "electron electron/main.js",
+    "dev": "concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"wait-on http://localhost:3030 && npm run dev:electron:watch\"",
     "start": "npm run dev", 
+    "dev:backend": "npm run dev --workspace=@eckasse/backend",
 
-    "build:react": "npm run build --prefix src/renderer",
-    "build": "npm run build:react && electron-builder", 
+    "build": "electron-builder", 
     "dist": "npm run build",
-    "package-win": "npm run build:react && electron-builder --win --x64",
+    "package-win": "electron-builder --win --x64",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md,css,scss}\""
   },
@@ -25,7 +24,6 @@
     "cross-env": "^7.0.3",
     "electron": "^31.1.0",
     "electron-builder": "^24.13.3",
-    "nodemon": "^3.1.0",
     "wait-on": "^7.2.0"
   },
   "build": { 
@@ -33,7 +31,8 @@
     "productName": "ecKasse",
     "files": [
       "electron/**/*",
-      "src/renderer/build/**/*", 
+      "src/renderer/public/**/*", 
+      "src/renderer/server.js",
       "node_modules/**/*", 
       "package.json"
     ],
