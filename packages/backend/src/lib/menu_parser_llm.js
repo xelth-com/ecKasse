@@ -17,7 +17,7 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 const OpenAI = require('openai');
 const Anthropic = require('@anthropic-ai/sdk');
 const Tesseract = require('tesseract.js');
@@ -61,8 +61,8 @@ class MenuParserLLM {
   initializeLLMClients(options) {
     // Google Gemini
     if (options.geminiApiKey || process.env.GEMINI_API_KEY) {
-      this.gemini = new GoogleGenerativeAI(options.geminiApiKey || process.env.GEMINI_API_KEY);
-      this.geminiModel = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      this.gemini = new GoogleGenAI({ apiKey: options.geminiApiKey || process.env.GEMINI_API_KEY });
+      this.geminiModel = this.gemini.models.getGenerativeModel({ model: 'gemini-1.5-flash' });
     }
 
     // OpenAI GPT
@@ -380,20 +380,12 @@ Antworte nur mit dem validen JSON-Objekt.`;
   async callLLM(model, systemPrompt, userPrompt) {
     switch (model.type) {
       case 'gemini':
-        const chat = model.client.getGenerativeModel({ model: 'gemini-1.5-flash' }).startChat({
-          history: [
-            {
-              role: 'user',
-              parts: [{ text: systemPrompt }]
-            },
-            {
-              role: 'model',
-              parts: [{ text: 'Ich verstehe. Ich werde das Menü analysieren und in das angegebene JSON-Format konvertieren.' }]
-            }
+        const result = await model.client.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: [
+            { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
           ]
         });
-        
-        const result = await chat.sendMessage(userPrompt);
         return result.response.text();
 
       case 'openai':

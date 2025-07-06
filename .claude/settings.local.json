@@ -18,7 +18,10 @@
       "Bash(npm run start:*)",
       "Bash(timeout:*)",
       "Bash(npm run:*)",
-      "Bash(npx knex migrate:status:*)"
+      "Bash(npx knex migrate:status:*)",
+      "Bash(mv:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

@@ -1,56 +1,59 @@
 // File: /packages/backend/src/services/embedding.service.js
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErrorHandler');
 
-const USE_MOCK_EMBEDDINGS = !process.env.GEMINI_API_KEY || process.env.USE_MOCK_EMBEDDINGS === 'true';
-
-let genAI, model;
-if (!USE_MOCK_EMBEDDINGS) {
-  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+// Проверяем наличие API ключа
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('⚠️  GEMINI_API_KEY не найден в переменных окружения!');
+  console.warn('   Пожалуйста, добавьте GEMINI_API_KEY в файл .env');
+  console.warn('   Получить ключ можно здесь: https://aistudio.google.com/app/apikey');
 }
 
-/**
- * Generate a deterministic mock embedding for testing
- * @param {string} text - Text to generate embedding for
- * @returns {number[]} - Array of 768 float values
- */
-function generateMockEmbedding(text) {
-  const embedding = new Array(768);
-  
-  // Create a simple hash of the text to ensure deterministic results
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  
-  // Generate deterministic pseudo-random values based on text hash
-  for (let i = 0; i < 768; i++) {
-    const seed = hash + i;
-    const x = Math.sin(seed) * 10000;
-    embedding[i] = (x - Math.floor(x)) * 2 - 1; // Values between -1 and 1
-  }
-  
-  return embedding;
+// Отключаем моки - используем только реальный API
+const USE_MOCK_EMBEDDINGS = false;
+
+let ai;
+if (process.env.GEMINI_API_KEY) {
+  ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} else {
+  console.error('❌ GEMINI_API_KEY отсутствует! Embeddings не будут работать.');
 }
 
 /**
  * Generate embedding vector for text using Google's text-embedding-004 model
  * @param {string} text - Text to generate embedding for
+ * @param {Object} options - Additional options
  * @returns {Promise<number[]>} - Array of 768 float values representing the embedding
  */
-async function generateEmbedding(text) {
-  if (USE_MOCK_EMBEDDINGS) {
-    console.log(`Generating mock embedding for: "${text}"`);
-    return generateMockEmbedding(text);
+async function generateEmbedding(text, options = {}) {
+  if (!ai) {
+    throw new Error('❌ GEMINI_API_KEY не настроен. Проверьте файл .env');
   }
   
   try {
-    const result = await model.embedContent(text);
-    return result.embedding.values;
+    console.log(`🔍 Генерирую embedding для: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+    
+    const response = await ai.models.embedContent({
+      model: options.model || 'text-embedding-004',
+      contents: [text],
+      config: {
+        taskType: options.taskType || "SEMANTIC_SIMILARITY",
+        outputDimensionality: options.outputDimensionality || undefined
+      }
+    });
+    
+    // Правильное извлечение values из структуры ответа
+    const embedding = response.embeddings[0].values;
+    const stats = response.embeddings[0].statistics;
+    
+    console.log(`✅ Embedding создан: ${embedding.length} измерений, ${stats.token_count} токенов`);
+    if (stats.truncated) {
+      console.warn('⚠️  Текст был обрезан при создании embedding');
+    }
+    
+    return embedding;
+    
   } catch (error) {
     // Обработка специфических ошибок Gemini API
     const geminiErrorInfo = handleGeminiError(error, { 
@@ -73,12 +76,83 @@ async function generateEmbedding(text) {
       console.error('❌ GEMINI EMBEDDING ERROR:', errorLog.userMessage);
     }
     
-    // Для временных ошибок возвращаем mock embedding как fallback
-    if (geminiErrorInfo.isTemporary) {
-      console.log('🔄 Falling back to mock embedding due to API limit');
-      return generateMockEmbedding(text);
-    }
+    throw error;
+  }
+}
+
+/**
+ * Generate embeddings for multiple texts at once
+ * @param {string[]} texts - Array of texts to generate embeddings for
+ * @param {Object} options - Additional options
+ * @returns {Promise<number[][]>} - Array of embedding vectors
+ */
+async function generateBatchEmbeddings(texts, options = {}) {
+  if (!ai) {
+    throw new Error('❌ GEMINI_API_KEY не настроен. Проверьте файл .env');
+  }
+  
+  try {
+    console.log(`🔍 Генерирую batch embeddings для ${texts.length} текстов`);
     
+    const response = await ai.models.embedContent({
+      model: options.model || 'text-embedding-004',
+      contents: texts,
+      config: {
+        taskType: options.taskType || "SEMANTIC_SIMILARITY",
+        outputDimensionality: options.outputDimensionality || undefined
+      }
+    });
+    
+    // Извлекаем values из каждого embedding
+    const embeddings = response.embeddings.map(embedding => embedding.values);
+    const totalTokens = response.embeddings.reduce((sum, emb) => sum + emb.statistics.token_count, 0);
+    
+    console.log(`✅ Batch embeddings созданы: ${embeddings.length} векторов, ${totalTokens} токенов`);
+    
+    return embeddings;
+    
+  } catch (error) {
+    const geminiErrorInfo = handleGeminiError(error, { 
+      language: 'ru', 
+      includeRetryInfo: true 
+    });
+    
+    console.error('❌ GEMINI BATCH EMBEDDING ERROR:', geminiErrorInfo.userMessage);
+    throw error;
+  }
+}
+
+/**
+ * Get embedding statistics for text
+ * @param {string} text - Text to analyze
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Statistics object
+ */
+async function getEmbeddingStats(text, options = {}) {
+  if (!ai) {
+    throw new Error('❌ GEMINI_API_KEY не настроен. Проверьте файл .env');
+  }
+  
+  try {
+    const response = await ai.models.embedContent({
+      model: options.model || 'text-embedding-004',
+      contents: [text],
+      config: {
+        taskType: options.taskType || "SEMANTIC_SIMILARITY"
+      }
+    });
+    
+    const embedding = response.embeddings[0];
+    
+    return {
+      dimensions: embedding.values.length,
+      tokenCount: embedding.statistics.token_count,
+      truncated: embedding.statistics.truncated,
+      billableCharacters: response.metadata?.billable_character_count || 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting embedding stats:', error.message);
     throw error;
   }
 }
@@ -123,6 +197,8 @@ function jsonToEmbedding(jsonString) {
 
 module.exports = {
   generateEmbedding,
+  generateBatchEmbeddings,
+  getEmbeddingStats,
   embeddingToBuffer,
   bufferToEmbedding,
   embeddingToJson,
