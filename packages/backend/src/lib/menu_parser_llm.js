@@ -285,24 +285,30 @@ BUSINESS TYPE: ${businessType}
 OUTPUT LANGUAGE: ${language}
 
 WICHTIGE ANWEISUNGEN:
-1. Extrahiere alle Artikel mit Namen, Preisen und Beschreibungen
+1. Extrahiere alle Artikel mit Namen, Preisen und VOLLSTÄNDIGEN BESCHREIBUNGEN
 2. Organisiere Artikel in logische Kategorien (Vorspeisen, Hauptspeisen, Getränke, etc.)
 3. Erkenne Allergene und besondere Eigenschaften (vegan, glutenfrei, etc.)
 4. Normalisiere Preise im Format "X.XX" (Dezimaltrennzeichen: Punkt)
 5. Identifiziere Währung automatisch
 6. Berücksichtige verschiedene Portionsgrößen und Varianten
 
+PARSING-PROZESS:
+1. Identifiziere ALLE Kategorien auf dem Menü
+2. Für jeden Artikel extrahiere:
+   - Vollständigen Namen
+   - KOMPLETTE Beschreibung (sehr wichtig für Suchfunktionen)
+   - Hauptpreis und alle Varianten
+   - Genaue Kategorie-Zuordnung
+
 ANTWORT-FORMAT (JSON):
 {
   "restaurant_info": {
     "name": "Restaurantname (falls erkennbar)",
-    "type": "restaurant/cafe/bar/fastfood",
-    "detected_language": "de/en/fr/etc",
     "currency": "€/$£/etc"
   },
   "categories": [
     {
-      "id": 1,
+      "temp_id": 1,
       "name": "Kategoriename",
       "type": "food/drink",
       "description": "Optional"
@@ -310,12 +316,10 @@ ANTWORT-FORMAT (JSON):
   ],
   "items": [
     {
-      "id": "unique_id",
-      "name": "Artikelname",
-      "short_name": "Kurzer Name für Button",
-      "description": "Beschreibung",
+      "name": "Vollständiger Artikelname",
+      "description": "VOLLSTÄNDIGE Beschreibung mit allen Details, Zutaten und Zubereitungsarten",
       "price": 12.50,
-      "category_id": 1,
+      "categoryName": "Exakter Kategoriename aus der categories-Liste",
       "allergens": ["gluten", "dairy"],
       "dietary_info": ["vegetarian", "vegan", "gluten_free"],
       "portion_size": "Normal/Klein/Groß",
@@ -329,6 +333,8 @@ ANTWORT-FORMAT (JSON):
     "Hinweise auf Unsicherheiten oder Besonderheiten"
   ]
 }
+
+WICHTIG: Die 'description' ist das wichtigste Feld! Erfasse ALLE Textinformationen zu einem Artikel, einschließlich Zutaten, Zubereitungsart, Beilagen und besondere Eigenschaften. Diese Details sind essentiell für die spätere Suchfunktionalität.
 
 Achte auf häufige OCR-Fehler und korrigiere sie intelligent.`;
   }
@@ -613,50 +619,79 @@ Antworte nur mit dem validen JSON-Objekt.`;
       ]
     };
 
-    // Convert categories to multilingual format
-    const categories = parsedData.categories.map(cat => ({
-      category_unique_identifier: cat.id,
-      category_names: this.createMultilingualObject(cat.name, detectedLanguage),
-      category_type: cat.type,
-      parent_category_unique_identifier: null,
-      default_linked_main_group_unique_identifier: cat.type === 'drink' ? 1 : 2,
-      audit_trail: { ...auditTrail }
-    }));
+    // Convert categories - handle both old and new format
+    const categories = parsedData.categories.map((cat, index) => {
+      const categoryId = cat.temp_id || cat.id || (index + 1);
+      return {
+        category_unique_identifier: categoryId,
+        category_names: this.createMultilingualObject(cat.name, detectedLanguage),
+        category_type: cat.type || this.guesseCategoryType(cat.name),
+        parent_category_unique_identifier: null,
+        default_linked_main_group_unique_identifier: (cat.type === 'drink' || this.guesseCategoryType(cat.name) === 'drink') ? 1 : 2,
+        audit_trail: { ...auditTrail }
+      };
+    });
 
-    // Convert items to multilingual format
-    const items = parsedData.items.map(item => ({
-      item_unique_identifier: item.id,
-      display_names: {
-        menu: this.createMultilingualObject(item.name, detectedLanguage),
-        button: this.createMultilingualObject(item.short_name, detectedLanguage),
-        receipt: this.createMultilingualObject(item.name, detectedLanguage)
-      },
-      item_price_value: item.price,
-      pricing_schedules: item.variants ? item.variants.map(variant => ({
-        schedule_id: `variant_${variant.name.toLowerCase()}`,
-        price: variant.price,
-        valid_days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-      })) : [],
-      availability_schedule: {
-        always_available: true,
-        schedules: []
-      },
-      associated_category_unique_identifier: item.category_id,
-      additional_item_attributes: {
-        description: item.description || '',
-        allergens: item.allergens || [],
-        dietary_info: item.dietary_info || [],
-        portion_size: item.portion_size || 'normal',
-        menu_parser_generated: true
-      },
-      item_flags: {
-        is_sellable: true,
-        has_negative_price: false,
-        requires_age_verification: false,
-        is_organic: item.dietary_info?.includes('organic') || false
-      },
-      audit_trail: { ...auditTrail }
-    }));
+    // Create category lookup map for new format
+    const categoryLookup = new Map();
+    categories.forEach(cat => {
+      const categoryName = parsedData.categories.find(c => 
+        (c.temp_id || c.id) === cat.category_unique_identifier
+      )?.name;
+      if (categoryName) {
+        categoryLookup.set(categoryName, cat.category_unique_identifier);
+      }
+    });
+
+    // Convert items to multilingual format - handle both old and new format
+    const items = parsedData.items.map((item, index) => {
+      const itemId = item.id || (1000 + index);
+      const shortName = item.short_name || this.generateShortName(item.name);
+      
+      // Handle category linking for new format
+      let categoryId;
+      if (item.categoryName) {
+        // New format: use categoryName to find category_unique_identifier
+        categoryId = categoryLookup.get(item.categoryName) || 1;
+      } else {
+        // Old format: use category_id directly
+        categoryId = item.category_id || 1;
+      }
+
+      return {
+        item_unique_identifier: itemId,
+        display_names: {
+          menu: this.createMultilingualObject(item.name, detectedLanguage),
+          button: this.createMultilingualObject(shortName, detectedLanguage),
+          receipt: this.createMultilingualObject(item.name, detectedLanguage)
+        },
+        item_price_value: item.price,
+        pricing_schedules: item.variants ? item.variants.map(variant => ({
+          schedule_id: `variant_${variant.name.toLowerCase()}`,
+          price: variant.price,
+          valid_days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        })) : [],
+        availability_schedule: {
+          always_available: true,
+          schedules: []
+        },
+        associated_category_unique_identifier: categoryId,
+        additional_item_attributes: {
+          description: item.description || '',
+          allergens: item.allergens || [],
+          dietary_info: item.dietary_info || [],
+          portion_size: item.portion_size || 'normal',
+          menu_parser_generated: true
+        },
+        item_flags: {
+          is_sellable: true,
+          has_negative_price: false,
+          requires_age_verification: false,
+          is_organic: item.dietary_info?.includes('organic') || false
+        },
+        audit_trail: { ...auditTrail }
+      };
+    });
 
     // Create full OOP-POS-MDF configuration
     const config = {

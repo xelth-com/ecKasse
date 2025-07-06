@@ -1,0 +1,148 @@
+{
+  "$schema": "https://schemas.eckasse.com/oop-pos-mdf/v2.0.0/schema.json",
+  "company_details": {
+    "company_unique_identifier": 1,
+    "company_full_name": "Test Restaurant",
+    "meta_information": {
+      "format_version": "2.0.0",
+      "date_generated": "2025-07-06T14:00:27.526Z",
+      "generated_by": "test-script",
+      "default_currency_symbol": "€",
+      "default_language": "de"
+    },
+    "global_configurations": {
+      "tax_rates_definitions": [
+        {
+          "tax_rate_unique_identifier": 1,
+          "tax_rate_names": {
+            "de": "Standard (19%)"
+          },
+          "rate_percentage": 19,
+          "fiscal_mapping_type": "NORMAL"
+        }
+      ],
+      "main_groups_definitions": [],
+      "payment_methods_definitions": [],
+      "promotions_definitions": [],
+      "workflows": [],
+      "integrations": {},
+      "security_settings": {}
+    },
+    "branches": [
+      {
+        "branch_unique_identifier": 1,
+        "branch_names": {
+          "de": "Hauptfiliale"
+        },
+        "branch_address": "Test Street 1",
+        "point_of_sale_devices": [
+          {
+            "pos_device_unique_identifier": 1,
+            "pos_device_names": {
+              "de": "Kasse 1"
+            },
+            "pos_device_type": "DESKTOP",
+            "pos_device_external_number": 1,
+            "pos_device_settings": {},
+            "categories_for_this_pos": [
+              {
+                "category_unique_identifier": 1,
+                "category_names": {
+                  "de": "Vorspeisen"
+                },
+                "category_type": "food",
+                "audit_trail": {}
+              },
+              {
+                "category_unique_identifier": 2,
+                "category_names": {
+                  "de": "Hauptgerichte"
+                },
+                "category_type": "food",
+                "audit_trail": {}
+              }
+            ],
+            "items_for_this_pos": [
+              {
+                "item_unique_identifier": 1001,
+                "display_names": {
+                  "menu": {
+                    "de": "Bruschetta della Casa"
+                  },
+                  "button": {
+                    "de": "Bruschetta"
+                  },
+                  "receipt": {
+                    "de": "Bruschetta della Casa"
+                  }
+                },
+                "item_price_value": 6.5,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Geröstetes Ciabatta-Brot mit frischen Tomaten, Knoblauch, Basilikum und nativem Olivenöl extra",
+                  "allergens": [
+                    "gluten"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ]
+                },
+                "item_flags": {
+                  "is_sellable": true
+                },
+                "audit_trail": {}
+              },
+              {
+                "item_unique_identifier": 1002,
+                "display_names": {
+                  "menu": {
+                    "de": "Pizza Margherita"
+                  },
+                  "button": {
+                    "de": "Margherita"
+                  },
+                  "receipt": {
+                    "de": "Pizza Margherita"
+                  }
+                },
+                "item_price_value": 9,
+                "pricing_schedules": [
+                  {
+                    "schedule_id": "variant_klein",
+                    "price": 7
+                  },
+                  {
+                    "schedule_id": "variant_gross",
+                    "price": 11
+                  }
+                ],
+                "availability_schedule": {
+                  "always_available": true
+                },
+                "associated_category_unique_identifier": 2,
+                "additional_item_attributes": {
+                  "description": "Hausgemachter Teig mit San Marzano Tomaten, Mozzarella di Bufala und frischem Basilikum",
+                  "allergens": [
+                    "gluten",
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ]
+                },
+                "item_flags": {
+                  "is_sellable": true
+                },
+                "audit_trail": {}
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

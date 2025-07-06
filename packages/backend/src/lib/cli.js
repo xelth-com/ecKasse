@@ -29,6 +29,9 @@ const MenuParserLLM = require('../lib/menu_parser_llm.js');
 // Import your new Vectron Converter
 const VectronConverter = require('../lib/converters/vectron.js');
 
+// Import the OOP-POS-MDF Import Service
+const { importFromOopMdf } = require('../services/import.service.js');
+
 class EckasseCLI {
   constructor() {
     this.ajv = new Ajv({ allErrors: true, strict: false });
@@ -140,6 +143,7 @@ class EckasseCLI {
       .option('-l, --language <lang>', 'Primary language', 'de')
       .option('--languages <langs>', 'Supported languages (comma-separated)', 'de,en')
       .option('--restaurant-name <name>', 'Restaurant name override')
+      .option('--raw-json-output <filepath>', 'Save raw intermediate JSON from LLM for debugging')
       .option('--vectron', 'Generate Vectron import file after parsing')
       .option('--csv', 'Generate CSV export after parsing')
       .option('--validate', 'Validate generated configuration')
@@ -156,6 +160,17 @@ class EckasseCLI {
       .description('Interactive wizard for menu parsing and configuration into v2.0.0 format')
       .action(async () => {
         await this.menuWizard();
+      });
+
+    // Import OOP-POS-MDF command
+    program
+      .command('import-mdf <filepath>')
+      .description('Import a complete oop-pos-mdf JSON file into the database, overwriting existing data')
+      .option('--force', 'Skip confirmation prompt and proceed with import')
+      .option('--dry-run', 'Validate the JSON structure without actually importing')
+      .option('--validate', 'Validate against schema before importing')
+      .action(async (filepath, options) => {
+        await this.importMdfCommand(filepath, options);
       });
 
     program.parse();
@@ -484,6 +499,16 @@ class EckasseCLI {
       console.log(`   Confidence: ${chalk.bold((result.metadata.confidence * 100).toFixed(1))}%`);
       console.log(`   Language: ${chalk.bold(result.metadata.language)}`);
 
+      // Save raw JSON output for debugging if requested
+      if (options.rawJsonOutput) {
+        try {
+          await fs.writeFile(options.rawJsonOutput, JSON.stringify(result.rawData.parsedData, null, 2));
+          console.log(chalk.blue(`\n🔍 Raw JSON output saved: ${options.rawJsonOutput}`));
+        } catch (error) {
+          console.log(chalk.yellow(`\n⚠️  Warning: Could not save raw JSON output: ${error.message}`));
+        }
+      }
+
       if (result.metadata.confidence < parseFloat(options.confidenceThreshold)) {
         console.log(chalk.yellow(`\n⚠️  Warning: Confidence below threshold (${options.confidenceThreshold})`));
         if (options.interactive) {
@@ -531,6 +556,156 @@ class EckasseCLI {
         console.log(chalk.gray('   export ANTHROPIC_API_KEY=your_api_key'));
       }
 
+      process.exit(1);
+    }
+  }
+
+  /**
+   * Import OOP-POS-MDF command implementation
+   */
+  async importMdfCommand(filepath, options) {
+    console.log(chalk.blue('📥 eckasse OOP-POS-MDF Import Tool v2.0.0\n'));
+    
+    try {
+      // Check if file exists
+      if (!fs.existsSync(filepath)) {
+        console.error(chalk.red(`❌ File not found: ${filepath}`));
+        process.exit(1);
+      }
+
+      // Read and parse JSON file
+      console.log(chalk.blue(`📖 Reading configuration file: ${filepath}`));
+      const fileContent = fs.readFileSync(filepath, 'utf8');
+      
+      let jsonData;
+      try {
+        jsonData = JSON.parse(fileContent);
+      } catch (parseError) {
+        console.error(chalk.red(`❌ Invalid JSON format: ${parseError.message}`));
+        process.exit(1);
+      }
+
+      // Validate schema if requested
+      if (options.validate) {
+        console.log(chalk.blue('🔍 Validating against schema...'));
+        try {
+          const schema = await this.loadSchema('2.0.0');
+          const validate = this.ajv.compile(schema);
+          const valid = validate(jsonData);
+          
+          if (!valid) {
+            console.log(chalk.red('❌ Schema validation failed:'));
+            validate.errors.slice(0, 5).forEach((error, index) => {
+              console.log(chalk.red(`  ${index + 1}. ${error.instancePath || 'root'}: ${error.message}`));
+            });
+            if (validate.errors.length > 5) {
+              console.log(chalk.gray(`  ... and ${validate.errors.length - 5} more errors`));
+            }
+            process.exit(1);
+          }
+          console.log(chalk.green('✅ Schema validation passed'));
+        } catch (validationError) {
+          console.error(chalk.red(`❌ Validation error: ${validationError.message}`));
+          process.exit(1);
+        }
+      }
+
+      // Show preview information
+      const companyName = jsonData.company_details?.company_full_name || 'Unknown Company';
+      const branchCount = jsonData.company_details?.branches?.length || 0;
+      let totalItems = 0;
+      let totalCategories = 0;
+
+      if (jsonData.company_details?.branches) {
+        for (const branch of jsonData.company_details.branches) {
+          if (branch.point_of_sale_devices) {
+            for (const pos of branch.point_of_sale_devices) {
+              totalItems += pos.items_for_this_pos?.length || 0;
+              totalCategories += pos.categories_for_this_pos?.length || 0;
+            }
+          }
+        }
+      }
+
+      console.log(chalk.cyan('\n📋 Import Preview:'));
+      console.log(`   Company: ${chalk.bold(companyName)}`);
+      console.log(`   Branches: ${chalk.bold(branchCount)}`);
+      console.log(`   Categories: ${chalk.bold(totalCategories)}`);
+      console.log(`   Items: ${chalk.bold(totalItems)}`);
+
+      // Dry run mode
+      if (options.dryRun) {
+        console.log(chalk.green('\n✅ Dry run completed - JSON structure is valid'));
+        console.log(chalk.gray('Use --validate flag to also check schema compliance'));
+        return;
+      }
+
+      // Confirmation prompt (unless --force)
+      if (!options.force) {
+        console.log(chalk.yellow('\n⚠️  WARNING: This operation will:'));
+        console.log(chalk.yellow('   • Delete ALL existing data in the database'));
+        console.log(chalk.yellow('   • Import the new configuration'));
+        console.log(chalk.yellow('   • Generate vector embeddings for all items'));
+        console.log(chalk.yellow('   • This action cannot be undone!'));
+
+        const { confirmed } = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'confirmed',
+          message: 'Are you sure you want to proceed?',
+          default: false
+        }]);
+
+        if (!confirmed) {
+          console.log(chalk.gray('\nImport cancelled by user'));
+          return;
+        }
+      }
+
+      // Perform the import
+      const spinner = ora('Importing data and generating embeddings...').start();
+      
+      try {
+        const result = await importFromOopMdf(jsonData);
+        
+        spinner.succeed('Import completed successfully!');
+        
+        console.log(chalk.green('\n📊 Import Results:'));
+        console.log(`   Companies: ${chalk.bold(result.stats.companies)}`);
+        console.log(`   Branches: ${chalk.bold(result.stats.branches)}`);
+        console.log(`   POS Devices: ${chalk.bold(result.stats.posDevices)}`);
+        console.log(`   Categories: ${chalk.bold(result.stats.categories)}`);
+        console.log(`   Items: ${chalk.bold(result.stats.items)}`);
+        console.log(`   Embeddings: ${chalk.bold(result.stats.embeddings)}`);
+        console.log(`   Duration: ${chalk.bold(result.duration)}ms`);
+
+        if (result.stats.errors && result.stats.errors.length > 0) {
+          console.log(chalk.yellow(`\n⚠️  Warnings (${result.stats.errors.length}):`));
+          result.stats.errors.slice(0, 3).forEach((error, index) => {
+            console.log(chalk.yellow(`   ${index + 1}. ${error}`));
+          });
+          if (result.stats.errors.length > 3) {
+            console.log(chalk.gray(`   ... and ${result.stats.errors.length - 3} more warnings`));
+          }
+        }
+
+        console.log(chalk.green('\n✅ Import completed successfully!'));
+        console.log(chalk.gray('The database is now ready for hybrid search operations.'));
+
+      } catch (importError) {
+        spinner.fail('Import failed');
+        console.error(chalk.red(`\n❌ Import error: ${importError.message}`));
+        
+        if (importError.message.includes('GEMINI_API_KEY')) {
+          console.log(chalk.yellow('\n💡 Tip: Make sure your Gemini API key is configured:'));
+          console.log(chalk.gray('   export GEMINI_API_KEY=your_api_key'));
+          console.log(chalk.gray('   Or add it to your .env file'));
+        }
+        
+        process.exit(1);
+      }
+
+    } catch (error) {
+      console.error(chalk.red(`\n❌ Command failed: ${error.message}`));
       process.exit(1);
     }
   }

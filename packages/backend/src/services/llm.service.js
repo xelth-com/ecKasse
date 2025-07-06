@@ -20,19 +20,23 @@ const llm = new ChatGoogleGenerativeAI({
 const tools = [
     new DynamicTool({
         name: "findProduct",
-        // Описание теперь на английском для лучшего понимания моделью
-        description: "Searches for a product in the database by name, description, or related concepts. Excellent for inexact queries, synonyms (e.g., 'cup' for 'mug'), or typos. Use this tool when a user asks if a certain product is available. The tool returns structured JSON data.",
+        description: "Use this tool to find any product in the POS database. It performs an advanced hybrid search that understands synonyms, concepts, and corrects typos. Input should be the user's query for a product, for example: 'eco-friendly cup', 'widget', or even a typo like 'supr widge'. The tool returns a structured JSON object with the search results.",
         func: async (toolInput) => {
             const productName = (typeof toolInput === 'object' && toolInput.input) ? toolInput.input : toolInput;
             logger.info({ tool: 'findProduct', input: productName }, '🤖 Agent is using hybrid product search...');
             try {
                 const searchResult = await searchProducts(productName);
                 logger.info({ searchMetadata: searchResult.metadata }, `Search complete: ${searchResult.metadata?.searchMethod}`);
-                // Возвращаем структурированный JSON, а не готовую строку
+                // Return structured JSON for the agent to interpret
                 return JSON.stringify(searchResult);
             } catch (error) {
                 logger.error({ msg: "Error in findProduct tool (hybrid search)", error });
-                return JSON.stringify({ success: false, message: "An error occurred during the search." });
+                return JSON.stringify({ 
+                    success: false, 
+                    message: "An error occurred during the search.",
+                    results: [],
+                    metadata: { error: error.message }
+                });
             }
         },
     }),
@@ -44,12 +48,30 @@ let agentExecutorPromise;
 function getAgentExecutor() {
     if (!agentExecutorPromise) {
         agentExecutorPromise = (async () => {
-            // Системный промпт теперь на английском и более четкий
+            // Enhanced system prompt with detailed search result interpretation rules
             const SYSTEM_PROMPT = `You are an AI assistant for the "ecKasse" POS system. Your primary role is to help users manage their store through natural language.
+
+**General Guidelines:**
 - **Tool Usage:** Use the provided tools to interact with the database. Always base your answers on the output of the tools. Do not make up information.
 - **Context:** Use the conversation history to understand follow-up questions (e.g., "what is its price?").
 - **Language:** Always respond in the same language as the user's last message.
-- **Clarity:** If you don't have enough information to use a tool, ask the user for clarification. After a successful operation, provide a clear confirmation.`;
+- **Clarity:** If you don't have enough information to use a tool, ask the user for clarification. After a successful operation, provide a clear confirmation.
+
+**Search Result Interpretation Rules:**
+When using the findProduct tool, interpret the JSON response according to these rules:
+
+1. **Exact or Close Match (success: true):** If the tool returns { success: true, results: [...] }, inform the user that the product was found. State the name and price of the first item in the results array. If there are other close matches in the array, list them as alternatives.
+   Example response: "Да, товар 'Eco Mug' найден. Его цена 12.50€. Также найден похожий товар: 'Super Widget'."
+
+2. **No Exact Match with Suggestions (success: false with results):** If the tool returns { success: false, results: [...] } (meaning no close match was found, but there are semantic suggestions), politely inform the user that an exact match was not found and offer the product names from the results array as suggestions.
+   Example response: "Товар 'чашка' не найден. Возможно, вы имели в виду: Eco Mug, Super Widget?"
+
+3. **No Results (success: false with empty results):** If the tool returns { success: false, results: [] }, simply state that the product could not be found.
+   Example response: "К сожалению, товар по вашему запросу не найден."
+
+4. **Context Rule:** If the user asks a follow-up question like "what is its price?" or "how much?", use the context from the previous tool call to answer about the last product discussed.
+
+5. **Language Rule:** Always formulate the final answer in the same language as the user's last message.`;
             
             const prompt = ChatPromptTemplate.fromMessages([
                 ["system", SYSTEM_PROMPT],

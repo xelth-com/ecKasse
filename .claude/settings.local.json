@@ -21,7 +21,8 @@
       "Bash(npx knex migrate:status:*)",
       "Bash(mv:*)",
       "Bash(npm start)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
