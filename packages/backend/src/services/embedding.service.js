@@ -44,12 +44,22 @@ async function generateEmbedding(text, options = {}) {
     });
     
     // Правильное извлечение values из структуры ответа
-    const embedding = response.embeddings[0].values;
-    const stats = response.embeddings[0].statistics;
+    if (!response.embeddings || response.embeddings.length === 0) {
+      throw new Error('API returned no embeddings.');
+    }
     
-    console.log(`✅ Embedding создан: ${embedding.length} измерений, ${stats.token_count} токенов`);
-    if (stats.truncated) {
-      console.warn('⚠️  Текст был обрезан при создании embedding');
+    const embeddingObject = response.embeddings[0];
+    const embedding = embeddingObject.values;
+    const stats = embeddingObject.statistics;
+    
+    // The `statistics` object is optional
+    if (stats && typeof stats.token_count !== 'undefined') {
+      console.log(`✅ Embedding создан: ${embedding.length} измерений, ${stats.token_count} токенов`);
+      if (stats.truncated) {
+        console.warn('⚠️  Текст был обрезан при создании embedding');
+      }
+    } else {
+      console.log(`✅ Embedding создан: ${embedding.length} измерений (статистика токенов недоступна)`);
     }
     
     return embedding;
@@ -105,7 +115,9 @@ async function generateBatchEmbeddings(texts, options = {}) {
     
     // Извлекаем values из каждого embedding
     const embeddings = response.embeddings.map(embedding => embedding.values);
-    const totalTokens = response.embeddings.reduce((sum, emb) => sum + emb.statistics.token_count, 0);
+    const totalTokens = response.embeddings.reduce((sum, emb) => {
+      return sum + (emb.statistics?.token_count || 0);
+    }, 0);
     
     console.log(`✅ Batch embeddings созданы: ${embeddings.length} векторов, ${totalTokens} токенов`);
     
@@ -146,8 +158,8 @@ async function getEmbeddingStats(text, options = {}) {
     
     return {
       dimensions: embedding.values.length,
-      tokenCount: embedding.statistics.token_count,
-      truncated: embedding.statistics.truncated,
+      tokenCount: embedding.statistics?.token_count ?? 0,
+      truncated: embedding.statistics?.truncated ?? false,
       billableCharacters: response.metadata?.billable_character_count || 0
     };
     
