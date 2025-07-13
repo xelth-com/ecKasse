@@ -8,6 +8,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const app = require('./app'); // Ваше Express-приложение
 const logger = require('./config/logger');
+const layoutService = require('./services/layout.service');
+const db = require('./db/knex');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -32,7 +34,7 @@ const wss = new WebSocket.Server({ server: httpServer });
 const processedOperationIds = new Set();
 const OPERATION_ID_TTL = 60000; // Время жизни ID операции в мс (например, 1 минута)
 
-function handleWebSocketMessage(ws, rawMessage) {
+async function handleWebSocketMessage(ws, rawMessage) {
   let parsedMessage;
   try {
     parsedMessage = JSON.parse(rawMessage.toString());
@@ -72,17 +74,32 @@ function handleWebSocketMessage(ws, rawMessage) {
     processedOperationIds.delete(operationId); // Очистка ID через некоторое время
   }, OPERATION_ID_TTL);
 
-
   // --- Обработка команды ---
   let responsePayload;
   let status = 'success';
 
-  if (command === 'ping_ws') {
-    responsePayload = { message: 'pong_ws', receivedPayload: payload };
-  } else {
+  try {
+    if (command === 'ping_ws') {
+      responsePayload = { message: 'pong_ws', receivedPayload: payload };
+    } else if (command === 'listLayouts') {
+      responsePayload = await layoutService.listLayouts();
+    } else if (command === 'activateLayout') {
+      await layoutService.activateLayout(payload.id);
+      responsePayload = { success: true, message: `Layout ${payload.id} activated.` };
+    } else if (command === 'saveLayout') {
+      const categories = await db('categories').select('*'); // Example: saving current state
+      responsePayload = await layoutService.saveLayout(payload.name, categories);
+    } else if (command === 'getCategories') {
+      responsePayload = await db('categories').select('*');
+    } else {
+      status = 'error';
+      responsePayload = { message: 'Unknown command', originalCommand: command };
+      logger.warn({ msg: 'Unknown WebSocket command', command, operationId, clientId: ws.id });
+    }
+  } catch (error) {
     status = 'error';
-    responsePayload = { message: 'Unknown command', originalCommand: command };
-    logger.warn({ msg: 'Unknown WebSocket command', command, operationId, clientId: ws.id });
+    responsePayload = { message: 'Command execution failed', error: error.message };
+    logger.error({ msg: 'WebSocket command execution error', command, operationId, clientId: ws.id, error: error.message });
   }
   // --- Конец обработки команды ---
 

@@ -7,7 +7,8 @@ LLM-powered desktop POS system built with Electron, React, and Node.js. Features
 ## Architecture
 
 ### Technology Stack
-- **Desktop:** Electron.js with React frontend
+- **Desktop:** Electron.js with a Svelte frontend
+- **Mobile:** Native Android (Kotlin/Jetpack Compose) for standalone and client-only deployments
 - **Backend:** Node.js + Express.js (local HTTP API)
 - **Database:** SQLite with Knex.js migrations
 - **LLM:** Google Gemini (Flash/Pro) via @google/genai

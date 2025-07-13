@@ -16,6 +16,8 @@
 
 const db = require('../db/knex');
 const logger = require('../config/logger');
+const crypto = require('crypto');
+const { bufferToEmbedding } = require('./embedding.service');
 
 /**
  * Export current database state to OOP-POS-MDF JSON format
@@ -24,10 +26,12 @@ const logger = require('../config/logger');
  */
 async function exportToOopMdf(options = {}) {
   const startTime = Date.now();
+  const includeEmbeddings = options.includeEmbeddings !== false; // Default to true
   
   logger.info('Starting OOP-POS-MDF export', { 
     timestamp: new Date().toISOString(),
-    options
+    options,
+    includeEmbeddings
   });
 
   try {
@@ -41,18 +45,9 @@ async function exportToOopMdf(options = {}) {
     // For now, export the first company (single-company system)
     const company = companies[0];
     
-    // Step 2: Export branches for this company
-    const branches = await exportBranches(company.id);
-    
-    // Step 3: Export POS devices, categories, and items for each branch
-    for (const branch of branches) {
-      branch.point_of_sale_devices = await exportPosDevices(branch.branch_unique_identifier);
-      
-      for (const posDevice of branch.point_of_sale_devices) {
-        posDevice.categories_for_this_pos = await exportCategories(posDevice.pos_device_unique_identifier);
-        posDevice.items_for_this_pos = await exportItems(posDevice.pos_device_unique_identifier);
-      }
-    }
+    // Step 2: Export all hierarchical data with optimized bulk queries
+    const exportedData = await exportHierarchicalDataOptimized(company.id, includeEmbeddings);
+    const branches = exportedData.branches;
 
     // Step 4: Build final oop-pos-mdf structure
     const exportedConfig = {
@@ -116,57 +111,124 @@ async function exportToOopMdf(options = {}) {
 }
 
 /**
- * Export companies from database
+ * Optimized hierarchical data export with bulk queries
+ * @param {number} companyId - Company ID
+ * @param {boolean} includeEmbeddings - Whether to include embeddings
  */
-async function exportCompanies() {
-  const companies = await db('companies').select('*');
-  return companies;
-}
-
-/**
- * Export branches for a specific company
- */
-async function exportBranches(companyId) {
+async function exportHierarchicalDataOptimized(companyId, includeEmbeddings = true) {
+  const startTime = Date.now();
+  
+  // Step 1: Get all branches for this company
   const branches = await db('branches')
     .select('*')
     .where('company_id', companyId);
   
-  return branches.map(branch => ({
-    branch_unique_identifier: branch.id,
-    branch_names: JSON.parse(branch.branch_name || '{}'),
-    branch_address: branch.branch_address,
-    point_of_sale_devices: [] // Will be populated later
-  }));
-}
-
-/**
- * Export POS devices for a specific branch
- */
-async function exportPosDevices(branchId) {
+  if (branches.length === 0) {
+    return { branches: [] };
+  }
+  
+  const branchIds = branches.map(b => b.id);
+  
+  // Step 2: Get all POS devices for all branches in one query
   const posDevices = await db('pos_devices')
     .select('*')
-    .where('branch_id', branchId);
+    .whereIn('branch_id', branchIds);
   
-  return posDevices.map(device => ({
-    pos_device_unique_identifier: device.id,
-    pos_device_names: JSON.parse(device.pos_device_name || '{}'),
-    pos_device_type: device.pos_device_type,
-    pos_device_external_number: device.pos_device_external_number,
-    pos_device_settings: JSON.parse(device.pos_device_settings || '{}'),
-    categories_for_this_pos: [], // Will be populated later
-    items_for_this_pos: [] // Will be populated later
-  }));
+  const posDeviceIds = posDevices.map(p => p.id);
+  
+  // Step 3: Get all categories for all POS devices in one query
+  const categories = await db('categories')
+    .select('*')
+    .whereIn('pos_device_id', posDeviceIds);
+  
+  // Step 4: Get all items with optimized query (conditional embedding join)
+  let itemsQuery = db('items')
+    .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
+    .whereIn('items.pos_device_id', posDeviceIds);
+
+  if (includeEmbeddings) {
+    itemsQuery = itemsQuery
+      .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
+      .select('items.*', 'categories.source_unique_identifier as category_source_id', 'vec_items.item_embedding as embedding_vector');
+  } else {
+    itemsQuery = itemsQuery
+      .select('items.*', 'categories.source_unique_identifier as category_source_id');
+  }
+
+  const items = await itemsQuery;
+  
+  // Step 5: Create lookup maps for efficient grouping
+  const posDevicesByBranch = new Map();
+  const categoriesByPosDevice = new Map();
+  const itemsByPosDevice = new Map();
+  
+  // Group POS devices by branch
+  posDevices.forEach(device => {
+    if (!posDevicesByBranch.has(device.branch_id)) {
+      posDevicesByBranch.set(device.branch_id, []);
+    }
+    posDevicesByBranch.get(device.branch_id).push(device);
+  });
+  
+  // Group categories by POS device
+  categories.forEach(category => {
+    if (!categoriesByPosDevice.has(category.pos_device_id)) {
+      categoriesByPosDevice.set(category.pos_device_id, []);
+    }
+    categoriesByPosDevice.get(category.pos_device_id).push(category);
+  });
+  
+  // Group items by POS device
+  items.forEach(item => {
+    if (!itemsByPosDevice.has(item.pos_device_id)) {
+      itemsByPosDevice.set(item.pos_device_id, []);
+    }
+    itemsByPosDevice.get(item.pos_device_id).push(item);
+  });
+  
+  // Step 6: Build hierarchical structure
+  const processedBranches = branches.map(branch => {
+    const branchPosDevices = posDevicesByBranch.get(branch.id) || [];
+    
+    const processedPosDevices = branchPosDevices.map(device => {
+      const deviceCategories = categoriesByPosDevice.get(device.id) || [];
+      const deviceItems = itemsByPosDevice.get(device.id) || [];
+      
+      return {
+        pos_device_unique_identifier: device.id,
+        pos_device_names: JSON.parse(device.pos_device_name || '{}'),
+        pos_device_type: device.pos_device_type,
+        pos_device_external_number: device.pos_device_external_number,
+        pos_device_settings: JSON.parse(device.pos_device_settings || '{}'),
+        categories_for_this_pos: processCategories(deviceCategories),
+        items_for_this_pos: processItems(deviceItems, includeEmbeddings)
+      };
+    });
+    
+    return {
+      branch_unique_identifier: branch.id,
+      branch_names: JSON.parse(branch.branch_name || '{}'),
+      branch_address: branch.branch_address,
+      point_of_sale_devices: processedPosDevices
+    };
+  });
+  
+  const duration = Date.now() - startTime;
+  logger.info('Optimized hierarchical export completed', {
+    duration,
+    branches: branches.length,
+    posDevices: posDevices.length,
+    categories: categories.length,
+    items: items.length
+  });
+  
+  return { branches: processedBranches };
 }
 
 /**
- * Export categories for a specific POS device
+ * Process categories data in memory
  */
-async function exportCategories(posDeviceId) {
-  // Get categories and their parent relationships
-  const categories = await db('categories')
-    .select('*')
-    .where('pos_device_id', posDeviceId);
-  
+function processCategories(categories) {
   // Build mapping of internal IDs to source identifiers for parent lookup
   const categoryIdMap = new Map();
   categories.forEach(cat => {
@@ -185,27 +247,57 @@ async function exportCategories(posDeviceId) {
 }
 
 /**
- * Export items for a specific POS device
+ * Process items data in memory with conditional embedding handling
  */
-async function exportItems(posDeviceId) {
-  // Get items with their associated category information
-  const items = await db('items')
-    .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
-    .select('items.*', 'categories.source_unique_identifier as category_source_id')
-    .where('items.pos_device_id', posDeviceId);
-  
-  return items.map(item => ({
-    item_unique_identifier: parseInt(item.source_unique_identifier),
-    associated_category_unique_identifier: parseInt(item.category_source_id),
-    display_names: JSON.parse(item.display_names || '{}'),
-    item_price_value: parseFloat(item.item_price_value),
-    pricing_schedules: JSON.parse(item.pricing_schedules || '[]'),
-    availability_schedule: JSON.parse(item.availability_schedule || '{}'),
-    additional_item_attributes: JSON.parse(item.additional_item_attributes || '{}'),
-    item_flags: JSON.parse(item.item_flags || '{}'),
-    audit_trail: JSON.parse(item.audit_trail || '{}')
-  }));
+function processItems(items, includeEmbeddings) {
+  return items.map(item => {
+    const exportedItem = {
+      item_unique_identifier: parseInt(item.source_unique_identifier),
+      associated_category_unique_identifier: parseInt(item.category_source_id),
+      display_names: JSON.parse(item.display_names || '{}'),
+      item_price_value: parseFloat(item.item_price_value),
+      pricing_schedules: JSON.parse(item.pricing_schedules || '[]'),
+      availability_schedule: JSON.parse(item.availability_schedule || '{}'),
+      additional_item_attributes: JSON.parse(item.additional_item_attributes || '{}'),
+      item_flags: JSON.parse(item.item_flags || '{}'),
+      audit_trail: JSON.parse(item.audit_trail || '{}')
+    };
+
+    // Include embedding data if available and requested
+    if (includeEmbeddings && item.embedding_vector) {
+      // Reconstruct semantic string for hash validation
+      const displayNames = JSON.parse(item.display_names || '{}');
+      const additionalAttrs = JSON.parse(item.additional_item_attributes || '{}');
+      const semanticString = [
+        displayNames.de || displayNames.en || '',
+        displayNames.en || '',
+        additionalAttrs.description || '',
+        additionalAttrs.ingredients || ''
+      ].filter(Boolean).join(' ').trim();
+      
+      // Calculate hash of the semantic string
+      const sourceHash = crypto.createHash('sha256').update(semanticString).digest('hex');
+      
+      exportedItem.embedding_data = {
+        model: "gemini-embedding-exp-03-07",
+        vector: bufferToEmbedding(item.embedding_vector),
+        source_hash: sourceHash
+      };
+    }
+
+    return exportedItem;
+  });
 }
+
+/**
+ * Export companies from database
+ */
+async function exportCompanies() {
+  const companies = await db('companies').select('*');
+  return companies;
+}
+
+// Legacy functions removed - using optimized exportHierarchicalDataOptimized instead
 
 /**
  * Export with file naming that includes 'exp' suffix

@@ -17,6 +17,7 @@
 const db = require('../db/knex');
 const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
 const logger = require('../config/logger');
+const crypto = require('crypto');
 
 /**
  * Import a complete oop-pos-mdf JSON configuration into the database
@@ -285,21 +286,65 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
 
       stats.items++;
 
-      // Step 2: Construct semantic string for embedding
-      const categoryName = categoryNameMap.get(item.associated_category_unique_identifier) || 'Unknown Category';
-      const description = item.additional_item_attributes?.description || '';
-      
-      const semanticString = `Category: ${categoryName}. Product: ${itemName}. Description: ${description}`.trim();
-      
-      logger.debug('Generated semantic string', { 
-        itemId, 
-        itemName, 
-        semanticString: semanticString.substring(0, 100) + (semanticString.length > 100 ? '...' : '')
-      });
+      // Step 2: Check for existing embedding data and validate
+      let embedding = null;
+      let embeddingBuffer = null;
+      let skipApiCall = false;
 
-      // Step 3: Generate embedding
-      const embedding = await generateEmbedding(semanticString);
-      const embeddingBuffer = embeddingToBuffer(embedding);
+      if (item.embedding_data && item.embedding_data.vector && item.embedding_data.source_hash) {
+        // Reconstruct semantic string for hash validation
+        const categoryName = categoryNameMap.get(item.associated_category_unique_identifier) || 'Unknown Category';
+        const description = item.additional_item_attributes?.description || '';
+        const ingredients = item.additional_item_attributes?.ingredients || '';
+        
+        const currentSemanticString = [
+          item.display_names?.menu?.de || item.display_names?.menu?.en || '',
+          item.display_names?.menu?.en || '',
+          description,
+          ingredients
+        ].filter(Boolean).join(' ').trim();
+        
+        const currentHash = crypto.createHash('sha256').update(currentSemanticString).digest('hex');
+        
+        if (currentHash === item.embedding_data.source_hash) {
+          // Hash matches - reuse existing embedding
+          logger.debug('Reusing existing embedding (hash match)', { 
+            itemId, 
+            itemName,
+            hash: currentHash.substring(0, 8) + '...'
+          });
+          
+          embedding = item.embedding_data.vector;
+          embeddingBuffer = embeddingToBuffer(embedding);
+          skipApiCall = true;
+          stats.embeddings++;
+        } else {
+          logger.warn('Embedding hash mismatch - text has changed, generating new embedding', {
+            itemId,
+            itemName,
+            expectedHash: item.embedding_data.source_hash.substring(0, 8) + '...',
+            currentHash: currentHash.substring(0, 8) + '...'
+          });
+        }
+      }
+
+      // Step 3: Generate new embedding if needed
+      if (!skipApiCall) {
+        const categoryName = categoryNameMap.get(item.associated_category_unique_identifier) || 'Unknown Category';
+        const description = item.additional_item_attributes?.description || '';
+        
+        const semanticString = `Category: ${categoryName}. Product: ${itemName}. Description: ${description}`.trim();
+        
+        logger.debug('Generated semantic string for new embedding', { 
+          itemId, 
+          itemName, 
+          semanticString: semanticString.substring(0, 100) + (semanticString.length > 100 ? '...' : '')
+        });
+
+        embedding = await generateEmbedding(semanticString);
+        embeddingBuffer = embeddingToBuffer(embedding);
+        stats.embeddings++;
+      }
 
       // Step 4: Insert vector data into vec_items table
       // The rowid of vec_items must match the id from the items table
@@ -308,7 +353,6 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
           'INSERT INTO vec_items(rowid, item_embedding) VALUES (?, ?)',
           [itemId, embeddingBuffer]
         );
-        stats.embeddings++;
       } catch (error) {
         logger.warn('vec_items table not found, skipping embedding insertion');
       }

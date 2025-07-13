@@ -16,9 +16,6 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const OpenAI = require('openai');
-const Anthropic = require('@anthropic-ai/sdk');
 const winston = require('winston');
 const { v4: uuidv4 } = require('uuid');
 const { getGeminiModel } = require('../services/llm.provider');
@@ -57,30 +54,11 @@ class MenuParserLLM {
   }
 
   initializeLLMClients(options) {
-    // Google Gemini
-    if (options.geminiApiKey || process.env.GEMINI_API_KEY) {
-      this.gemini = new GoogleGenerativeAI(options.geminiApiKey || process.env.GEMINI_API_KEY);
-      this.gemini25Model = this.gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      this.gemini20Model = this.gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    }
-
-    // OpenAI GPT
-    if (options.openaiApiKey || process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({
-        apiKey: options.openaiApiKey || process.env.OPENAI_API_KEY
-      });
-    }
-
-    // Anthropic Claude
-    if (options.anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
-      this.anthropic = new Anthropic({
-        apiKey: options.anthropicApiKey || process.env.ANTHROPIC_API_KEY
-      });
-    }
-
-    if (!this.gemini && !this.openai && !this.anthropic) {
-      throw new Error('At least one LLM API key must be provided');
-    }
+    // Google Gemini - use centralized provider
+    this.gemini25Model = getGeminiModel({ modelName: 'gemini-2.5-flash' });
+    this.gemini20Model = getGeminiModel({ modelName: 'gemini-2.0-flash' });
+    
+    console.log('Using Gemini through centralized provider');
   }
 
   /**
@@ -309,15 +287,6 @@ class MenuParserLLM {
       type: 'gemini'
     }));
     
-    // Add other models if available
-    if (this.openai) {
-      models.push({ name: 'gpt-4o', client: this.openai, type: 'openai' });
-      models.push({ name: 'gpt-3.5-turbo', client: this.openai, type: 'openai' });
-    }
-    
-    if (this.anthropic) {
-      models.push({ name: 'claude-3-sonnet-20240229', client: this.anthropic, type: 'anthropic' });
-    }
 
     for (const model of models) {
       if (attempts >= this.parsingConfig.maxRetries) break;
@@ -336,13 +305,6 @@ class MenuParserLLM {
         if (isFileInput && model.type === 'gemini') {
           // Gemini supports files directly
           result = await this.callLLMWithFiles(model, systemPrompt, input, options);
-        } else if (isFileInput) {
-          // Other models don't support files, skip
-          this.logger.warn('Model does not support file input, skipping', { 
-            requestId, 
-            model: model.name 
-          });
-          continue;
         } else {
           // Text input for any model
           const userPrompt = this.createUserPrompt(input, options);
@@ -511,9 +473,9 @@ Antworte nur mit dem validen JSON-Objekt.`;
 
     console.log('🤖 Calling Gemini API with files...');
     // Use the unified provider client directly
-    const result = await model.client.invoke(content);
+    const result = await model.client.generateContent(content);
     console.log('✅ Gemini API response received');
-    const text = result.content;
+    const text = result.text;
     console.log('📄 Response text length:', text.length);
     console.log('📄 First 200 chars:', text.substring(0, 200));
     return text;
@@ -531,37 +493,16 @@ Antworte nur mit dem validen JSON-Objekt.`;
       case 'gemini':
         console.log('🤖 Calling Gemini API...');
         // Use the unified provider client directly
-        const result = await model.client.invoke([
+        const result = await model.client.generateContent([
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ]);
         console.log('✅ Gemini API response received');
-        const text = result.content;
+        const text = result.text;
         console.log('📄 Response text length:', text.length);
         console.log('📄 First 200 chars:', text.substring(0, 200));
         return text;
 
-      case 'openai':
-        const completion = await model.client.chat.completions.create({
-          model: model.name,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 4000
-        });
-        return completion.choices[0].message.content;
-
-      case 'anthropic':
-        const message = await model.client.messages.create({
-          model: model.name,
-          max_tokens: 4000,
-          temperature: 0.3,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: userPrompt }]
-        });
-        return message.content[0].text;
 
       default:
         throw new Error(`Unsupported model type: ${model.type}`);
@@ -1039,11 +980,7 @@ Antworte nur mit dem validen JSON-Objekt.`;
    * CLI интерфейс для парсинга меню
    */
   static async parseMenuFromCLI(args) {
-    const parser = new MenuParserLLM({
-      geminiApiKey: process.env.GEMINI_API_KEY,
-      openaiApiKey: process.env.OPENAI_API_KEY,
-      anthropicApiKey: process.env.ANTHROPIC_API_KEY
-    });
+    const parser = new MenuParserLLM({});
 
     try {
       const inputPath = args[0];

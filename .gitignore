@@ -145,5 +145,11 @@ build/Release
 *.key
 secrets.json
 
+# Menu processing files
+menu_inputs/*
+!menu_inputs/.gitkeep
+menu_outputs/*
+!menu_outputs/.gitkeep
+
 # feur mich
 ideasHistory.md

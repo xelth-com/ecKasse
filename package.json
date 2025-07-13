@@ -8,16 +8,18 @@
     "dev:backend": "npm run dev --workspace=@eckasse/backend",
     "migrate:backend": "npm run db:migrate:latest --workspace=@eckasse/backend",
     "seed:backend": "npm run db:seed:run --workspace=@eckasse/backend",
+    "dev:client:svelte": "npm run dev --workspace=@eckasse/renderer-ui",
     "dev:electron:wait-and-watch": "wait-on http://localhost:3030 && npm run dev:electron:watch --workspace=@eckasse/client-desktop",
     "build:client:desktop": "npm run build --workspace=@eckasse/client-desktop",
     "dist:client:desktop": "npm run dist --workspace=@eckasse/client-desktop",
     "dev:desktop:full": "concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"npm:dev:electron:wait-and-watch\"",
-    "dev": "npm run dev:desktop:full",
+    "dev": "concurrently -k -n \"BACKEND,SVELTE,ELECTRON\" -c \"bgBlue.bold,bgRed.bold,bgMagenta.bold\" \"npm:dev:backend\" \"npm:dev:client:svelte\" \"wait-on http://localhost:3001 && npm run dev:electron:watch --workspace=@eckasse/client-desktop\"",
     "lint:all": "npm run lint --workspaces --if-present",
     "format:all": "prettier --write \"packages/**/*.{js,json,md,css,html}\" \"shared/**/*.{js,json,md,css,html}\" \"*.{json,md}\"",
     "test:all": "npm run test --workspaces --if-present",
     "clean:all": "npm run clean --workspaces --if-present && node -e \"require('fs').rmSync('./node_modules', { recursive: true, force: true });\"",
-    "bootstrap": "npm install --workspaces"
+    "bootstrap": "npm install --workspaces",
+    "setup:restaurant": "node packages/backend/src/scripts/parse_and_init.js"
   },
   "workspaces": [
     "packages/*",

@@ -1,6 +1,7 @@
 // File: /packages/backend/src/services/llm.service.js
 
-const { GoogleGenAI, Type } = require("@google/genai");
+const { Type } = require("@google/genai");
+const { getGeminiModel } = require('./llm.provider');
 
 const logger = require('../config/logger');
 const knex = require('../db/knex');
@@ -9,8 +10,6 @@ const { searchProducts } = require('./search.service');
 const { generateSalesReport } = require('./reporting.service');
 const { createProduct } = require('./product.service');
 
-// Initialize Google AI client
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
 // Language detection utilities
 const LANGUAGE_PATTERNS = {
@@ -258,13 +257,10 @@ const toolFunctions = {
 };
 
 /**
- * Get prioritized models for fallback usage
+ * Get the default Gemini model configuration
  */
-function getPrioritizedModels() {
-    return [
-        { name: "gemini-2.5-flash", temperature: 0.1 },
-        { name: "gemini-2.0-flash", temperature: 0.1 }
-    ];
+function getDefaultModelConfig() {
+    return { name: "gemini-2.5-flash", temperature: 0.1 };
 }
 
 /**
@@ -384,20 +380,19 @@ async function sendMessage(userMessage, chatHistory = []) {
         };
     });
     
-    const models = getPrioritizedModels();
+    const modelConfig = getDefaultModelConfig();
+    const modelName = modelConfig.name;
+    logger.info({ msg: `Using model ${modelName}`, conversationLanguage: currentLanguage });
     
-    for (const [index, modelConfig] of models.entries()) {
-        const modelName = modelConfig.name;
-        logger.info({ msg: `Attempting model ${modelName}`, attempt: index + 1, totalModels: models.length, conversationLanguage: currentLanguage });
-        
-        try {
+    try {
             // Enhanced logging for first Gemini call
             const systemPrompt = createSystemPrompt(currentLanguage);
             console.log(`[GEMINI_CALL_1] System Prompt: "${systemPrompt}"`);
             console.log(`[GEMINI_CALL_1] Sending request to model...`);
             
             // Use the native SDK generateContent API
-            let result = await genAI.models.generateContent({
+            const model = getGeminiModel({ modelName });
+            let result = await model.generateContent({
                 model: modelName,
                 systemInstruction: createSystemPrompt(currentLanguage),
                 contents: [
@@ -483,7 +478,7 @@ async function sendMessage(userMessage, chatHistory = []) {
                 console.log('[GEMINI_CALL_2] Sending tool results back to model for final response.');
                 
                 // Send function responses back to the model
-                result = await genAI.models.generateContent({
+                result = await model.generateContent({
                     model: modelName,
                     systemInstruction: createSystemPrompt(currentLanguage),
                     contents: [
@@ -531,38 +526,34 @@ async function sendMessage(userMessage, chatHistory = []) {
             
             return { text: responseText, history: newHistory };
             
-        } catch (error) {
-            logger.warn({ msg: `Model ${modelName} failed, trying next model`, error: error.message });
-            
-            // If this is the last model, handle the error
-            if (index === models.length - 1) {
-                const geminiErrorInfo = handleGeminiError(error, { language: currentLanguage, includeRetryInfo: true });
-                const errorLog = createGeminiErrorLog(error, {
-                    operation: 'llm_chat',
-                    userMessage: userMessage.substring(0, 100),
-                    chatHistoryLength: updatedChatHistory.length,
-                    lastModelAttempted: modelName
-                });
+    } catch (error) {
+        logger.error({ msg: `Model ${modelName} failed`, error: error.message });
+        
+        const geminiErrorInfo = handleGeminiError(error, { language: currentLanguage, includeRetryInfo: true });
+        const errorLog = createGeminiErrorLog(error, {
+            operation: 'llm_chat',
+            userMessage: userMessage.substring(0, 100),
+            chatHistoryLength: updatedChatHistory.length,
+            lastModelAttempted: modelName
+        });
 
-                if (errorLog.level === 'warn') {
-                    logger.warn(errorLog);
-                } else {
-                    logger.error(errorLog);
-                }
-                
-                let responseText = geminiErrorInfo.userMessage;
-                if (geminiErrorInfo.isTemporary && geminiErrorInfo.retryMessage) {
-                    responseText += ' ' + geminiErrorInfo.retryMessage;
-                }
-                
-                return {
-                    text: responseText,
-                    history: updatedChatHistory,
-                    isTemporary: geminiErrorInfo.isTemporary,
-                    errorType: geminiErrorInfo.errorType
-                };
-            }
+        if (errorLog.level === 'warn') {
+            logger.warn(errorLog);
+        } else {
+            logger.error(errorLog);
         }
+        
+        let responseText = geminiErrorInfo.userMessage;
+        if (geminiErrorInfo.isTemporary && geminiErrorInfo.retryMessage) {
+            responseText += ' ' + geminiErrorInfo.retryMessage;
+        }
+        
+        return {
+            text: responseText,
+            history: updatedChatHistory,
+            isTemporary: geminiErrorInfo.isTemporary,
+            errorType: geminiErrorInfo.errorType
+        };
     }
 }
 
@@ -572,8 +563,8 @@ async function sendMessage(userMessage, chatHistory = []) {
  */
 async function invokeSimpleQuery(promptText) {
     try {
-        const result = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const model = getGeminiModel({ modelName: 'gemini-2.5-flash' });
+        const result = await model.generateContent({
             systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
             generationConfig: {
                 temperature: 0.1

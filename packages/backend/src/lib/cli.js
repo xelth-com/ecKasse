@@ -202,7 +202,7 @@ class EckasseCLI {
       .option('--validate', 'Validate generated configuration')
       .option('--interactive', 'Interactive mode for corrections if confidence is low')
       .option('--confidence-threshold <threshold>', 'Minimum confidence threshold (0.0-1.0)', '0.7')
-      .option('--llm-provider <provider>', 'Preferred LLM provider (gemini, openai, anthropic)', 'gemini')
+      .option('--llm-provider <provider>', 'LLM provider (gemini)', 'gemini')
       .action(async (inputs, options) => {
         await this.parseMenuCommand(inputs, options);
       });
@@ -233,6 +233,7 @@ class EckasseCLI {
       .option('--validate', 'Validate exported configuration against schema')
       .option('--pretty', 'Format JSON output with indentation (default: true)')
       .option('--force', 'Overwrite existing output file without confirmation')
+      .option('--no-embeddings', 'Exclude vector embeddings from export (reduces file size)')
       .action(async (output, options) => {
         await this.exportMdfCommand(output, options);
       });
@@ -1320,7 +1321,7 @@ class EckasseCLI {
 
       try {
         const exportFn = loadExportService();
-        const result = await exportFn();
+        const result = await exportFn({ includeEmbeddings: options.embeddings !== false });
 
         spinner.succeed('Export completed successfully!');
 

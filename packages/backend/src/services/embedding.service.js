@@ -1,24 +1,10 @@
 // File: /packages/backend/src/services/embedding.service.js
 
-const { GoogleGenAI } = require('@google/genai');
+const { geminiClient: ai } = require('./llm.provider');
 const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErrorHandler');
-
-// Проверяем наличие API ключа
-if (!process.env.GEMINI_API_KEY) {
-  console.warn('⚠️  GEMINI_API_KEY не найден в переменных окружения!');
-  console.warn('   Пожалуйста, добавьте GEMINI_API_KEY в файл .env');
-  console.warn('   Получить ключ можно здесь: https://aistudio.google.com/app/apikey');
-}
 
 // Отключаем моки - используем только реальный API
 const USE_MOCK_EMBEDDINGS = false;
-
-let ai;
-if (process.env.GEMINI_API_KEY) {
-  ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-} else {
-  console.error('❌ GEMINI_API_KEY отсутствует! Embeddings не будут работать.');
-}
 
 /**
  * Generate embedding vector for text using Google's gemini-embedding-exp-03-07 model
@@ -27,9 +13,6 @@ if (process.env.GEMINI_API_KEY) {
  * @returns {Promise<number[]>} - Array of 768 float values representing the embedding
  */
 async function generateEmbedding(text, options = {}) {
-  if (!ai) {
-    throw new Error('❌ GEMINI_API_KEY не настроен. Проверьте файл .env');
-  }
   
   try {
     console.log(`🔍 Генерирую embedding для: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
@@ -97,9 +80,6 @@ async function generateEmbedding(text, options = {}) {
  * @returns {Promise<number[][]>} - Array of embedding vectors
  */
 async function generateBatchEmbeddings(texts, options = {}) {
-  if (!ai) {
-    throw new Error('❌ GEMINI_API_KEY не настроен. Проверьте файл .env');
-  }
   
   try {
     console.log(`🔍 Генерирую batch embeddings для ${texts.length} текстов`);
@@ -141,9 +121,6 @@ async function generateBatchEmbeddings(texts, options = {}) {
  * @returns {Promise<Object>} - Statistics object
  */
 async function getEmbeddingStats(text, options = {}) {
-  if (!ai) {
-    throw new Error('❌ GEMINI_API_KEY не настроен. Проверьте файл .env');
-  }
   
   try {
     const response = await ai.models.embedContent({

@@ -30,7 +30,8 @@
       "Bash(npx knex migrate:up:*)",
       "Bash(time node:*)",
       "Bash(find:*)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

@@ -22,13 +22,13 @@ function createWindow() {
 
   const startUrl =
     process.env.ELECTRON_START_URL ||
-    (app.isPackaged
-      ? url.format({
-          pathname: path.join(__dirname, '../src/renderer/public/index.html'),
+    (!app.isPackaged
+      ? 'http://localhost:3001' // Vite dev server
+      : url.format({
+          pathname: path.join(__dirname, '../src/renderer/dist/index.html'), // Production build
           protocol: 'file:',
           slashes: true,
-        })
-      : `http://localhost:${BACKEND_PORT}`);
+        }));
 
   mainWindow.loadURL(startUrl);
 

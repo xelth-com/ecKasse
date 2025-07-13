@@ -1,16 +1,16 @@
 {
-   "name": "@eckasse/renderer-ui",
-   "version": "0.1.0",
-   "private": true,
-   "dependencies": {
-      "uuid": "^10.0.0"
-   },
-   "scripts": {
-      "start": "echo 'Static files now served by backend server'",
-      "build": "echo 'No build needed for plain HTML/JS/CSS'",
-      "test": "echo 'No tests specified'"
-   },
-   "devDependencies": {
-      "@types/uuid": "^10.0.0"
-   }
+  "name": "@eckasse/renderer-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "svelte": "^5.35.6",
+    "vite": "^7.0.4"
+  }
 }
