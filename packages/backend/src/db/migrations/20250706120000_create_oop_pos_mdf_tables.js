@@ -27,6 +27,7 @@ exports.up = function (knex) {
     .createTable('categories', (table) => {
       table.increments('id').primary();
       table.integer('pos_device_id').unsigned().references('id').inTable('pos_devices').onDelete('CASCADE');
+      table.string('source_unique_identifier').notNullable().unique().index();
       table.jsonb('category_names').notNullable();
       table.string('category_type').notNullable();
       table.integer('parent_category_id').unsigned().references('id').inTable('categories').onDelete('SET NULL');
@@ -37,6 +38,7 @@ exports.up = function (knex) {
     .createTable('items', (table) => {
       table.increments('id').primary();
       table.integer('pos_device_id').unsigned().references('id').inTable('pos_devices').onDelete('CASCADE');
+      table.string('source_unique_identifier').notNullable().unique().index();
       table.integer('associated_category_unique_identifier').unsigned().references('id').inTable('categories').onDelete('CASCADE');
       table.jsonb('display_names').notNullable();
       table.decimal('item_price_value', 10, 2).notNullable();

@@ -21,7 +21,7 @@ if (process.env.GEMINI_API_KEY) {
 }
 
 /**
- * Generate embedding vector for text using Google's text-embedding-004 model
+ * Generate embedding vector for text using Google's gemini-embedding-exp-03-07 model
  * @param {string} text - Text to generate embedding for
  * @param {Object} options - Additional options
  * @returns {Promise<number[]>} - Array of 768 float values representing the embedding
@@ -35,11 +35,11 @@ async function generateEmbedding(text, options = {}) {
     console.log(`🔍 Генерирую embedding для: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
     
     const response = await ai.models.embedContent({
-      model: options.model || 'text-embedding-004',
+      model: options.model || 'gemini-embedding-exp-03-07',
       contents: [text],
       config: {
-        taskType: options.taskType || "SEMANTIC_SIMILARITY",
-        outputDimensionality: options.outputDimensionality || undefined
+        taskType: options.taskType || "RETRIEVAL_DOCUMENT",
+        outputDimensionality: options.outputDimensionality || 768
       }
     });
     
@@ -105,11 +105,11 @@ async function generateBatchEmbeddings(texts, options = {}) {
     console.log(`🔍 Генерирую batch embeddings для ${texts.length} текстов`);
     
     const response = await ai.models.embedContent({
-      model: options.model || 'text-embedding-004',
+      model: options.model || 'gemini-embedding-exp-03-07',
       contents: texts,
       config: {
-        taskType: options.taskType || "SEMANTIC_SIMILARITY",
-        outputDimensionality: options.outputDimensionality || undefined
+        taskType: options.taskType || "RETRIEVAL_DOCUMENT",
+        outputDimensionality: options.outputDimensionality || 768
       }
     });
     
@@ -147,10 +147,11 @@ async function getEmbeddingStats(text, options = {}) {
   
   try {
     const response = await ai.models.embedContent({
-      model: options.model || 'text-embedding-004',
+      model: options.model || 'gemini-embedding-exp-03-07',
       contents: [text],
       config: {
-        taskType: options.taskType || "SEMANTIC_SIMILARITY"
+        taskType: options.taskType || "RETRIEVAL_DOCUMENT",
+        outputDimensionality: options.outputDimensionality || 768
       }
     });
     

@@ -22,7 +22,15 @@
       "Bash(mv:*)",
       "Bash(npm start)",
       "Bash(curl:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(jq:*)",
+      "Bash(npx knex migrate:rollback:*)",
+      "Bash(npx knex migrate:latest:*)",
+      "Bash(npx knex migrate:up:*)",
+      "Bash(time node:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:ai.google.dev)"
     ],
     "deny": []
   }

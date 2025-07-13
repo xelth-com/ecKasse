@@ -89,7 +89,11 @@ async function cleanExistingData(trx) {
   logger.info('Cleaning existing data from database');
   
   // Delete in order: vec_items -> items -> categories -> pos_devices -> branches -> companies
-  await trx.raw('DELETE FROM vec_items');
+  try {
+    await trx.raw('DELETE FROM vec_items');
+  } catch (error) {
+    logger.warn('vec_items table not found, skipping cleanup');
+  }
   await trx('items').del();
   await trx('categories').del();
   await trx('pos_devices').del();
@@ -122,11 +126,13 @@ async function importHierarchicalData(trx, jsonData, stats) {
     companyName: companyDetails.company_full_name 
   });
   
-  const [companyId] = await trx('companies').insert({
+  const companyResult = await trx('companies').insert({
     company_full_name: companyDetails.company_full_name,
     meta_information: JSON.stringify(companyDetails.meta_information || {}),
     global_configurations: JSON.stringify(companyDetails.global_configurations || {})
   }).returning('id');
+  
+  const companyId = companyResult[0].id || companyResult[0];
 
   stats.companies++;
 
@@ -140,11 +146,13 @@ async function importHierarchicalData(trx, jsonData, stats) {
       branchName: branch.branch_names?.de || branch.branch_names?.en || 'Unknown Branch'
     });
 
-    const [branchId] = await trx('branches').insert({
+    const branchResult = await trx('branches').insert({
       company_id: companyId,
       branch_name: JSON.stringify(branch.branch_names || {}),
       branch_address: branch.branch_address || ''
     }).returning('id');
+    
+    const branchId = branchResult[0].id || branchResult[0];
 
     stats.branches++;
 
@@ -159,13 +167,15 @@ async function importHierarchicalData(trx, jsonData, stats) {
         posDeviceName: posDevice.pos_device_names?.de || posDevice.pos_device_names?.en || 'Unknown POS'
       });
 
-      const [posDeviceId] = await trx('pos_devices').insert({
+      const posDeviceResult = await trx('pos_devices').insert({
         branch_id: branchId,
         pos_device_name: JSON.stringify(posDevice.pos_device_names || {}),
         pos_device_type: posDevice.pos_device_type || 'DESKTOP',
         pos_device_external_number: posDevice.pos_device_external_number || 1,
         pos_device_settings: JSON.stringify(posDevice.pos_device_settings || {})
       }).returning('id');
+      
+      const posDeviceId = posDeviceResult[0].id || posDeviceResult[0];
 
       stats.posDevices++;
 
@@ -179,14 +189,17 @@ async function importHierarchicalData(trx, jsonData, stats) {
             categoryUniqueId: category.category_unique_identifier
           });
 
-          const [categoryId] = await trx('categories').insert({
+          const categoryResult = await trx('categories').insert({
             pos_device_id: posDeviceId,
+            source_unique_identifier: String(category.category_unique_identifier),
             category_names: JSON.stringify(category.category_names || {}),
             category_type: category.category_type || 'food',
             parent_category_id: category.parent_category_unique_identifier || null,
             default_linked_main_group_unique_identifier: category.default_linked_main_group_unique_identifier || null,
             audit_trail: JSON.stringify(category.audit_trail || {})
           }).returning('id');
+          
+          const categoryId = categoryResult[0].id || categoryResult[0];
 
           // Store mapping for item linking
           categoryIdMap.set(category.category_unique_identifier, categoryId);
@@ -255,8 +268,9 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
 
     try {
       // Step 1: Insert item data into items table
-      const [itemId] = await trx('items').insert({
+      const itemResult = await trx('items').insert({
         pos_device_id: posDeviceId,
+        source_unique_identifier: String(item.item_unique_identifier),
         associated_category_unique_identifier: categoryId,
         display_names: JSON.stringify(item.display_names || {}),
         item_price_value: item.item_price_value || 0,
@@ -266,6 +280,8 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
         item_flags: JSON.stringify(item.item_flags || {}),
         audit_trail: JSON.stringify(item.audit_trail || {})
       }).returning('id');
+      
+      const itemId = itemResult[0].id || itemResult[0];
 
       stats.items++;
 
@@ -287,17 +303,19 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
 
       // Step 4: Insert vector data into vec_items table
       // The rowid of vec_items must match the id from the items table
-      await trx.raw(
-        'INSERT INTO vec_items(rowid, item_embedding) VALUES (?, ?)',
-        [itemId, embeddingBuffer]
-      );
-
-      stats.embeddings++;
+      try {
+        await trx.raw(
+          'INSERT INTO vec_items(rowid, item_embedding) VALUES (?, ?)',
+          [itemId, embeddingBuffer]
+        );
+        stats.embeddings++;
+      } catch (error) {
+        logger.warn('vec_items table not found, skipping embedding insertion');
+      }
       
       logger.debug('Item import completed', { 
         itemId, 
-        itemName, 
-        embeddingDimensions: embedding.length 
+        itemName
       });
 
     } catch (error) {

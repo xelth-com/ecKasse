@@ -5,6 +5,24 @@ const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
 const { calculateLevenshtein, isSimilar } = require('../utils/levenshtein');
 
 /**
+ * Generates a consistent, canonical cache key for a query and its filters.
+ * @param {string} query - The base search query.
+ * @param {object} filters - The filter object ({ excludeAllergens, dietaryFilter }).
+ * @returns {string} A consistent string key.
+ */
+function generateCacheKey(query, filters) {
+  const sortedFilters = {};
+  // Sort keys to ensure consistency
+  Object.keys(filters).sort().forEach(key => {
+    // Only include non-empty/non-null filters in the key
+    if (filters[key] && (!Array.isArray(filters[key]) || filters[key].length > 0)) {
+      sortedFilters[key] = filters[key];
+    }
+  });
+  return `${query}_${JSON.stringify(sortedFilters)}`;
+}
+
+/**
  * Hybrid search combining FTS, vector search, and Levenshtein distance
  * @param {string} query - Search query
  * @param {Object} options - Search options
@@ -193,73 +211,146 @@ async function applyLevenshteinFilter(vectorResults, query, threshold = 2) {
   return filteredResults;
 }
 
+
 /**
- * Search products by name with hybrid approach
+ * Search products by name with hybrid approach, caching, and filtering
  * @param {string} productName - Product name to search for
+ * @param {Object} filters - Filter options (excludeAllergens, dietaryFilter)
  * @returns {Promise<Object>} - Search results with response message
  */
-async function searchProducts(productName) {
+async function searchProducts(productName, filters = {}) {
   try {
+    const { excludeAllergens = [], dietaryFilter = null } = filters;
+    const cacheKey = generateCacheKey(productName, filters);
+    const CACHE_TTL_MS = 3600 * 1000; // 1 hour
+
+    // --- 1. Refined Cache Check ---
+    const cached = await db('search_cache')
+      .where({ query_text: cacheKey })
+      .where('created_at', '>', new Date(Date.now() - CACHE_TTL_MS))
+      .first();
+
+    if (cached) {
+      console.log(`✅ Cache hit for key: ${cacheKey}`);
+      // The cached response is already what we need. Return it directly.
+      return JSON.parse(cached.full_response_text);
+    }
+    
+    console.log(`🔍 Cache miss for key: ${cacheKey}, performing search`);
+
+    // --- 2. Perform Hybrid Search (if no cache hit) ---
     const searchResult = await hybridSearch(productName, {
       maxResults: 5,
       levenshteinThreshold: 3,
       vectorDistanceThreshold: 30.0  // Relaxed for mock embeddings
     });
 
-    const { results, metadata } = searchResult;
+    let { results, metadata } = searchResult;
 
+    // --- 3. Apply Filters ---
+    if ((excludeAllergens.length > 0 || dietaryFilter) && results.length > 0) {
+      const itemIds = results.map(item => item.id);
+      const fullItems = await db('items').whereIn('id', itemIds);
+
+      const filteredItems = fullItems.filter(item => {
+        let attributes = {};
+        try {
+          attributes = item.additional_item_attributes ? JSON.parse(item.additional_item_attributes) : {};
+        } catch (e) {
+          console.warn(`Failed to parse additional_item_attributes for item ${item.id}`);
+        }
+
+        // Check allergen exclusions
+        if (excludeAllergens.length > 0 && attributes.allergens) {
+          const hasExcludedAllergen = excludeAllergens.some(allergen => 
+            attributes.allergens.includes(allergen)
+          );
+          if (hasExcludedAllergen) return false;
+        }
+
+        // Check dietary filter
+        if (dietaryFilter && attributes.dietary_info) {
+          if (!attributes.dietary_info.includes(dietaryFilter)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // Update results with filtered items, preserving search metadata
+      results = results.filter(result => 
+        filteredItems.some(item => item.id === result.id)
+      );
+
+      metadata = { ...metadata, filtersApplied: true };
+    }
+
+    // --- 4. Formulate Response ---
+    let finalResponse;
     if (results.length === 0) {
-      return {
+      finalResponse = {
         success: false,
         message: `Товар "${productName}" не найден. Попробуйте поискать по другому названию.`,
         results: [],
         metadata
       };
+    } else {
+      // Check for exact or very close matches
+      const exactMatch = results.find(r => 
+        r.search_type === 'fts' || 
+        (r.levenshteinDistance !== undefined && r.levenshteinDistance <= 1)
+      );
+
+      if (exactMatch) {
+        finalResponse = {
+          success: true,
+          message: `Найден товар: "${exactMatch.productName}" - ${exactMatch.price}€`,
+          results: [exactMatch],
+          metadata
+        };
+      } else {
+        // Check for close matches (including good vector matches)
+        const closeMatches = results.filter(r => {
+          const isClose = r.isCloseMatch;
+          const isHighSimilarity = r.similarity > 80;
+          const isGoodVector = (r.distance !== undefined && r.distance <= 0.35);
+          
+          return isClose || isHighSimilarity || isGoodVector;
+        });
+
+        if (closeMatches.length > 0) {
+          const bestMatch = closeMatches[0];
+          finalResponse = {
+            success: true,
+            message: `Точное совпадение не найдено, но есть похожий товар: "${bestMatch.productName}" - ${bestMatch.price}€`,
+            results: closeMatches,
+            metadata
+          };
+        } else {
+          // Return semantic suggestions
+          const suggestions = results.slice(0, 3).map(r => r.productName);
+          finalResponse = {
+            success: false,
+            message: `Товар "${productName}" не найден. Возможно, вы имели в виду: ${suggestions.join(', ')}?`,
+            results: results.slice(0, 3),
+            metadata
+          };
+        }
+      }
     }
 
-    // Check for exact or very close matches
-    const exactMatch = results.find(r => 
-      r.search_type === 'fts' || 
-      (r.levenshteinDistance !== undefined && r.levenshteinDistance <= 1)
-    );
-
-    if (exactMatch) {
-      const displayNames = JSON.parse(exactMatch.display_names);
-      return {
-        success: true,
-        message: `Найден товар: "${exactMatch.productName}" - ${exactMatch.price}€`,
-        results: [exactMatch],
-        metadata
-      };
-    }
-
-    // Check for close matches (including good vector matches)
-    const closeMatches = results.filter(r => {
-      const isClose = r.isCloseMatch;
-      const isHighSimilarity = r.similarity > 80;
-      const isGoodVector = (r.distance !== undefined && r.distance <= 1.5);  // Has vector distance and close
-      
-      return isClose || isHighSimilarity || isGoodVector;
+    // --- 5. Save to Cache ---
+    await db('search_cache').insert({
+      query_text: cacheKey,
+      full_response_text: JSON.stringify(finalResponse),
+      result_item_ids: JSON.stringify(results.map(item => item.id)),
+      model_used: 'hybrid-search-v1'
     });
+    console.log(`💾 Saved search result to cache for key: ${cacheKey}`);
 
-    if (closeMatches.length > 0) {
-      const bestMatch = closeMatches[0];
-      return {
-        success: true,
-        message: `Точное совпадение не найдено, но есть похожий товар: "${bestMatch.productName}" - ${bestMatch.price}€`,
-        results: closeMatches,
-        metadata
-      };
-    }
-
-    // Return semantic suggestions
-    const suggestions = results.slice(0, 3).map(r => r.productName);
-    return {
-      success: false,
-      message: `Товар "${productName}" не найден. Возможно, вы имели в виду: ${suggestions.join(', ')}?`,
-      results: results.slice(0, 3),
-      metadata
-    };
+    // --- 6. Return a fresh result ---
+    return finalResponse;
 
   } catch (error) {
     console.error('Error in product search:', error);
@@ -277,5 +368,6 @@ module.exports = {
   performFTSSearch,
   performVectorSearch,
   applyLevenshteinFilter,
-  searchProducts
+  searchProducts,
+  generateCacheKey
 };

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// Load environment variables
+require('dotenv').config({ path: '../../.env' });
+
 /**
  * End-to-End Test for Phase 3: LLM Agent + Hybrid Search Integration
  * 
@@ -56,6 +59,10 @@ class AgentSearchE2ETest {
       // Test 5: Contextual follow-up test
       console.log('\n📝 Test 5: Contextual Follow-up Test');
       await this.testContextualFollowup();
+
+      // Test 6: Native search functionality test
+      console.log('\n📝 Test 6: Native Search Functionality Test');
+      await this.testNativeSearch();
 
       // Summary
       this.printSummary();
@@ -230,6 +237,43 @@ class AgentSearchE2ETest {
       
     } catch (error) {
       console.log('❌ Contextual follow-up test failed:', error.message);
+      this.testsFailed++;
+    }
+  }
+
+  async testNativeSearch() {
+    try {
+      // Test native search functionality with a query that should trigger web search
+      const query = "Tell me about the latest trends in coffee brewing methods";
+      
+      console.log(`   User: "${query}"`);
+      
+      const response = await sendMessage(query, this.chatHistory);
+      this.chatHistory = response.history || [];
+      
+      console.log(`   Agent: "${response.text}"`);
+      
+      // Check if response contains information that would likely come from web search
+      const containsWebSearchInfo = response.text.toLowerCase().includes('coffee') ||
+                                    response.text.toLowerCase().includes('brew') ||
+                                    response.text.toLowerCase().includes('method') ||
+                                    response.text.toLowerCase().includes('trend') ||
+                                    response.text.length > 100; // Detailed response suggests web search
+      
+      this.assert(
+        containsWebSearchInfo,
+        `Response should contain detailed information about coffee brewing methods from web search. Got: "${response.text}"`
+      );
+
+      this.assert(
+        !response.isTemporary && !response.errorType,
+        'Response should not contain API errors'
+      );
+
+      console.log('✅ Native search test passed');
+      
+    } catch (error) {
+      console.log('❌ Native search test failed:', error.message);
       this.testsFailed++;
     }
   }

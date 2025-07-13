@@ -569,6 +569,10 @@
                             "type": "integer",
                             "minimum": 1
                           },
+                          "menu_item_number": {
+                            "type": ["string", "null"],
+                            "description": "An optional, customer-facing number for the item as it appears on the menu (e.g., '24', 'A5'). This is different from the internal unique identifier and is used for easy ordering."
+                          },
                           "display_names": {
                             "type": "object",
                             "required": ["menu", "button", "receipt"],

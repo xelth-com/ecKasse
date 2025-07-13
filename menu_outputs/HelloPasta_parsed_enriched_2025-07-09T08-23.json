@@ -1,0 +1,2347 @@
+{
+  "$schema": "https://schemas.eckasse.com/oop-pos-mdf/v2.0.0/schema.json",
+  "company_details": {
+    "company_unique_identifier": 1,
+    "company_full_name": "HELLO PASTA",
+    "meta_information": {
+      "format_version": "2.0.0",
+      "previous_versions": [],
+      "date_generated": "2025-07-08T19:40:45.547Z",
+      "generated_by": "eckasse-menu-parser-v2.0.0",
+      "default_currency_symbol": "€",
+      "default_language": "de",
+      "supported_languages": [
+        "de",
+        "en"
+      ],
+      "audit_trail": {
+        "created_at": "2025-07-08T19:40:45.546Z",
+        "created_by": "menu-parser@eckasse.com",
+        "last_modified_at": "2025-07-08T19:40:45.546Z",
+        "last_modified_by": "menu-parser@eckasse.com",
+        "version": 1,
+        "change_log": [
+          {
+            "timestamp": "2025-07-08T19:40:45.546Z",
+            "user": "menu-parser@eckasse.com",
+            "action": "menu_parsed",
+            "description": "Automatically parsed from menu image/text"
+          },
+          {
+            "timestamp": "2025-07-09T08:23:00.234Z",
+            "change_type": "enrichment",
+            "description": "Multi-pass AI enrichment applied",
+            "changed_by": "eckasse-enrichment-service"
+          }
+        ]
+      },
+      "enriched_at": "2025-07-09T08:23:00.234Z",
+      "enriched_by": "eckasse-enrichment-service"
+    },
+    "global_configurations": {
+      "tax_rates_definitions": [
+        {
+          "tax_rate_unique_identifier": 1,
+          "tax_rate_names": {
+            "de": "Standard (19%)"
+          },
+          "rate_percentage": 19,
+          "fiscal_mapping_type": "NORMAL"
+        },
+        {
+          "tax_rate_unique_identifier": 2,
+          "tax_rate_names": {
+            "de": "Ermäßigt (7%)"
+          },
+          "rate_percentage": 7,
+          "fiscal_mapping_type": "REDUCED"
+        }
+      ],
+      "main_groups_definitions": [
+        {
+          "main_group_unique_identifier": 1,
+          "main_group_names": {
+            "de": "Vorspeisen"
+          }
+        },
+        {
+          "main_group_unique_identifier": 2,
+          "main_group_names": {
+            "de": "Hauptspeisen"
+          }
+        },
+        {
+          "main_group_unique_identifier": 3,
+          "main_group_names": {
+            "de": "Beilagen & Add-ons"
+          }
+        },
+        {
+          "main_group_unique_identifier": 4,
+          "main_group_names": {
+            "de": "Desserts"
+          }
+        },
+        {
+          "main_group_unique_identifier": 5,
+          "main_group_names": {
+            "de": "Getränke"
+          }
+        }
+      ],
+      "payment_methods_definitions": [
+        {
+          "payment_method_unique_identifier": 1,
+          "payment_method_names": {
+            "de": "Bar"
+          },
+          "payment_method_type": "CASH"
+        },
+        {
+          "payment_method_unique_identifier": 2,
+          "payment_method_names": {
+            "de": "Karte"
+          },
+          "payment_method_type": "CARD"
+        }
+      ],
+      "promotions_definitions": [],
+      "workflows": [],
+      "integrations": {},
+      "security_settings": {
+        "encryption": {
+          "at_rest": true,
+          "in_transit": true,
+          "algorithm": "AES-256"
+        },
+        "access_control": {
+          "session_timeout": 3600,
+          "max_failed_attempts": 3,
+          "lockout_duration": 900,
+          "require_2fa": false
+        },
+        "data_privacy": {
+          "gdpr_compliance": true,
+          "data_retention_days": 2555,
+          "anonymization_rules": []
+        }
+      }
+    },
+    "branches": [
+      {
+        "branch_unique_identifier": 1,
+        "branch_names": {
+          "de": "Hauptfiliale"
+        },
+        "branch_address": "Automatisch generiert aus Menü",
+        "point_of_sale_devices": [
+          {
+            "pos_device_unique_identifier": 1,
+            "pos_device_names": {
+              "de": "Hauptkasse"
+            },
+            "pos_device_type": "DESKTOP",
+            "pos_device_external_number": 1,
+            "pos_device_settings": {
+              "default_currency_identifier": "€",
+              "default_linked_drink_tax_rate_unique_identifier": 1,
+              "default_linked_food_tax_rate_unique_identifier": 2
+            },
+            "categories_for_this_pos": [
+              {
+                "category_unique_identifier": 1,
+                "category_names": {
+                  "de": "Pasta Bowls"
+                },
+                "category_type": "food",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": 2,
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "category_unique_identifier": 2,
+                "category_names": {
+                  "de": "Salads"
+                },
+                "category_type": "food",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": 2,
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "category_unique_identifier": 3,
+                "category_names": {
+                  "de": "Add-ons"
+                },
+                "category_type": "food",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": 2,
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "category_unique_identifier": 4,
+                "category_names": {
+                  "de": "Hot Drinks"
+                },
+                "category_type": "drink",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": 1,
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "category_unique_identifier": 5,
+                "category_names": {
+                  "de": "Cold Drinks"
+                },
+                "category_type": "drink",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": 1,
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "category_unique_identifier": 6,
+                "category_names": {
+                  "de": "Desserts"
+                },
+                "category_type": "food",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": 2,
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              }
+            ],
+            "items_for_this_pos": [
+              {
+                "item_unique_identifier": 1000,
+                "display_names": {
+                  "menu": {
+                    "de": "Hello Pasta Alfredo"
+                  },
+                  "button": {
+                    "de": "Alfredo\nPasta"
+                  },
+                  "receipt": {
+                    "de": "Hello Pasta Alfredo"
+                  }
+                },
+                "item_price_value": 12,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Creamy sauce with mushrooms, broccoli, and chicken.",
+                  "allergens": [
+                    "dairy",
+                    "chicken"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "pasta",
+                      "butter",
+                      "Parmesan cheese",
+                      "cream"
+                    ],
+                    "mealType": "main course",
+                    "enriched_at": "2025-07-09T08:16:30.696Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1001,
+                "display_names": {
+                  "menu": {
+                    "de": "Truffle Mushroom Cream"
+                  },
+                  "button": {
+                    "de": "Truffle\nMushroom"
+                  },
+                  "receipt": {
+                    "de": "Truffle Mushroom Cream"
+                  }
+                },
+                "item_price_value": 13,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Creamy sauce with mushrooms, truffle, and Parmesan.",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "Truffle",
+                      "Mushroom",
+                      "Cream",
+                      "Pasta",
+                      "Garlic",
+                      "Parmesan Cheese"
+                    ],
+                    "mealType": "Main Course",
+                    "enriched_at": "2025-07-09T08:16:33.244Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1002,
+                "display_names": {
+                  "menu": {
+                    "de": "Avocado Pistachio Cream"
+                  },
+                  "button": {
+                    "de": "Avocado\nPistachio"
+                  },
+                  "receipt": {
+                    "de": "Avocado Pistachio Cream"
+                  }
+                },
+                "item_price_value": 12,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Avocado and pistachio cream sauce with lime.",
+                  "allergens": [
+                    "nuts"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": " fusion",
+                    "ingredients": [
+                      "avocado",
+                      "pistachios",
+                      "cream"
+                    ],
+                    "mealType": "dessert",
+                    "enriched_at": "2025-07-09T08:16:35.611Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1003,
+                "display_names": {
+                  "menu": {
+                    "de": "Pesto di Mykonos"
+                  },
+                  "button": {
+                    "de": "Pesto\nMykonos"
+                  },
+                  "receipt": {
+                    "de": "Pesto di Mykonos"
+                  }
+                },
+                "item_price_value": 10,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Pesto sauce with feta and basil.",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Greek",
+                    "ingredients": [
+                      "sun-dried tomatoes",
+                      "feta cheese",
+                      "basil",
+                      "pine nuts",
+                      "garlic",
+                      "olive oil"
+                    ],
+                    "mealType": "appetizer",
+                    "enriched_at": "2025-07-09T08:16:38.218Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1004,
+                "display_names": {
+                  "menu": {
+                    "de": "Burrata Tomato Cream"
+                  },
+                  "button": {
+                    "de": "Burrata\nTomato"
+                  },
+                  "receipt": {
+                    "de": "Burrata Tomato Cream"
+                  }
+                },
+                "item_price_value": 13,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Tomato sauce with corn, onions, burrata, and chicken.",
+                  "allergens": [
+                    "dairy",
+                    "chicken"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "Burrata cheese",
+                      "Tomatoes",
+                      "Cream",
+                      "Garlic",
+                      "Basil",
+                      "Olive oil",
+                      "Bread"
+                    ],
+                    "mealType": "Appetizer",
+                    "enriched_at": "2025-07-09T08:16:40.674Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1005,
+                "display_names": {
+                  "menu": {
+                    "de": "Lemon Garlic Shrimps"
+                  },
+                  "button": {
+                    "de": "Lemon\nShrimps"
+                  },
+                  "receipt": {
+                    "de": "Lemon Garlic Shrimp"
+                  }
+                },
+                "item_price_value": 13,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Shrimps with lemon, garlic, and Parmesan.",
+                  "allergens": [
+                    "shellfish",
+                    "dairy"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Mediterranean",
+                    "ingredients": [
+                      "shrimp",
+                      "lemon",
+                      "garlic",
+                      "olive oil",
+                      "butter",
+                      "parsley",
+                      "salt",
+                      "pepper"
+                    ],
+                    "mealType": "appetizer",
+                    "enriched_at": "2025-07-09T08:16:51.026Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1006,
+                "display_names": {
+                  "menu": {
+                    "de": "Tuna Mediterraneo"
+                  },
+                  "button": {
+                    "de": "Tuna\nMediterr."
+                  },
+                  "receipt": {
+                    "de": "Tuna Mediterraneo"
+                  }
+                },
+                "item_price_value": 12,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Tomato sauce with tuna, olives, tomatoes, corn, and onion.",
+                  "allergens": [
+                    "fish"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Mediterranean",
+                    "ingredients": [
+                      "tuna",
+                      "olives",
+                      "tomatoes",
+                      "capers",
+                      "olive oil",
+                      "garlic",
+                      "oregano"
+                    ],
+                    "mealType": "main course",
+                    "enriched_at": "2025-07-09T08:18:10.802Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1007,
+                "display_names": {
+                  "menu": {
+                    "de": "Veggie Garden"
+                  },
+                  "button": {
+                    "de": "Veggie\nGarden"
+                  },
+                  "receipt": {
+                    "de": "Veggie Garden"
+                  }
+                },
+                "item_price_value": 10,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Tomato sauce with zucchini, eggplant, basil, onion, and corn.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegetarian",
+                    "vegan"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Unknown",
+                    "ingredients": [
+                      "Various vegetables"
+                    ],
+                    "mealType": "Main Course",
+                    "enriched_at": "2025-07-09T08:18:12.304Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1008,
+                "display_names": {
+                  "menu": {
+                    "de": "Popeye's Favorite"
+                  },
+                  "button": {
+                    "de": "Spinach\nChicken"
+                  },
+                  "receipt": {
+                    "de": "Popeye's Favorite"
+                  }
+                },
+                "item_price_value": 12,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 1,
+                "additional_item_attributes": {
+                  "description": "Spinach sauce with garlic, Parmesan, and chicken.",
+                  "allergens": [
+                    "dairy",
+                    "chicken"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "American",
+                    "ingredients": [
+                      "spinach",
+                      "eggs",
+                      "bacon",
+                      "cheese"
+                    ],
+                    "mealType": "main course",
+                    "enriched_at": "2025-07-09T08:18:14.433Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1009,
+                "display_names": {
+                  "menu": {
+                    "de": "90s Pasta Salad"
+                  },
+                  "button": {
+                    "de": "Pasta\nSalad"
+                  },
+                  "receipt": {
+                    "de": "90s Pasta Salad"
+                  }
+                },
+                "item_price_value": 7,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 2,
+                "additional_item_attributes": {
+                  "description": "Fusilli in a creamy remoulade with corn, pickles, and red onions – a classic reimagined.",
+                  "allergens": [
+                    "gluten",
+                    "dairy",
+                    "egg"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "American",
+                    "ingredients": [
+                      "Pasta",
+                      "Mayonnaise",
+                      "Vegetables",
+                      "Cheese",
+                      "Italian Dressing"
+                    ],
+                    "mealType": "Main Course",
+                    "enriched_at": "2025-07-09T08:18:16.906Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1010,
+                "display_names": {
+                  "menu": {
+                    "de": "Caesar Salad"
+                  },
+                  "button": {
+                    "de": "Caesar\nSalad"
+                  },
+                  "receipt": {
+                    "de": "Caesar Salad"
+                  }
+                },
+                "item_price_value": 12,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 2,
+                "additional_item_attributes": {
+                  "description": "Romaine lettuce with croutons, chicken, Grana Padano, and Caesar dressing.",
+                  "allergens": [
+                    "gluten",
+                    "dairy",
+                    "egg",
+                    "fish",
+                    "chicken"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian-American",
+                    "ingredients": [
+                      "Romaine lettuce",
+                      "Croutons",
+                      "Parmesan cheese",
+                      "Caesar dressing (anchovies, garlic, lemon juice, olive oil, egg yolk, Worcestershire sauce)"
+                    ],
+                    "mealType": "Appetizer/Main course",
+                    "enriched_at": "2025-07-09T08:18:19.630Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1011,
+                "display_names": {
+                  "menu": {
+                    "de": "Tropical Salad"
+                  },
+                  "button": {
+                    "de": "Tropical\nSalad"
+                  },
+                  "receipt": {
+                    "de": "TROPICAL SALAD"
+                  }
+                },
+                "item_price_value": 13,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 2,
+                "additional_item_attributes": {
+                  "description": "Romaine lettuce with blueberry, mango, pomegranate, and Grana Padano.",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Fusion",
+                    "ingredients": [
+                      "Mango",
+                      "Pineapple",
+                      "Kiwi",
+                      "Lettuce",
+                      "Coconut",
+                      "Lime"
+                    ],
+                    "mealType": "Appetizer",
+                    "enriched_at": "2025-07-09T08:18:43.654Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1012,
+                "display_names": {
+                  "menu": {
+                    "de": "Chicken Add-on"
+                  },
+                  "button": {
+                    "de": "Add-on\nChicken"
+                  },
+                  "receipt": {
+                    "de": "Chicken Add-on"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 3,
+                "additional_item_attributes": {
+                  "description": "Add chicken to your pasta bowl or salad.",
+                  "allergens": [
+                    "chicken"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Unknown",
+                    "ingredients": [
+                      "Chicken"
+                    ],
+                    "mealType": "Main Course",
+                    "enriched_at": "2025-07-09T08:18:44.373Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1013,
+                "display_names": {
+                  "menu": {
+                    "de": "Shrimps Add-on"
+                  },
+                  "button": {
+                    "de": "Add-on\nShrimps"
+                  },
+                  "receipt": {
+                    "de": "Shrimps Add-on"
+                  }
+                },
+                "item_price_value": 4,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 3,
+                "additional_item_attributes": {
+                  "description": "Add shrimps to your pasta bowl or salad.",
+                  "allergens": [
+                    "shellfish"
+                  ],
+                  "dietary_info": [],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Unknown",
+                    "ingredients": [
+                      "Shrimps"
+                    ],
+                    "mealType": "Add-on",
+                    "enriched_at": "2025-07-09T08:18:46.504Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1014,
+                "display_names": {
+                  "menu": {
+                    "de": "Feta Crumble Add-on"
+                  },
+                  "button": {
+                    "de": "Add-on\nFeta"
+                  },
+                  "receipt": {
+                    "de": "Feta Crumble Add-on"
+                  }
+                },
+                "item_price_value": 2,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 3,
+                "additional_item_attributes": {
+                  "description": "Add feta crumble to your pasta bowl or salad.",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Mediterranean",
+                    "ingredients": [
+                      "feta cheese"
+                    ],
+                    "mealType": "add-on",
+                    "enriched_at": "2025-07-09T08:18:48.645Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1015,
+                "display_names": {
+                  "menu": {
+                    "de": "Extra Parmesan Add-on"
+                  },
+                  "button": {
+                    "de": "Add-on\nParmesan"
+                  },
+                  "receipt": {
+                    "de": "Extra Parmesan"
+                  }
+                },
+                "item_price_value": 2,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 3,
+                "additional_item_attributes": {
+                  "description": "Add extra Parmesan to your pasta bowl.",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "Parmesan cheese"
+                    ],
+                    "mealType": "side dish",
+                    "enriched_at": "2025-07-09T08:18:50.820Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1016,
+                "display_names": {
+                  "menu": {
+                    "de": "Espresso"
+                  },
+                  "button": {
+                    "de": "Espresso"
+                  },
+                  "receipt": {
+                    "de": "Espresso"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 4,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "Coffee beans",
+                      "Water"
+                    ],
+                    "mealType": "Drink",
+                    "enriched_at": "2025-07-09T08:19:44.166Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1017,
+                "display_names": {
+                  "menu": {
+                    "de": "Dopio"
+                  },
+                  "button": {
+                    "de": "Dopio"
+                  },
+                  "receipt": {
+                    "de": "Dopio"
+                  }
+                },
+                "item_price_value": 4,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 4,
+                "additional_item_attributes": {
+                  "description": "Double espresso.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "espresso",
+                      "ice cream",
+                      "cocoa powder"
+                    ],
+                    "mealType": "dessert",
+                    "enriched_at": "2025-07-09T08:19:46.795Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1018,
+                "display_names": {
+                  "menu": {
+                    "de": "Café Creme"
+                  },
+                  "button": {
+                    "de": "Café\nCreme"
+                  },
+                  "receipt": {
+                    "de": "Cafe Creme"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 4,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "French",
+                    "ingredients": [
+                      "coffee",
+                      "milk",
+                      "cream"
+                    ],
+                    "mealType": "beverage",
+                    "enriched_at": "2025-07-09T08:19:48.832Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1019,
+                "display_names": {
+                  "menu": {
+                    "de": "Cappuccino"
+                  },
+                  "button": {
+                    "de": "Cappuccino"
+                  },
+                  "receipt": {
+                    "de": "Cappuccino"
+                  }
+                },
+                "item_price_value": 3.5,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 4,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "Espresso",
+                      "Steamed milk",
+                      "Foamed milk"
+                    ],
+                    "mealType": "Dessert",
+                    "enriched_at": "2025-07-09T08:19:50.847Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1020,
+                "display_names": {
+                  "menu": {
+                    "de": "Latte Macchiato"
+                  },
+                  "button": {
+                    "de": "Latte\nMacchiato"
+                  },
+                  "receipt": {
+                    "de": "Latte Macchiato"
+                  }
+                },
+                "item_price_value": 4,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 4,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Italian",
+                    "ingredients": [
+                      "Espresso",
+                      "Steamed milk",
+                      "Milk foam"
+                    ],
+                    "mealType": "Dessert",
+                    "enriched_at": "2025-07-09T08:19:53.432Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1021,
+                "display_names": {
+                  "menu": {
+                    "de": "Hello Lemonade"
+                  },
+                  "button": {
+                    "de": "Lemonade"
+                  },
+                  "receipt": {
+                    "de": "Hello Lemonade"
+                  }
+                },
+                "item_price_value": 4,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "0.4 liters. Lime and fresh mint - pure refreshment.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Unknown",
+                    "ingredients": [
+                      "Lemon",
+                      "Water",
+                      "Sugar"
+                    ],
+                    "mealType": "Drink",
+                    "enriched_at": "2025-07-09T08:19:55.897Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1022,
+                "display_names": {
+                  "menu": {
+                    "de": "Peach Iced Tea"
+                  },
+                  "button": {
+                    "de": "Peach\nIced Tea"
+                  },
+                  "receipt": {
+                    "de": "Peach Iced Tea"
+                  }
+                },
+                "item_price_value": 4,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "0.4 liters. Fresh peach on ice.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "American",
+                    "ingredients": [
+                      "peaches",
+                      "tea",
+                      "water",
+                      "sugar",
+                      "ice"
+                    ],
+                    "mealType": "beverage",
+                    "enriched_at": "2025-07-09T08:20:39.960Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1023,
+                "display_names": {
+                  "menu": {
+                    "de": "Sinalco Cola"
+                  },
+                  "button": {
+                    "de": "Sinalco\nCola"
+                  },
+                  "receipt": {
+                    "de": "Sinalco Cola"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "Refreshing carbonated beverage from Sinalco brand.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "German",
+                    "ingredients": [
+                      "Carbonated water",
+                      "Sugar",
+                      "Coloring (E150d)",
+                      "Phosphoric acid",
+                      "Natural flavorings",
+                      "Caffeine"
+                    ],
+                    "mealType": "beverage",
+                    "enriched_at": "2025-07-09T08:20:42.867Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1024,
+                "display_names": {
+                  "menu": {
+                    "de": "Sinalco Cola Zero"
+                  },
+                  "button": {
+                    "de": "Sinalco\nCola Zero"
+                  },
+                  "receipt": {
+                    "de": "Sinalco Cola Zero"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "Refreshing sugar-free carbonated beverage from Sinalco brand.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "German",
+                    "ingredients": [
+                      "Water",
+                      "Carbon Dioxide",
+                      "Coloring E 150d",
+                      "Acidifying Agent Phosphoric Acid",
+                      "Sweeteners (Sodium Cyclamate, Acesulfame K, Aspartame)",
+                      "Acidity Regulator Sodium Citrate",
+                      "Flavors",
+                      "Caffeine"
+                    ],
+                    "mealType": "beverage",
+                    "enriched_at": "2025-07-09T08:20:45.417Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1025,
+                "display_names": {
+                  "menu": {
+                    "de": "Sinalco Orange"
+                  },
+                  "button": {
+                    "de": "Sinalco\nOrange"
+                  },
+                  "receipt": {
+                    "de": "Sinalco Orange"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "Refreshing orange-flavored carbonated beverage from Sinalco brand.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "German",
+                    "ingredients": [
+                      "Orange juice",
+                      "Carbonated water",
+                      "Sugar",
+                      "Citric acid",
+                      "Natural orange flavor",
+                      "Ascorbic acid",
+                      "Beta-Carotene"
+                    ],
+                    "mealType": "Drink",
+                    "enriched_at": "2025-07-09T08:20:46.460Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1026,
+                "display_names": {
+                  "menu": {
+                    "de": "Water"
+                  },
+                  "button": {
+                    "de": "Water"
+                  },
+                  "receipt": {
+                    "de": "Water"
+                  }
+                },
+                "item_price_value": 3,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "Still or sparkling water.",
+                  "allergens": [],
+                  "dietary_info": [
+                    "vegan",
+                    "gluten_free"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "None",
+                    "ingredients": [
+                      "Water"
+                    ],
+                    "mealType": "Any",
+                    "enriched_at": "2025-07-09T08:20:48.874Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1027,
+                "display_names": {
+                  "menu": {
+                    "de": "Iced Coffee"
+                  },
+                  "button": {
+                    "de": "Iced\nCoffee"
+                  },
+                  "receipt": {
+                    "de": "Iced Coffee"
+                  }
+                },
+                "item_price_value": 6,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Not applicable",
+                    "ingredients": [
+                      "Coffee",
+                      "Ice",
+                      "Milk/Cream (optional)",
+                      "Sweetener (optional)"
+                    ],
+                    "mealType": "Drink",
+                    "enriched_at": "2025-07-09T08:21:31.326Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1028,
+                "display_names": {
+                  "menu": {
+                    "de": "Iced Caramel Latte"
+                  },
+                  "button": {
+                    "de": "Iced Latte\nCaramel"
+                  },
+                  "receipt": {
+                    "de": "Iced Caramel Latte"
+                  }
+                },
+                "item_price_value": 7,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Coffeehouse",
+                    "ingredients": [
+                      "Espresso",
+                      "Caramel syrup",
+                      "Milk",
+                      "Ice"
+                    ],
+                    "mealType": "Dessert",
+                    "enriched_at": "2025-07-09T08:21:33.652Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1029,
+                "display_names": {
+                  "menu": {
+                    "de": "Iced Chocolate"
+                  },
+                  "button": {
+                    "de": "Iced\nChocolate"
+                  },
+                  "receipt": {
+                    "de": "Iced Chocolate"
+                  }
+                },
+                "item_price_value": 6,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 5,
+                "additional_item_attributes": {
+                  "description": "",
+                  "allergens": [
+                    "dairy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "American",
+                    "ingredients": [
+                      "chocolate",
+                      "milk",
+                      "ice",
+                      "sugar",
+                      "whipped cream"
+                    ],
+                    "mealType": "dessert",
+                    "enriched_at": "2025-07-09T08:21:36.012Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1030,
+                "display_names": {
+                  "menu": {
+                    "de": "Lotus Tiramisu"
+                  },
+                  "button": {
+                    "de": "Lotus\nTiramisu"
+                  },
+                  "receipt": {
+                    "de": "Lotus Tiramisu"
+                  }
+                },
+                "item_price_value": 5,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 6,
+                "additional_item_attributes": {
+                  "description": "Creamy tiramisu with a rich caramelized Lotus Biscoff twist.",
+                  "allergens": [
+                    "gluten",
+                    "dairy",
+                    "egg",
+                    "soy"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Fusion",
+                    "ingredients": [
+                      "Lotus Biscoff cookies",
+                      "Mascarpone cheese",
+                      "Coffee",
+                      "Eggs",
+                      "Sugar",
+                      "Cream"
+                    ],
+                    "mealType": "Dessert",
+                    "enriched_at": "2025-07-09T08:21:38.643Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              },
+              {
+                "item_unique_identifier": 1031,
+                "display_names": {
+                  "menu": {
+                    "de": "Matcha Tiramisu"
+                  },
+                  "button": {
+                    "de": "Matcha\nTiramisu"
+                  },
+                  "receipt": {
+                    "de": "Matcha Tiramisu"
+                  }
+                },
+                "item_price_value": 5,
+                "pricing_schedules": [],
+                "availability_schedule": {
+                  "always_available": true,
+                  "schedules": []
+                },
+                "associated_category_unique_identifier": 6,
+                "additional_item_attributes": {
+                  "description": "Creamy tiramisu with matcha and delicious Biscuits.",
+                  "allergens": [
+                    "gluten",
+                    "dairy",
+                    "egg"
+                  ],
+                  "dietary_info": [
+                    "vegetarian"
+                  ],
+                  "portion_size": "normal",
+                  "menu_parser_generated": true,
+                  "ai_enrichment": {
+                    "cuisine": "Japanese-Italian Fusion",
+                    "ingredients": [
+                      "matcha",
+                      "mascarpone",
+                      "ladyfingers",
+                      "coffee",
+                      "eggs",
+                      "sugar",
+                      "cocoa powder"
+                    ],
+                    "mealType": "dessert",
+                    "enriched_at": "2025-07-09T08:21:41.080Z"
+                  }
+                },
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false,
+                  "requires_age_verification": false,
+                  "is_organic": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-07-08T19:40:45.546Z",
+                  "created_by": "menu-parser@eckasse.com",
+                  "last_modified_at": "2025-07-08T19:40:45.546Z",
+                  "last_modified_by": "menu-parser@eckasse.com",
+                  "version": 1,
+                  "change_log": [
+                    {
+                      "timestamp": "2025-07-08T19:40:45.546Z",
+                      "user": "menu-parser@eckasse.com",
+                      "action": "menu_parsed",
+                      "description": "Automatically parsed from menu image/text"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

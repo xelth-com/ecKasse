@@ -1,0 +1,109 @@
+{
+  "$schema": "https://schemas.eckasse.com/oop-pos-mdf/v2.0.0/schema.json",
+  "company_details": {
+    "company_unique_identifier": 1,
+    "company_full_name": "Park Avenue",
+    "meta_information": {
+      "format_version": "2.0.0",
+      "previous_versions": [],
+      "date_generated": "2025-07-06T22:58:25.198Z",
+      "generated_by": "eckasse-menu-parser-v2.0.0",
+      "default_currency_symbol": "€",
+      "default_language": "de",
+      "supported_languages": [
+        "de",
+        "en"
+      ],
+      "audit_trail": {
+        "created_at": "2025-07-06T22:58:25.196Z",
+        "created_by": "menu-parser@eckasse.com",
+        "last_modified_at": "2025-07-06T22:58:25.196Z",
+        "last_modified_by": "menu-parser@eckasse.com",
+        "version": 1,
+        "change_log": [
+          {
+            "timestamp": "2025-07-06T22:58:25.196Z",
+            "user": "menu-parser@eckasse.com",
+            "action": "menu_parsed",
+            "description": "Automatically parsed from menu image/text"
+          }
+        ]
+      },
+      "export_timestamp": "2025-07-07T00:26:33.866Z",
+      "exported_by": "eckasse-cli-export-v2.0.0",
+      "export_version": "2.0.0"
+    },
+    "global_configurations": {
+      "tax_rates_definitions": [
+        {
+          "tax_rate_unique_identifier": 1,
+          "tax_rate_names": {
+            "de": "Standard (19%)"
+          },
+          "rate_percentage": 19,
+          "fiscal_mapping_type": "NORMAL"
+        },
+        {
+          "tax_rate_unique_identifier": 2,
+          "tax_rate_names": {
+            "de": "Ermäßigt (7%)"
+          },
+          "rate_percentage": 7,
+          "fiscal_mapping_type": "REDUCED"
+        }
+      ],
+      "main_groups_definitions": [
+        {
+          "main_group_unique_identifier": 1,
+          "main_group_names": {
+            "de": "Getränke"
+          }
+        },
+        {
+          "main_group_unique_identifier": 2,
+          "main_group_names": {
+            "de": "Speisen"
+          }
+        }
+      ],
+      "payment_methods_definitions": [
+        {
+          "payment_method_unique_identifier": 1,
+          "payment_method_names": {
+            "de": "Bar"
+          },
+          "payment_method_type": "CASH"
+        },
+        {
+          "payment_method_unique_identifier": 2,
+          "payment_method_names": {
+            "de": "Karte"
+          },
+          "payment_method_type": "CARD"
+        }
+      ],
+      "promotions_definitions": [],
+      "workflows": [],
+      "integrations": {},
+      "security_settings": {
+        "encryption": {
+          "at_rest": true,
+          "in_transit": true,
+          "algorithm": "AES-256"
+        },
+        "access_control": {
+          "session_timeout": 3600,
+          "max_failed_attempts": 3,
+          "lockout_duration": 900,
+          "require_2fa": false
+        },
+        "data_privacy": {
+          "gdpr_compliance": true,
+          "data_retention_days": 2555,
+          "anonymization_rules": []
+        }
+      }
+    },
+    "branches": []
+  }
+}
