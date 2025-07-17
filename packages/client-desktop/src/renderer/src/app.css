@@ -1,8 +1,34 @@
-/* Add any global styles here */
+/* Set the base font size for the entire application */
+html {
+  font-size: 16px; /* 1rem = 16px on standard screens */
+}
+
+/* Media query for smaller desktop screens or large tablets */
+@media (max-width: 1200px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+/* Media query for tablets */
+@media (max-width: 992px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Media query for smaller devices */
+@media (max-width: 768px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+/* Global styles */
 body {
   margin: 0;
   display: flex;
   place-items: center;
-  min-width: 320px;
+  min-width: 20rem; /* 320px / 16 = 20rem */
   min-height: 100vh;
 }

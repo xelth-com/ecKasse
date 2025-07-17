@@ -91,6 +91,13 @@ async function handleWebSocketMessage(ws, rawMessage) {
       responsePayload = await layoutService.saveLayout(payload.name, categories);
     } else if (command === 'getCategories') {
       responsePayload = await db('categories').select('*');
+    } else if (command === 'getItemsByCategory') {
+      const { categoryId } = payload;
+      if (!categoryId) {
+        throw new Error('categoryId is required');
+      }
+      const productService = require('./services/product.service');
+      responsePayload = await productService.getProductsByCategoryId(categoryId);
     } else {
       status = 'error';
       responsePayload = { message: 'Unknown command', originalCommand: command };
@@ -103,7 +110,13 @@ async function handleWebSocketMessage(ws, rawMessage) {
   }
   // --- Конец обработки команды ---
 
-  const response = { operationId, status, payload: responsePayload, channel: 'websocket' };
+  const response = { 
+    operationId, 
+    command: command + 'Response', 
+    status, 
+    payload: responsePayload, 
+    channel: 'websocket' 
+  };
   ws.send(JSON.stringify(response));
   logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
 }

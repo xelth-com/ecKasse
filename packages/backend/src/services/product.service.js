@@ -145,6 +145,28 @@ async function updateExistingProduct(id, updates) {
 }
 
 /**
+ * Get products by category ID
+ * @param {string|number} categoryId - Category ID to filter products
+ * @returns {Array} List of products in the category
+ */
+async function getProductsByCategoryId(categoryId) {
+    logger.info({ service: 'ProductService', function: 'getProductsByCategoryId', categoryId }, 'Fetching products for category...');
+
+    try {
+        const products = await db('items')
+            .where('associated_category_unique_identifier', categoryId)
+            .select('*');
+
+        logger.info({ service: 'ProductService', categoryId, count: products.length }, 'Products fetched successfully');
+        
+        return products;
+    } catch (error) {
+        logger.error({ service: 'ProductService', error: error.message, categoryId }, 'Failed to fetch products by category');
+        throw error;
+    }
+}
+
+/**
  * Create a price modifier for products
  * @param {Object} details - Modifier details (name, type, value, conditions)
  * @returns {Object} Created modifier data
@@ -164,5 +186,6 @@ module.exports = {
     createProduct,
     createNewProduct, 
     updateExistingProduct, 
-    createPriceModifier 
+    createPriceModifier,
+    getProductsByCategoryId
 };

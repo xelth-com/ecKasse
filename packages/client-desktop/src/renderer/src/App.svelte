@@ -1,8 +1,7 @@
 <script>
   import ItemDisplay from './ItemDisplay.svelte';
   import SelectionArea from './SelectionArea.svelte';
-  import FunctionArea from './FunctionArea.svelte';
-  import LayoutManager from './lib/LayoutManager.svelte';
+  import Pinpad from './lib/components/Pinpad.svelte';
 </script>
 
 <main class="pos-grid">
@@ -13,26 +12,25 @@
     <SelectionArea />
   </div>
   <div class="grid-function-area">
-    <LayoutManager />
-    <FunctionArea />
+    <Pinpad />
   </div>
 </main>
 
 <style>
   .pos-grid {
     display: grid;
-    grid-template-columns: 350px 1fr;
-    grid-template-rows: 1fr 300px;
+    grid-template-columns: 21.875rem 1fr; /* 350px / 16 = 21.875rem */
+    grid-template-rows: 1fr 18.75rem; /* 300px / 16 = 18.75rem */
     height: 100vh;
     width: 100vw;
-    gap: 10px;
-    padding: 10px;
+    gap: 0.25rem; /* 4px / 16 = 0.25rem */
+    padding: 0.25rem; /* 4px / 16 = 0.25rem */
     box-sizing: border-box;
     background-color: #333;
   }
 
   .pos-grid > div {
-    border-radius: 8px;
+    border-radius: 0.5rem; /* 8px / 16 = 0.5rem */
     overflow: hidden;
   }
 
@@ -51,8 +49,8 @@
     grid-column: 2 / 3;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0.625rem; /* 10px / 16 = 0.625rem */
     background-color: #3a3a3a;
-    padding: 10px;
+    padding: 0.625rem; /* 10px / 16 = 0.625rem */
   }
 </style>

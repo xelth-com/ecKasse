@@ -26,31 +26,43 @@
 
 <style>
   .item-display {
-    background-color: #f0f8ff;
-    color: #333;
-    padding: 15px;
+    background-color: #2c2c2e;
+    color: #e0e0e0;
+    padding: 0.9375rem; /* 15px / 16 = 0.9375rem */
     display: flex;
     flex-direction: column;
     height: 100%;
+    box-sizing: border-box; /* Add for better padding calculation */
   }
   ul {
     list-style: none;
     padding: 0;
+    margin: 0; /* Add to remove default margin */
     flex-grow: 1;
+    overflow-y: auto;
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
   li {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
-    border-bottom: 1px dashed #ccc;
-    padding-bottom: 8px;
+    margin-bottom: 0.5rem; /* 8px / 16 = 0.5rem */
+    border-bottom: 0.0625rem dashed #666; /* 1px / 16 = 0.0625rem */
+    padding-bottom: 0.5rem; /* 8px / 16 = 0.5rem */
   }
-  .qty { font-weight: bold; margin-right: 10px; }
+  .qty { font-weight: bold; margin-right: 0.625rem; } /* 10px / 16 = 0.625rem */
   .name { flex-grow: 1; }
   .price { font-weight: bold; }
   .total {
-    border-top: 2px solid #333;
-    padding-top: 10px;
+    border-top: 0.125rem solid #e0e0e0; /* 2px / 16 = 0.125rem */
+    padding-top: 0.625rem; /* 10px / 16 = 0.625rem */
     font-size: 1.5em;
     font-weight: bold;
     display: flex;

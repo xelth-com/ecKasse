@@ -13,38 +13,47 @@
   }
 
   function handleWebSocketMessage(message) {
-    if (!message) return;
+    if (!message || !message.command) return;
 
-    // Handle listLayouts response
-    if (message.payload && Array.isArray(message.payload) && layouts.length === 0 && status === 'Loading layouts...') {
-      if (message.status === 'success') {
-        layouts = message.payload;
-        const activeLayout = layouts.find(l => l.is_active);
-        if (activeLayout) {
-          selectedLayoutId = activeLayout.id;
+    switch (message.command) {
+      case 'listLayoutsResponse':
+        if (message.payload && Array.isArray(message.payload) && layouts.length === 0 && status === 'Loading layouts...') {
+          if (message.status === 'success') {
+            layouts = message.payload;
+            const activeLayout = layouts.find(l => l.is_active);
+            if (activeLayout) {
+              selectedLayoutId = activeLayout.id;
+            }
+            status = '';
+          } else {
+            status = 'Error loading layouts.';
+          }
         }
-        status = '';
-      } else {
-        status = 'Error loading layouts.';
-      }
-    }
-    
-    // Handle activateLayout response
-    if (message.payload && message.payload.success && message.payload.message && message.payload.message.includes('activated')) {
-      status = 'Layout activated successfully!';
-      setTimeout(() => {
-        status = '';
-        loadLayouts(); // Refresh the list
-      }, 2000);
-    }
-    
-    // Handle saveLayout response
-    if (message.payload && message.payload.name && status.includes('Saving layout')) {
-      status = `Layout "${message.payload.name}" saved successfully!`;
-      setTimeout(() => {
-        status = '';
-        loadLayouts(); // Refresh the list
-      }, 2000);
+        break;
+        
+      case 'activateLayoutResponse':
+        if (message.payload && message.payload.success && message.payload.message && message.payload.message.includes('activated')) {
+          status = 'Layout activated successfully!';
+          setTimeout(() => {
+            status = '';
+            loadLayouts(); // Refresh the list
+          }, 2000);
+        }
+        break;
+        
+      case 'saveLayoutResponse':
+        if (message.payload && message.payload.name && status.includes('Saving layout')) {
+          status = `Layout "${message.payload.name}" saved successfully!`;
+          setTimeout(() => {
+            status = '';
+            loadLayouts(); // Refresh the list
+          }, 2000);
+        }
+        break;
+        
+      default:
+        // Ignore messages not relevant to LayoutManager
+        break;
     }
   }
 
@@ -158,19 +167,19 @@
 
 <style>
   .layout-manager {
-    padding: 15px;
-    border: 1px solid #555;
-    border-radius: 8px;
+    padding: 0.9375rem; /* 15px / 16 = 0.9375rem */
+    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
+    border-radius: 0.5rem; /* 8px / 16 = 0.5rem */
     background-color: #2a2a2a;
     color: #fff;
-    margin-bottom: 10px;
+    margin-bottom: 0.625rem; /* 10px / 16 = 0.625rem */
   }
 
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 0.625rem; /* 10px / 16 = 0.625rem */
   }
 
   .header h4 {
@@ -180,12 +189,12 @@
 
   .refresh-btn {
     background: none;
-    border: 1px solid #555;
+    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
     color: #fff;
-    border-radius: 4px;
-    padding: 4px 8px;
+    border-radius: 0.25rem; /* 4px / 16 = 0.25rem */
+    padding: 0.25rem 0.5rem; /* 4px/16=0.25rem, 8px/16=0.5rem */
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.75rem; /* 12px / 16 = 0.75rem */
   }
 
   .refresh-btn:hover:not(:disabled) {
@@ -199,16 +208,16 @@
 
   .control-group {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 0.625rem; /* 10px / 16 = 0.625rem */
+    margin-bottom: 0.625rem; /* 10px / 16 = 0.625rem */
     align-items: center;
   }
 
   select, input {
     flex-grow: 1;
-    padding: 8px;
-    border: 1px solid #555;
-    border-radius: 4px;
+    padding: 0.5rem; /* 8px / 16 = 0.5rem */
+    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
+    border-radius: 0.25rem; /* 4px / 16 = 0.25rem */
     background-color: #1a1a1a;
     color: #fff;
   }
@@ -219,9 +228,9 @@
   }
 
   button {
-    padding: 8px 12px;
-    border: 1px solid #555;
-    border-radius: 4px;
+    padding: 0.5rem 0.75rem; /* 8px/16=0.5rem, 12px/16=0.75rem */
+    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
+    border-radius: 0.25rem; /* 4px / 16 = 0.25rem */
     background-color: #007acc;
     color: #fff;
     cursor: pointer;
@@ -241,20 +250,20 @@
   .status {
     font-style: italic;
     color: #ccc;
-    margin: 8px 0;
-    font-size: 14px;
+    margin: 0.5rem 0; /* 8px / 16 = 0.5rem */
+    font-size: 0.875rem; /* 14px / 16 = 0.875rem */
   }
 
   .error {
     color: #ff6b6b;
     font-style: italic;
-    margin: 8px 0;
+    margin: 0.5rem 0; /* 8px / 16 = 0.5rem */
   }
 
   .no-layouts {
     color: #ccc;
     font-style: italic;
-    margin: 10px 0;
+    margin: 0.625rem 0; /* 10px / 16 = 0.625rem */
     text-align: center;
   }
 </style>

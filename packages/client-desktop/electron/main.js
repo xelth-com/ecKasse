@@ -34,6 +34,20 @@ function createWindow() {
 
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
+    
+    // Suppress DevTools Autofill errors
+    mainWindow.webContents.once('devtools-opened', () => {
+      mainWindow.webContents.devToolsWebContents.executeJavaScript(`
+        const originalError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ');
+          if (message.includes('Autofill.enable') || message.includes('Autofill.setAddresses')) {
+            return; // Skip autofill errors
+          }
+          originalError.apply(console, args);
+        };
+      `);
+    });
   }
 
   mainWindow.on('closed', () => {
