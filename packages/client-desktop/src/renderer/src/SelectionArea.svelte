@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { wsStore } from './lib/wsStore.js';
+  import { addLog } from './lib/logStore.js';
   import HexButton from './lib/components/HexButton.svelte';
   import HalfHexButton from './lib/components/HalfHexButton.svelte';
   import SquareButton from './lib/components/SquareButton.svelte';
@@ -19,11 +20,17 @@
   let containerHeight = 0;
   let gridCells = []; // Persistent grid structure
 
-  // --- DYNAMIC LAYOUT CONSTANTS (in rem units, converted to px for calculations) ---
-  const MIN_HEX_WIDTH = 10 * 16; // 10rem * 16px = 160px - minimum button size for touch
-  const MIN_OCTAGON_SIZE = 10 * 16; // Same minimum size for octagons
-  const HEX_GAP = 0.4 * 16; // 0.4rem * 16px = 6.4px
-  const PINPAD_HEIGHT = 15 * 16; // 15rem * 16px = 240px - height for pinpad area
+  // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
+  const MIN_HEX_WIDTH = 160; // minimum button size for touch
+  const MIN_OCTAGON_SIZE = 160; // Same minimum size for octagons
+  const PINPAD_HEIGHT = 240; // height for pinpad area
+  
+  // Separate gap constants for different purposes
+  const HEX_BUTTON_GAP = 6; // 6px - gap between hex buttons (was 0.4rem = 6.4px)
+  const HEX_EDGE_GAP = 6; // current HEX_GAP value - gap at edges for hex calculations  
+  const OCTAGON_GAP = 6; // current HEX_GAP value - gap for octagon layout (unified)
+  const HEX_VERTICAL_PADDING = 6; // vertical padding (top/bottom) for 6-6-6 mosaic
+  const OCTAGON_VERTICAL_PADDING = 6; // vertical padding (top/bottom) for 4-8-8 mosaic
   
   // Dynamic width and height calculated based on container size
   let optimalHexWidth = MIN_HEX_WIDTH;
@@ -42,32 +49,40 @@
   $: {
     let _ = currentView; // Add dependency on currentView
     if (containerWidth > 0 && layoutType === '6-6-6') {
-      // Use full container width with symmetric gaps
-      const availableWidth = containerWidth;
+      addLog('DEBUG', `6-6-6 WIDTH CALC: Container=${containerWidth}px`);
+      
+      // Account for CSS padding: .item-grid-tessellated (0px × 2) + .hex-row (0px × 2)
+      const CSS_PADDING = (0 * 2) + (0 * 2); // 0px total
+      const availableWidth = containerWidth - CSS_PADDING;
+      addLog('DEBUG', `6-6-6 WIDTH: CSS padding=${CSS_PADDING}px, available=${availableWidth}px`);
       
       // Find maximum number of buttons that fit with minimum size
       // Formula with edge gaps: gap + itemsPerRow × width + (itemsPerRow-1) × gap + gap = availableWidth
       // Simplified: itemsPerRow × width + (itemsPerRow+1) × gap = availableWidth
-      let maxPossibleItems = Math.floor((availableWidth - 2 * HEX_GAP) / (MIN_HEX_WIDTH + HEX_GAP));
+      let maxPossibleItems = Math.floor((availableWidth - 2 * HEX_EDGE_GAP) / (MIN_HEX_WIDTH + HEX_EDGE_GAP));
       
       // Calculate optimal width for this number of items
       // Formula: itemsPerRow × width + (itemsPerRow+1) × gap = availableWidth
       // Solving for width: width = (availableWidth - (itemsPerRow+1) × gap) / itemsPerRow
-      let calculatedWidth = (availableWidth - (maxPossibleItems + 1) * HEX_GAP) / maxPossibleItems;
+      let calculatedWidth = (availableWidth - (maxPossibleItems + 1) * HEX_EDGE_GAP) / maxPossibleItems;
+      
+      addLog('DEBUG', `6-6-6 WIDTH: maxItems=${maxPossibleItems}, calcWidth=${calculatedWidth.toFixed(1)}px`);
       
       // Ensure it's not smaller than minimum
       if (calculatedWidth >= MIN_HEX_WIDTH && maxPossibleItems > 0) {
         optimalHexWidth = calculatedWidth;
         itemsPerRow = maxPossibleItems;
+        addLog('INFO', `6-6-6 RESULT: ${itemsPerRow} items × ${optimalHexWidth.toFixed(1)}px`);
       } else {
         // If calculated width is too small, reduce number of items
         itemsPerRow = Math.max(1, maxPossibleItems - 1);
         if (itemsPerRow > 0) {
-          optimalHexWidth = (availableWidth - (itemsPerRow + 1) * HEX_GAP) / itemsPerRow;
+          optimalHexWidth = (availableWidth - (itemsPerRow + 1) * HEX_EDGE_GAP) / itemsPerRow;
         } else {
           itemsPerRow = 1;
-          optimalHexWidth = availableWidth - 2 * HEX_GAP;
+          optimalHexWidth = availableWidth - 2 * HEX_EDGE_GAP;
         }
+        addLog('INFO', `6-6-6 ADJUSTED: ${itemsPerRow} items × ${optimalHexWidth.toFixed(1)}px`);
       }
     } else if (containerWidth > 0 && layoutType === '4-8-8') {
       // Calculate octagon layout with symmetric padding like hex layout
@@ -75,11 +90,11 @@
       
       // Find maximum number of octagons that fit with minimum size
       // Formula with edge gaps: padding + itemsPerRow × width + (itemsPerRow-1) × gap + padding = availableWidth
-      let maxPossibleOctagons = Math.floor((availableWidth - 2 * HEX_GAP) / (MIN_OCTAGON_SIZE + HEX_GAP));
+      let maxPossibleOctagons = Math.floor((availableWidth - 2 * OCTAGON_GAP) / (MIN_OCTAGON_SIZE + OCTAGON_GAP));
       
       // Calculate optimal width for this number of items
       // Formula: itemsPerRow × width + (itemsPerRow+1) × gap = availableWidth
-      let calculatedOctagonWidth = (availableWidth - (maxPossibleOctagons + 1) * HEX_GAP) / maxPossibleOctagons;
+      let calculatedOctagonWidth = (availableWidth - (maxPossibleOctagons + 1) * OCTAGON_GAP) / maxPossibleOctagons;
       
       // Ensure it's not smaller than minimum
       if (calculatedOctagonWidth >= MIN_OCTAGON_SIZE && maxPossibleOctagons > 0) {
@@ -89,10 +104,10 @@
         // If calculated width is too small, reduce number of items
         octagonItemsPerRow = Math.max(1, maxPossibleOctagons - 1);
         if (octagonItemsPerRow > 0) {
-          octagonWidth = (availableWidth - (octagonItemsPerRow + 1) * HEX_GAP) / octagonItemsPerRow;
+          octagonWidth = (availableWidth - (octagonItemsPerRow + 1) * OCTAGON_GAP) / octagonItemsPerRow;
         } else {
           octagonItemsPerRow = 1;
-          octagonWidth = availableWidth - 2 * HEX_GAP;
+          octagonWidth = availableWidth - 2 * OCTAGON_GAP;
         }
       }
     } else {
@@ -106,6 +121,8 @@
   // Calculate optimal height after width is determined (accounting for pinpad space)
   $: {
     if (containerHeight > 0 && layoutType === '6-6-6' && optimalHexWidth > 0) {
+      addLog('DEBUG', `6-6-6 HEIGHT CALC: Container=${containerHeight}px, HexWidth=${optimalHexWidth.toFixed(1)}px`);
+      
       // Reserve space for pinpad at bottom
       const availableHeightForGrid = containerHeight - PINPAD_HEIGHT;
       
@@ -124,9 +141,12 @@
       // Minimum height constraint (70% of width, same as octagons)
       const minHexHeight = optimalHexWidth * 0.7;
       
+      addLog('DEBUG', `6-6-6 HEIGHT: availableHeight=${availableHeightForGrid}px, maxRows=${maxPossibleRows}, calcHeight=${calculatedHeight.toFixed(1)}px`);
+      
       if (calculatedHeight >= minHexHeight && maxPossibleRows > 0) {
         optimalHexHeight = calculatedHeight;
         totalRows = maxPossibleRows;
+        addLog('INFO', `6-6-6 HEIGHT RESULT: ${totalRows} rows × ${optimalHexHeight.toFixed(1)}px`);
       } else {
         // If calculated height is too small, reduce number of rows
         totalRows = Math.max(1, maxPossibleRows - 1);
@@ -142,6 +162,7 @@
           totalRows = 1;
           optimalHexHeight = Math.max(availableHeightForGrid, minHexHeight);
         }
+        addLog('INFO', `6-6-6 HEIGHT ADJUSTED: ${totalRows} rows × ${optimalHexHeight.toFixed(1)}px`);
       }
     } else if (containerHeight > 0 && layoutType === '4-8-8' && octagonWidth > 0) {
       // Calculate octagon height with 3:4 aspect ratio (height:width = 3:4)
@@ -151,10 +172,10 @@
       const targetOctagonHeight = octagonWidth * (3 / 4);
       
       // Find maximum number of rows that fit with target height
-      let maxPossibleOctagonRows = Math.floor((availableHeightForGrid + HEX_GAP) / (targetOctagonHeight + HEX_GAP));
+      let maxPossibleOctagonRows = Math.floor((availableHeightForGrid + OCTAGON_GAP) / (targetOctagonHeight + OCTAGON_GAP));
       
       // Calculate optimal height for this number of rows
-      let calculatedOctagonHeight = (availableHeightForGrid - (maxPossibleOctagonRows - 1) * HEX_GAP) / maxPossibleOctagonRows;
+      let calculatedOctagonHeight = (availableHeightForGrid - (maxPossibleOctagonRows - 1) * OCTAGON_GAP) / maxPossibleOctagonRows;
       
       // Minimum height constraint (70% of width, same as hexagons)
       const minOctagonHeight = octagonWidth * 0.7;
@@ -166,7 +187,7 @@
         // If calculated height is too small, reduce number of rows
         octagonTotalRows = Math.max(1, maxPossibleOctagonRows - 1);
         if (octagonTotalRows > 0) {
-          octagonHeight = (availableHeightForGrid - (octagonTotalRows - 1) * HEX_GAP) / octagonTotalRows;
+          octagonHeight = (availableHeightForGrid - (octagonTotalRows - 1) * OCTAGON_GAP) / octagonTotalRows;
           // Ensure we still meet minimum height requirement
           if (octagonHeight < minOctagonHeight) {
             octagonHeight = minOctagonHeight;
@@ -188,6 +209,7 @@
   $: {
     if (containerWidth > 0 && containerHeight > 0) {
       if (layoutType === '6-6-6' && itemsPerRow > 0 && totalRows > 0) {
+        addLog('DEBUG', `REBUILDING GRID: ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
         gridCells = buildGridStructure();
       } else if (layoutType === '4-8-8' && octagonItemsPerRow > 0 && octagonTotalRows > 0) {
         gridCells = buildGridStructure();
@@ -390,18 +412,28 @@
   let containerElement;
   
   onMount(() => {
+    addLog('INFO', 'SelectionArea mounted, setting up resize observer');
+    
     if (containerElement) {
-      // Set initial dimensions immediately
-      containerWidth = containerElement.clientWidth;
-      containerHeight = containerElement.clientHeight;
-      
       resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
+          const oldWidth = containerWidth;
+          const oldHeight = containerHeight;
           containerWidth = entry.contentRect.width;
           containerHeight = entry.contentRect.height;
+          addLog('DEBUG', `RESIZE: ${oldWidth}×${oldHeight} → ${containerWidth}×${containerHeight}`);
         }
       });
       resizeObserver.observe(containerElement);
+      
+      // Delay initial dimension read to allow DOM to settle
+      setTimeout(() => {
+        const immediateWidth = containerElement.clientWidth;
+        const immediateHeight = containerElement.clientHeight;
+        addLog('INFO', `INITIAL DIMENSIONS (after 100ms): ${immediateWidth}×${immediateHeight}`);
+        containerWidth = immediateWidth;
+        containerHeight = immediateHeight;
+      }, 100);
     }
     
     return () => {
@@ -450,8 +482,9 @@
     }, 500);
   });
 
-  // Group grid cells into rows for display
-  function getGridRows() {
+  // Group grid cells into rows for display - make reactive
+  let gridRows = [];
+  $: {
     const rows = [];
     const rowMap = new Map();
     
@@ -470,7 +503,8 @@
       }
     }
     
-    return rows;
+    addLog('DEBUG', `getGridRows: ${rows.length} rows, gridCells=${gridCells.length}, totalRows=${totalRows}`);
+    gridRows = rows;
   }
 
   function handleCategoryClick(event) {
@@ -521,18 +555,18 @@
     {#if status}
       <p class="status-message">{status}</p>
     {:else if layoutType === '6-6-6'}
-      <div class="item-grid-tessellated" data-layout={layoutType} style="--optimal-hex-height: {optimalHexHeight}px">
-        {#each getGridRows() as row, rowIndex}
+      <div class="item-grid-tessellated" data-layout={layoutType} style="--optimal-hex-height: {optimalHexHeight}px; --hex-vertical-padding: {HEX_VERTICAL_PADDING}px">
+        {#each gridRows as row, rowIndex}
           <div class="hex-row">
-            {#each row as cell (cell.id)}
+            {#each row as cell (`${cell.id}-${optimalHexWidth}-${optimalHexHeight}`)}
               {#if cell.type === 'full'}
                 {#if cell.content && !cell.isDisabled}
                   {#if currentView === 'categories'}
                     <HexButton 
                       label={JSON.parse(cell.content.category_names).de || 'Unnamed'} 
                       data={cell.content}
-                      width={optimalHexWidth / 16}
-                      height={optimalHexHeight / 16}
+                      width={optimalHexWidth}
+                      height={optimalHexHeight}
                       on:click={handleCategoryClick}
                     />
                   {:else}
@@ -540,31 +574,31 @@
                       label={JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product'}
                       data={cell.content}
                       color="#8f7bd6"
-                      width={optimalHexWidth / 16}
-                      height={optimalHexHeight / 16}
+                      width={optimalHexWidth}
+                      height={optimalHexHeight}
                       on:click={handleProductClick}
                     />
                   {/if}
                 {:else}
-                  <HexButton disabled={true} width={optimalHexWidth / 16} height={optimalHexHeight / 16} />
+                  <HexButton disabled={true} width={optimalHexWidth} height={optimalHexHeight} />
                 {/if}
               {:else if cell.type === 'left-half'}
                 {#if cell.content && cell.content.isBackButton && !cell.isDisabled}
-                  <HalfHexButton icon="←" side="left" width={(optimalHexWidth / 2 - HEX_GAP / 2) / 16} height={optimalHexHeight / 16} on:click={goBackToCategories} />
+                  <HalfHexButton icon="←" side="left" width={optimalHexWidth / 2 - HEX_BUTTON_GAP / 2} height={optimalHexHeight} on:click={goBackToCategories} />
                 {:else}
-                  <HalfHexButton side="left" disabled={true} width={(optimalHexWidth / 2 - HEX_GAP / 2) / 16} height={optimalHexHeight / 16} />
+                  <HalfHexButton side="left" disabled={true} width={optimalHexWidth / 2 - HEX_BUTTON_GAP / 2} height={optimalHexHeight} />
                 {/if}
               {:else if cell.type === 'right-half'}
-                <HalfHexButton side="right" disabled={true} width={(optimalHexWidth / 2 - HEX_GAP / 2) / 16} height={optimalHexHeight / 16} />
+                <HalfHexButton side="right" disabled={true} width={optimalHexWidth / 2 - HEX_BUTTON_GAP / 2} height={optimalHexHeight} />
               {/if}
             {/each}
           </div>
         {/each}
       </div>
     {:else if layoutType === '4-8-8'}
-      <div class="mosaic-container" data-layout={layoutType}>
+      <div class="mosaic-container" data-layout={layoutType} style="--octagon-vertical-padding: {OCTAGON_VERTICAL_PADDING}px">
         <!-- Octagon grid with relative squares -->
-        <div class="octagon-grid" style="grid-template-columns: repeat({octagonItemsPerRow}, {octagonWidth}px); grid-template-rows: repeat({octagonTotalRows}, {octagonHeight}px); gap: {HEX_GAP}px;">
+        <div class="octagon-grid" style="grid-template-columns: repeat({octagonItemsPerRow}, {octagonWidth}px); grid-template-rows: repeat({octagonTotalRows}, {octagonHeight}px); gap: {OCTAGON_GAP}px;">
           {#each gridCells.filter(c => c.type === 'octagon') as cell (cell.id)}
             <div class="octagon-cell" style="position: relative;">
               {#if cell.content}
@@ -592,7 +626,7 @@
               
               <!-- Square button relative to this octagon -->
               {#each gridCells.filter(c => c.type === 'square' && c.parentOctagonRow === cell.rowIndex && c.parentOctagonCol === cell.columnIndex) as squareCell (squareCell.id)}
-                <div class="square-relative" style="position: absolute; bottom: -{squareCell.height/2 + HEX_GAP}px; right: -{squareCell.width/2 + HEX_GAP}px;">
+                <div class="square-relative" style="position: absolute; bottom: -{squareCell.height/2 + OCTAGON_GAP}px; right: -{squareCell.width/2 + OCTAGON_GAP}px;">
                   {#if squareCell.content}
                     {#if currentView === 'categories'}
                       <SquareButton 
@@ -637,7 +671,7 @@
     height: 100%;
     box-sizing: border-box;
     overflow: hidden;
-    border-radius: 0.5rem; /* 8px / 16 = 0.5rem */
+    border-radius: 8px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -645,8 +679,8 @@
   
   .layout-controls {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 8px;
+    right: 8px;
     z-index: 10;
   }
   
@@ -654,10 +688,10 @@
     background-color: #666;
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem;
+    padding: 8px 16px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 14px;
     transition: background-color 0.2s;
   }
   
@@ -668,18 +702,18 @@
   .grid-container {
     flex: 1;
     overflow: hidden;
-    padding-bottom: 15rem; /* Reserve space for pinpad */
+    padding-bottom: 240px; /* Reserve space for pinpad */
   }
   
   .status-message {
     color: #fff;
     font-style: italic;
     text-align: center;
-    margin: 2rem;
+    margin: 32px;
   }
   
   .item-grid-tessellated {
-    padding: 0.5rem; /* Small padding to prevent edge clipping */
+    padding: var(--hex-vertical-padding, 0px) 0px; /* Vertical padding for 6-6-6 */
     height: 100%;
     overflow: hidden;
   }
@@ -687,25 +721,23 @@
   .hex-row {
     display: flex;
     justify-content: center; /* Center the row to create symmetric gaps */
-    gap: 0.4rem; /* 0.4rem horizontal gap */
-    padding: 0 0.4rem; /* Add symmetric padding left and right */
+    gap: 6px; /* horizontal gap */
+    padding: 0 0px; /* No padding from edges */
   }
   
   .item-grid-tessellated[data-layout="6-6-6"] .hex-row {
-    margin-bottom: calc(-1 * var(--optimal-hex-height, 121px) * 0.25 + 6.4px);
+    margin-bottom: calc(-1 * var(--optimal-hex-height, 121px) * 0.25 + 6px);
   }
   
   .item-grid-tessellated[data-layout="4-8-8"] .hex-row {
-    margin-bottom: 0.4rem; /* Regular spacing for rectangular grid */
+    margin-bottom: 6px; /* Regular spacing for rectangular grid */
   }
   
   .mosaic-container {
     position: relative;
     width: 100%;
     height: 100%;
-    padding: 0.5rem;
-    padding-left: 0.4rem;
-    padding-right: 0.4rem;
+    padding: var(--octagon-vertical-padding, 0px) 0px;
   }
   
   .octagon-grid {
@@ -736,14 +768,14 @@
   
   .pinpad-container {
     position: absolute;
-    bottom: 0.5rem;
-    left: 0.5rem;
-    width: 14rem; /* Slightly smaller than reserved space */
-    height: 14rem;
+    bottom: 8px;
+    left: 8px;
+    width: 224px; /* Slightly smaller than reserved space */
+    height: 224px;
     z-index: 5;
     background-color: rgba(58, 58, 58, 0.95);
-    border-radius: 0.5rem;
-    padding: 0.5rem;
+    border-radius: 8px;
+    padding: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   }
 </style>

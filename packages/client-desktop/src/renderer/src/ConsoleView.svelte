@@ -1,4 +1,6 @@
 <script>
+  import { logEntries, addLog } from './lib/logStore.js';
+  
   // Data-driven tabs configuration
   const views = [
     { id: 'order', label: 'Bestellung' },
@@ -27,15 +29,6 @@
   ];
   const receiptTotal = receiptItems.reduce((sum, item) => sum + item.price * item.qty, 0);
 
-  let logEntries = [
-    { timestamp: '2024-01-15 10:30:15', level: 'INFO', message: 'System started successfully' },
-    { timestamp: '2024-01-15 10:31:02', level: 'DEBUG', message: 'Database connection established' },
-    { timestamp: '2024-01-15 10:31:45', level: 'INFO', message: 'Order #123 created' },
-    { timestamp: '2024-01-15 10:32:12', level: 'ERROR', message: 'Payment gateway timeout' },
-    { timestamp: '2024-01-15 10:32:30', level: 'INFO', message: 'Retrying payment processing' },
-    { timestamp: '2024-01-15 10:32:45', level: 'INFO', message: 'Payment successful' },
-  ];
-
   const agentMessages = [
     { timestamp: '10:30', type: 'user', message: 'Найди товар Кофе' },
     { timestamp: '10:30', type: 'agent', message: 'Поиск товара "Кофе"... Найден товар: Кофе Эспрессо - 2.50€' },
@@ -47,12 +40,6 @@
 
   function selectView(viewId) {
     currentView = viewId;
-  }
-
-  function addLog(level, message) {
-    const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    logEntries = [...logEntries, { timestamp, level, message }];
-    currentView = 'logs';
   }
 
   function updateWindowSize() {
@@ -168,7 +155,7 @@
         <h2>System Logs</h2>
         <div class="scroll-content">
           <div class="log-entries">
-            {#each logEntries as entry}
+            {#each $logEntries as entry}
               <div class="log-entry" class:error={entry.level === 'ERROR'} class:debug={entry.level === 'DEBUG'}>
                 <span class="log-timestamp">{entry.timestamp}</span>
                 <span class="log-level">{entry.level}</span>

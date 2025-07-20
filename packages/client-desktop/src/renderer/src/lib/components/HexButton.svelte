@@ -5,8 +5,8 @@
   export let color = '#6a89cc'; // A nice default blue
   export let disabled = false;
   export let data = null; // For passing category data
-  export let width = 8.75; // Width in rem units, default to original size
-  export let height = 7.5625; // Height in rem units, default to original size
+  export let width = 140; // Width in pixels, default to original size (8.75rem = 140px)
+  export let height = 121; // Height in pixels, default to original size (7.5625rem = 121px)
   
   const dispatch = createEventDispatcher();
   
@@ -20,7 +20,7 @@
   }
 </script>
 
-<button class="hex-button" class:disabled style="--hex-bg-color: {color}; --hex-width: {width}rem; --hex-height: {height}rem;" title={label} on:click={handleClick}>
+<button class="hex-button" class:disabled style="--hex-bg-color: {color}; --hex-width: {width}px; --hex-height: {height}px;" title={label} on:click={handleClick}>
   <div class="hex-shape">
     <span class="hex-text">{displayLabel}</span>
   </div>
@@ -32,8 +32,8 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    width: var(--hex-width, 8.75rem); /* Dynamic width, fallback to 8.75rem */
-    height: var(--hex-height, 7.5625rem); /* Dynamic height, fallback to 7.5625rem */
+    width: var(--hex-width, 140px); /* Dynamic width, fallback to 140px */
+    height: var(--hex-height, 121px); /* Dynamic height, fallback to 121px */
     position: relative;
     transition: transform 0.2s ease-out;
     filter: drop-shadow(0.125rem 0.125rem 0.125rem rgba(0,0,0,0.4)); /* 2px / 16 = 0.125rem */

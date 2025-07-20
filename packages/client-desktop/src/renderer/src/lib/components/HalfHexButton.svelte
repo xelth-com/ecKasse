@@ -5,8 +5,8 @@
   export let icon = '';
   export let disabled = false;
   export let side = 'left'; // 'left' or 'right'
-  export let width = 4.21875; // Width in rem units, default to calculated half size
-  export let height = 7.5625; // Height in rem units, default to original size
+  export let width = 67.5; // Width in pixels, default to calculated half size (4.21875rem = 67.5px)
+  export let height = 121; // Height in pixels, default to original size (7.5625rem = 121px)
   
   const dispatch = createEventDispatcher();
   
@@ -17,7 +17,7 @@
   }
 </script>
 
-<button class="half-hex-button" class:disabled class:right={side === 'right'} style="--half-hex-width: {width}rem; --half-hex-height: {height}rem;" on:click={handleClick}>
+<button class="half-hex-button" class:disabled class:right={side === 'right'} style="--half-hex-width: {width}px; --half-hex-height: {height}px;" on:click={handleClick}>
   <div class="half-hex-shape">
     {#if icon}
       <span class="half-hex-icon">{icon}</span>
@@ -41,8 +41,8 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    width: var(--half-hex-width, 4.21875rem); /* Dynamic width, fallback to calculated half size */
-    height: var(--half-hex-height, 7.5625rem); /* Dynamic height, same as HexButton */
+    width: var(--half-hex-width, 67.5px); /* Dynamic width, fallback to calculated half size */
+    height: var(--half-hex-height, 121px); /* Dynamic height, same as HexButton */
     position: relative;
     transition: transform 0.2s ease-out;
     filter: drop-shadow(0.125rem 0.125rem 0.125rem rgba(0,0,0,0.4));
