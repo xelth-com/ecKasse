@@ -123,14 +123,15 @@
     if (containerHeight > 0 && layoutType === '6-6-6' && optimalHexWidth > 0) {
       addLog('DEBUG', `6-6-6 HEIGHT CALC: Container=${containerHeight}px, HexWidth=${optimalHexWidth.toFixed(1)}px`);
       
-      // Reserve space for pinpad at bottom
-      const availableHeightForGrid = containerHeight - PINPAD_HEIGHT;
+      // Account for vertical padding top and bottom
+      const availableHeightForGrid = containerHeight - 2 * HEX_VERTICAL_PADDING;
       
       // Target: make hexagon with 3:4 aspect ratio (height = width * 3/4)
       const targetHexHeight = optimalHexWidth * (3 / 4);
       
-      // Calculate row overlap based on target height (typically 75% of height for honeycomb pattern)
-      let rowOverlap = targetHexHeight * 0.75;
+      // Calculate row overlap to match CSS: margin-bottom = -25% + 6px
+      // Actual overlap = height - (25% of height - 6px) = height * 0.75 + 6px  
+      let rowOverlap = targetHexHeight * 0.75 + HEX_BUTTON_GAP;
       
       // Find maximum number of rows that fit with target height and overlap
       let maxPossibleRows = Math.floor((availableHeightForGrid + rowOverlap) / rowOverlap);
@@ -151,8 +152,8 @@
         // If calculated height is too small, reduce number of rows
         totalRows = Math.max(1, maxPossibleRows - 1);
         if (totalRows > 0) {
-          // Recalculate overlap for reduced rows using minimum height
-          rowOverlap = minHexHeight * 0.75;
+          // Recalculate overlap for reduced rows using minimum height to match CSS
+          rowOverlap = minHexHeight * 0.75 + HEX_BUTTON_GAP;
           optimalHexHeight = (availableHeightForGrid - (totalRows - 1) * rowOverlap) / totalRows;
           // Ensure we still meet minimum height requirement
           if (optimalHexHeight < minHexHeight) {
@@ -166,7 +167,7 @@
       }
     } else if (containerHeight > 0 && layoutType === '4-8-8' && octagonWidth > 0) {
       // Calculate octagon height with 3:4 aspect ratio (height:width = 3:4)
-      const availableHeightForGrid = containerHeight;
+      const availableHeightForGrid = containerHeight - 2 * OCTAGON_VERTICAL_PADDING;
       
       // Target: make octagon with 3:4 aspect ratio (height = width * 3/4)
       const targetOctagonHeight = octagonWidth * (3 / 4);
@@ -702,7 +703,6 @@
   .grid-container {
     flex: 1;
     overflow: hidden;
-    padding-bottom: 240px; /* Reserve space for pinpad */
   }
   
   .status-message {
@@ -742,7 +742,6 @@
   
   .octagon-grid {
     display: grid;
-    height: 100%;
     align-items: center;
     justify-items: center;
     /* Width calculated dynamically to respect our padding calculations */
