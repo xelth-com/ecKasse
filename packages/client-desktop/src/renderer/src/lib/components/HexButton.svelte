@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   
   export let label = '';
-  export let color = '#6a89cc'; // A nice default blue
+  export let color = '#666666'; // A nice default gray
   export let disabled = false;
   export let data = null; // For passing category data
   export let width = 140; // Width in pixels, default to original size (8.75rem = 140px)
@@ -22,7 +22,13 @@
 
 <button class="hex-button" class:disabled style="--hex-bg-color: {color}; --hex-width: {width}px; --hex-height: {height}px;" title={label} on:click={handleClick}>
   <div class="hex-shape">
-    <span class="hex-text">{displayLabel}</span>
+    {#if $$slots.default}
+      <div class="slot-container">
+        <slot />
+      </div>
+    {:else}
+      <span class="hex-text">{displayLabel}</span>
+    {/if}
   </div>
 </button>
 
@@ -56,7 +62,12 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative; /* Needed for slot container */
+    overflow: hidden; /* This masks the content */
+  }
+  .slot-container {
+    width: 100%;
+    height: 100%;
   }
   .hex-text {
     color: white;

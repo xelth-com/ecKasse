@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   
   export let label = '';
-  export let color = '#4a69bd'; // Blue color like in FunctionButtons
+  export let color = '#666666'; // Gray color like HexButton
   export let disabled = false;
   export let data = null;
   export let width = 80; // Width in px
@@ -24,7 +24,13 @@
   title={label} 
   on:click={handleClick}
 >
-  <span class="octagon-text">{label}</span>
+  {#if $$slots.default}
+    <div class="slot-container">
+      <slot />
+    </div>
+  {:else}
+    <span class="octagon-text">{label}</span>
+  {/if}
 </button>
 
 <style>
@@ -49,6 +55,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative; /* Needed for slot container */
+    overflow: hidden; /* This masks the content */
   }
   
   .octagon-button:hover {
@@ -58,6 +66,11 @@
   
   .octagon-button:active {
     transform: scale(0.98);
+  }
+  
+  .slot-container {
+    width: 100%;
+    height: 100%;
   }
   
   .octagon-text {

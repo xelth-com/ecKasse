@@ -15,7 +15,7 @@
   let columnsCount = 8; // Default number of columns
   let gridCells = []; // Grid structure for mosaic pattern
   
-  const BUTTON_GAP = 0.4 * 16; // 0.4rem in px (6.4px)
+  const BUTTON_GAP = 6; // 6px gap between buttons
   const MIN_OCTAGON_SIZE = 60; // Minimum octagon size for usability
   
   // Reactive calculations for honeycomb layout with optimal square-like octagons

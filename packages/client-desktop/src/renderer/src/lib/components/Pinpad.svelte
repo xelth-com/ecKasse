@@ -1,4 +1,6 @@
 <script>
+  export let onClose = () => {}; // Function to call when closing
+  
   let containerHeight = 0;
   let buttonHeight = 80; // Default height in pixels
   let buttonWidth = 107; // Default width in pixels (4/3 of height)
@@ -14,6 +16,10 @@
       buttonWidth = buttonHeight * (4 / 3);
     }
   }
+
+  function handleCloseDoubleClick() {
+    onClose();
+  }
 </script>
 
 <div class="pinpad-wrapper" bind:clientHeight={containerHeight}>
@@ -21,7 +27,7 @@
     <button class="numpad-key">1</button>
     <button class="numpad-key">2</button>
     <button class="numpad-key">3</button>
-    <button class="function-key key-cancel">X</button>
+    <button class="function-key key-cancel" on:dblclick={handleCloseDoubleClick}>X</button>
     <button class="numpad-key">4</button>
     <button class="numpad-key">5</button>
     <button class="numpad-key">6</button>
