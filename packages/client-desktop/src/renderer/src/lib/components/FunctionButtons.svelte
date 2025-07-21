@@ -203,7 +203,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 19px;
     font-weight: bold;
   }
 

@@ -129,15 +129,19 @@
       // Target: make hexagon with 3:4 aspect ratio (height = width * 3/4)
       const targetHexHeight = optimalHexWidth * (3 / 4);
       
-      // Calculate row overlap to match CSS: margin-bottom = -25% + 6px
-      // Actual overlap = height - (25% of height - 6px) = height * 0.75 + 6px  
-      let rowOverlap = targetHexHeight * 0.75 + HEX_BUTTON_GAP;
+      // Calculate effective row height: each row takes 75% of hex height + gap
+      // This is because rows overlap by 25% height minus gap
+      let effectiveRowHeight = targetHexHeight * 0.75 + HEX_BUTTON_GAP;
       
-      // Find maximum number of rows that fit with target height and overlap
-      let maxPossibleRows = Math.floor((availableHeightForGrid + rowOverlap) / rowOverlap);
+      // Find maximum number of rows that fit with target effective height
+      let maxPossibleRows = Math.floor(availableHeightForGrid / effectiveRowHeight);
       
-      // Calculate optimal height for this number of rows
-      let calculatedHeight = (availableHeightForGrid - (maxPossibleRows - 1) * rowOverlap) / maxPossibleRows;
+      // Calculate optimal height: first row takes full height, rest take effective height
+      // Formula: totalHeight = firstRowHeight + (rows-1) * effectiveRowHeight
+      // Solving for height: height = (totalHeight - (rows-1) * (0.75*height + gap)) / 1
+      // Rearranging: height + (rows-1) * 0.75 * height = totalHeight - (rows-1) * gap
+      // height * (1 + (rows-1) * 0.75) = totalHeight - (rows-1) * gap
+      let calculatedHeight = (availableHeightForGrid - (maxPossibleRows - 1) * HEX_BUTTON_GAP) / (1 + (maxPossibleRows - 1) * 0.75);
       
       // Minimum height constraint (70% of width, same as octagons)
       const minHexHeight = optimalHexWidth * 0.7;
@@ -152,9 +156,8 @@
         // If calculated height is too small, reduce number of rows
         totalRows = Math.max(1, maxPossibleRows - 1);
         if (totalRows > 0) {
-          // Recalculate overlap for reduced rows using minimum height to match CSS
-          rowOverlap = minHexHeight * 0.75 + HEX_BUTTON_GAP;
-          optimalHexHeight = (availableHeightForGrid - (totalRows - 1) * rowOverlap) / totalRows;
+          // Recalculate height for reduced rows using correct formula
+          optimalHexHeight = (availableHeightForGrid - (totalRows - 1) * HEX_BUTTON_GAP) / (1 + (totalRows - 1) * 0.75);
           // Ensure we still meet minimum height requirement
           if (optimalHexHeight < minHexHeight) {
             optimalHexHeight = minHexHeight;
@@ -769,7 +772,6 @@
     position: absolute;
     bottom: 8px;
     left: 8px;
-    width: 224px; /* Slightly smaller than reserved space */
     height: 224px;
     z-index: 5;
     background-color: rgba(58, 58, 58, 0.95);

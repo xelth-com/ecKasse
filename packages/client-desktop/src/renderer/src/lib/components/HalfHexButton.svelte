@@ -45,14 +45,14 @@
     height: var(--half-hex-height, 121px); /* Dynamic height, same as HexButton */
     position: relative;
     transition: transform 0.2s ease-out;
-    filter: drop-shadow(0.125rem 0.125rem 0.125rem rgba(0,0,0,0.4));
+    filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4));
     flex-grow: 0;
     flex-shrink: 0;
   }
   
   .half-hex-button:hover {
     transform: scale(1.05);
-    filter: drop-shadow(0.25rem 0.25rem 0.3125rem rgba(0,0,0,0.5));
+    filter: drop-shadow(4px 4px 5px rgba(0,0,0,0.5));
   }
   
   .half-hex-button:active {
@@ -68,29 +68,29 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    border: 0.125rem solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.2);
   }
   
   .half-hex-text {
     color: white;
     font-weight: bold;
     text-align: center;
-    font-size: 0.875rem;
-    padding: 0.3125rem;
-    text-shadow: 0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.7);
+    font-size: 14px;
+    padding: 5px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
   }
   
   .half-hex-icon {
     color: white;
-    font-size: 2rem;
+    font-size: 32px;
     font-weight: bold;
     text-align: center;
-    text-shadow: 0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.7);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
   }
   
   .half-hex-button.disabled {
     pointer-events: none;
-    filter: drop-shadow(0.0625rem 0.0625rem 0.0625rem rgba(0,0,0,0.2));
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
     opacity: 0.3;
   }
   
@@ -101,6 +101,6 @@
   
   .half-hex-button.disabled:hover {
     transform: none;
-    filter: drop-shadow(0.0625rem 0.0625rem 0.0625rem rgba(0,0,0,0.2));
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
   }
 </style>

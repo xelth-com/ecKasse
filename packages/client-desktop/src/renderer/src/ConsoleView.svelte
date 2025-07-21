@@ -202,12 +202,12 @@
 
   .tab-button {
     flex: 1;
-    padding: 0.75rem;
+    padding: 12px;
     border: none;
     background-color: transparent;
     color: #888;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 14px;
     transition: all 0.2s ease;
   }
 
@@ -228,7 +228,7 @@
   }
 
   .view-content {
-    padding: 0.9375rem;
+    padding: 15px;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -238,7 +238,7 @@
   .scroll-content {
     flex-grow: 1;
     overflow-y: auto;
-    margin-bottom: 1rem;
+    margin-bottom: 16px;
     
     /* Hide scrollbar for Chrome, Safari and Opera */
     &::-webkit-scrollbar {
@@ -260,14 +260,14 @@
   .item-list li {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
     border-bottom: 1px dashed #666;
-    padding-bottom: 0.5rem;
+    padding-bottom: 8px;
   }
 
   .qty {
     font-weight: bold;
-    margin-right: 0.625rem;
+    margin-right: 10px;
   }
 
   .name {
@@ -280,7 +280,7 @@
 
   .total {
     border-top: 2px solid #e0e0e0;
-    padding-top: 0.625rem;
+    padding-top: 10px;
     font-size: 1.5em;
     font-weight: bold;
     display: flex;
@@ -288,8 +288,8 @@
   }
 
   .receipt-footer {
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: 16px;
+    padding-top: 16px;
     border-top: 1px solid #666;
     text-align: center;
     color: #aaa;
@@ -298,14 +298,14 @@
   /* Logs styles */
   .log-entries {
     font-family: monospace;
-    font-size: 0.85rem;
+    font-size: 14px;
   }
 
   .log-entry {
     display: flex;
-    margin-bottom: 0.5rem;
-    padding: 0.25rem;
-    border-radius: 0.25rem;
+    margin-bottom: 8px;
+    padding: 4px;
+    border-radius: 4px;
     background-color: #333;
   }
 
@@ -321,14 +321,14 @@
 
   .log-timestamp {
     color: #888;
-    margin-right: 0.5rem;
-    min-width: 8rem;
+    margin-right: 8px;
+    min-width: 128px;
   }
 
   .log-level {
     font-weight: bold;
-    margin-right: 0.5rem;
-    min-width: 3rem;
+    margin-right: 8px;
+    min-width: 48px;
   }
 
   .log-message {
@@ -339,12 +339,12 @@
   .agent-messages {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 8px;
   }
 
   .agent-message {
-    padding: 0.75rem;
-    border-radius: 0.5rem;
+    padding: 12px;
+    border-radius: 8px;
     max-width: 85%;
   }
 
@@ -361,15 +361,15 @@
   }
 
   .message-timestamp {
-    font-size: 0.75rem;
+    font-size: 12px;
     color: #aaa;
-    margin-right: 0.5rem;
+    margin-right: 8px;
   }
 
   .message-type {
     font-weight: bold;
-    font-size: 0.8rem;
-    margin-bottom: 0.25rem;
+    font-size: 13px;
+    margin-bottom: 4px;
     display: block;
   }
 
@@ -379,8 +379,8 @@
   }
 
   h2 {
-    margin: 0 0 1rem 0;
-    font-size: 1.5rem;
+    margin: 0 0 16px 0;
+    font-size: 24px;
     color: #e0e0e0;
   }
 </style>

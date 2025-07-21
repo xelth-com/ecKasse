@@ -36,13 +36,13 @@
     height: var(--hex-height, 121px); /* Dynamic height, fallback to 121px */
     position: relative;
     transition: transform 0.2s ease-out;
-    filter: drop-shadow(0.125rem 0.125rem 0.125rem rgba(0,0,0,0.4)); /* 2px / 16 = 0.125rem */
+    filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4));
     flex-grow: 0;   /* Prevent the button from growing */
     flex-shrink: 0; /* Prevent the button from shrinking */
   }
   .hex-button:hover {
     transform: scale(1.05);
-    filter: drop-shadow(0.25rem 0.25rem 0.3125rem rgba(0,0,0,0.5)); /* 4px/16=0.25rem, 5px/16=0.3125rem */
+    filter: drop-shadow(4px 4px 5px rgba(0,0,0,0.5));
   }
   .hex-button:active {
     transform: scale(0.98);
@@ -56,22 +56,22 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    border: 0.125rem solid rgba(255, 255, 255, 0.2); /* 2px / 16 = 0.125rem */
+    border: 2px solid rgba(255, 255, 255, 0.2);
   }
   .hex-text {
     color: white;
     font-weight: bold;
     text-align: center;
-    font-size: 0.8rem; /* Slightly smaller font for better wrapping */
+    font-size: 13px; /* Slightly smaller font for better wrapping */
     line-height: 1.2; /* Adjust line spacing for multiline text */
     word-break: break-word; /* Force text to wrap */
     white-space: normal; /* Ensure whitespace is handled normally for wrapping */
-    padding: 0.3125rem; /* 5px / 16 = 0.3125rem */
-    text-shadow: 0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.7); /* 1px/16=0.0625rem, 2px/16=0.125rem */
+    padding: 5px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
   }
   .hex-button.disabled {
     pointer-events: none;
-    filter: drop-shadow(0.0625rem 0.0625rem 0.0625rem rgba(0,0,0,0.2)); /* 1px / 16 = 0.0625rem */
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
     opacity: 0.3;
   }
   .hex-button.disabled .hex-shape {
@@ -80,6 +80,6 @@
   }
   .hex-button.disabled:hover {
     transform: none;
-    filter: drop-shadow(0.0625rem 0.0625rem 0.0625rem rgba(0,0,0,0.2)); /* 1px / 16 = 0.0625rem */
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
   }
 </style>

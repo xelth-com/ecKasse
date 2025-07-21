@@ -167,19 +167,19 @@
 
 <style>
   .layout-manager {
-    padding: 0.9375rem; /* 15px / 16 = 0.9375rem */
-    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
-    border-radius: 0.5rem; /* 8px / 16 = 0.5rem */
+    padding: 15px;
+    border: 1px solid #555;
+    border-radius: 8px;
     background-color: #2a2a2a;
     color: #fff;
-    margin-bottom: 0.625rem; /* 10px / 16 = 0.625rem */
+    margin-bottom: 10px;
   }
 
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.625rem; /* 10px / 16 = 0.625rem */
+    margin-bottom: 10px;
   }
 
   .header h4 {
@@ -189,12 +189,12 @@
 
   .refresh-btn {
     background: none;
-    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
+    border: 1px solid #555;
     color: #fff;
-    border-radius: 0.25rem; /* 4px / 16 = 0.25rem */
-    padding: 0.25rem 0.5rem; /* 4px/16=0.25rem, 8px/16=0.5rem */
+    border-radius: 4px;
+    padding: 4px 8px;
     cursor: pointer;
-    font-size: 0.75rem; /* 12px / 16 = 0.75rem */
+    font-size: 12px;
   }
 
   .refresh-btn:hover:not(:disabled) {
@@ -208,16 +208,16 @@
 
   .control-group {
     display: flex;
-    gap: 0.625rem; /* 10px / 16 = 0.625rem */
-    margin-bottom: 0.625rem; /* 10px / 16 = 0.625rem */
+    gap: 10px;
+    margin-bottom: 10px;
     align-items: center;
   }
 
   select, input {
     flex-grow: 1;
-    padding: 0.5rem; /* 8px / 16 = 0.5rem */
-    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
-    border-radius: 0.25rem; /* 4px / 16 = 0.25rem */
+    padding: 8px;
+    border: 1px solid #555;
+    border-radius: 4px;
     background-color: #1a1a1a;
     color: #fff;
   }
@@ -228,9 +228,9 @@
   }
 
   button {
-    padding: 0.5rem 0.75rem; /* 8px/16=0.5rem, 12px/16=0.75rem */
-    border: 0.0625rem solid #555; /* 1px / 16 = 0.0625rem */
-    border-radius: 0.25rem; /* 4px / 16 = 0.25rem */
+    padding: 8px 12px;
+    border: 1px solid #555;
+    border-radius: 4px;
     background-color: #007acc;
     color: #fff;
     cursor: pointer;
@@ -250,20 +250,20 @@
   .status {
     font-style: italic;
     color: #ccc;
-    margin: 0.5rem 0; /* 8px / 16 = 0.5rem */
-    font-size: 0.875rem; /* 14px / 16 = 0.875rem */
+    margin: 8px 0;
+    font-size: 14px;
   }
 
   .error {
     color: #ff6b6b;
     font-style: italic;
-    margin: 0.5rem 0; /* 8px / 16 = 0.5rem */
+    margin: 8px 0;
   }
 
   .no-layouts {
     color: #ccc;
     font-style: italic;
-    margin: 0.625rem 0; /* 10px / 16 = 0.625rem */
+    margin: 10px 0;
     text-align: center;
   }
 </style>

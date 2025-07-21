@@ -1,16 +1,15 @@
 <script>
   let containerHeight = 0;
-  let buttonHeight = 5; // Default height in rem
-  let buttonWidth = 6.67; // Default width in rem (4/3 of height)
+  let buttonHeight = 80; // Default height in pixels
+  let buttonWidth = 107; // Default width in pixels (4/3 of height)
 
-  const GAP = 0.5; // Gap in rem, must match CSS
+  const GAP = 8; // Gap in pixels, must match CSS
 
   $: {
     if (containerHeight > 0) {
-      // Convert container height from pixels to rem
-      const containerHeightRem = containerHeight / 16;
       // Calculate height for one button (4 rows, 3 gaps)
-      buttonHeight = (containerHeightRem - (GAP * 3)) / 4;
+      // No additional padding since container already has padding
+      buttonHeight = (containerHeight - (GAP * 3)) / 4;
       // Calculate width based on 4:3 aspect ratio
       buttonWidth = buttonHeight * (4 / 3);
     }
@@ -18,7 +17,7 @@
 </script>
 
 <div class="pinpad-wrapper" bind:clientHeight={containerHeight}>
-  <div class="pinpad-grid" style="--button-height: {buttonHeight}rem; --button-width: {buttonWidth}rem;">
+  <div class="pinpad-grid" style="--button-height: {buttonHeight}px; --button-width: {buttonWidth}px;">
     <button class="numpad-key">1</button>
     <button class="numpad-key">2</button>
     <button class="numpad-key">3</button>
@@ -31,10 +30,9 @@
     <button class="numpad-key">8</button>
     <button class="numpad-key">9</button>
     <button class="function-key key-enter">↵</button>
-    <button class="numpad-key function-key">+</button>
+    <button class="numpad-key function-key key-plus">+</button>
     <button class="numpad-key">0</button>
-    <button class="numpad-key function-key">-</button>
-    <button class="function-key" disabled></button>
+    <button class="numpad-key function-key key-minus">-</button>
   </div>
 </div>
 
@@ -51,7 +49,7 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(4, 1fr);
-    gap: 0.5rem;
+    gap: 8px;
   }
 
   button {
@@ -60,8 +58,8 @@
     background-color: #4a4a4a;
     color: #ffffff;
     border: 1px solid #666;
-    border-radius: 0.5rem;
-    font-size: 1.75rem;
+    border-radius: 8px;
+    font-size: 28px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s ease;
@@ -72,11 +70,13 @@
   }
 
   .function-key {
-    font-size: 1.5rem;
+    font-size: 24px;
   }
 
   .key-cancel {
     background-color: #D32F2F;
+    grid-column: 4;
+    grid-row: 1;
   }
 
   .key-cancel:hover {
@@ -85,6 +85,8 @@
 
   .key-correct {
     background-color: #FBC02D;
+    grid-column: 4;
+    grid-row: 2;
   }
 
   .key-correct:hover {
@@ -93,10 +95,23 @@
 
   .key-enter {
     background-color: #388E3C;
+    grid-column: 4;
+    grid-row: 3 / 5;
+    height: calc(var(--button-height) * 2 + 8px);
   }
 
   .key-enter:hover {
     background-color: #43A047;
+  }
+
+  .key-plus {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .key-minus {
+    grid-column: 3;
+    grid-row: 4;
   }
 
   button:disabled {

@@ -39,7 +39,7 @@
     
     /* Styling */
     transition: background-color 0.2s ease, transform 0.1s ease;
-    filter: drop-shadow(0.125rem 0.125rem 0.125rem rgba(0,0,0,0.4));
+    filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4));
     flex-shrink: 0;
     
     /* Octagon shape through clip-path */
@@ -53,7 +53,7 @@
   
   .octagon-button:hover {
     transform: scale(1.05);
-    filter: drop-shadow(0.25rem 0.25rem 0.3125rem rgba(0,0,0,0.5));
+    filter: drop-shadow(4px 4px 5px rgba(0,0,0,0.5));
   }
   
   .octagon-button:active {
@@ -63,22 +63,22 @@
   .octagon-text {
     font-weight: bold;
     text-align: center;
-    font-size: 1rem;
+    font-size: 16px;
     line-height: 1.1;
     word-break: break-word;
     white-space: normal;
-    text-shadow: 0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.7);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
   }
   
   .octagon-button.disabled {
     pointer-events: none;
-    filter: drop-shadow(0.0625rem 0.0625rem 0.0625rem rgba(0,0,0,0.2));
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
     opacity: 0.3;
     background-color: #2a2a2a !important;
   }
   
   .octagon-button.disabled:hover {
     transform: none;
-    filter: drop-shadow(0.0625rem 0.0625rem 0.0625rem rgba(0,0,0,0.2));
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
   }
 </style>
