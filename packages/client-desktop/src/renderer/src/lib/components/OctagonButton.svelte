@@ -10,10 +10,52 @@
   
   const dispatch = createEventDispatcher();
   
+  let longPressTimer;
+  let isLongPressing = false;
+
   function handleClick() {
-    if (!disabled) {
+    if (!disabled && !isLongPressing) {
       dispatch('click', { data, label });
     }
+  }
+
+  function handleContextMenu(event) {
+    if (!disabled) {
+      event.preventDefault();
+      dispatch('secondaryaction', { 
+        data, 
+        label, 
+        mouseX: event.clientX, 
+        mouseY: event.clientY,
+        originalEvent: event
+      });
+    }
+  }
+
+  function handleMouseDown(event) {
+    if (!disabled && event.button === 0) { // Left mouse button
+      isLongPressing = false;
+      longPressTimer = setTimeout(() => {
+        isLongPressing = true;
+        dispatch('secondaryaction', { 
+          data, 
+          label, 
+          mouseX: event.clientX, 
+          mouseY: event.clientY,
+          originalEvent: event
+        });
+      }, 500); // 500ms for long press
+    }
+  }
+
+  function handleMouseUp() {
+    clearTimeout(longPressTimer);
+    setTimeout(() => { isLongPressing = false; }, 10);
+  }
+
+  function handleMouseLeave() {
+    clearTimeout(longPressTimer);
+    isLongPressing = false;
   }
 </script>
 
@@ -23,6 +65,10 @@
   style="width: {width}px; height: {height}px; background-color: {color};" 
   title={label} 
   on:click={handleClick}
+  on:contextmenu={handleContextMenu}
+  on:mousedown={handleMouseDown}
+  on:mouseup={handleMouseUp}
+  on:mouseleave={handleMouseLeave}
 >
   {#if $$slots.default}
     <div class="slot-container">
@@ -44,6 +90,8 @@
     font-family: inherit;
     
     /* Styling */
+    /* Background color set through inline style */
+    border: none;
     transition: background-color 0.2s ease, transform 0.1s ease;
     filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4));
     flex-shrink: 0;
@@ -74,13 +122,17 @@
   }
   
   .octagon-text {
-    font-weight: bold;
+    font-weight: normal;
+    font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Helvetica Neue Condensed', 'Arial', sans-serif;
+    font-stretch: ultra-condensed;
+    /* Removed scaleX to fix text wrapping calculation */
     text-align: center;
-    font-size: 16px;
-    line-height: 1.1;
+    font-size: 24px; /* Increased by 20% from 20px */
+    line-height: 1.1; /* Tighter line spacing */
+    letter-spacing: -0.5px; /* Negative spacing to compensate for scaleX */
     word-break: break-word;
     white-space: normal;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 2px 2px 3px rgba(0,0,0,0.8); /* Stronger shadow */
   }
   
   .octagon-button.disabled {

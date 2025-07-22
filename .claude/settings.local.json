@@ -33,7 +33,9 @@
       "WebFetch(domain:ai.google.dev)",
       "Bash(mkdir:*)",
       "Bash(git rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

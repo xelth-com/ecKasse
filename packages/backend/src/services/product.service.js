@@ -129,18 +129,242 @@ async function createNewProduct(details) {
 }
 
 /**
- * Update an existing product's attributes
- * @param {string} id - Product ID or name
- * @param {Object} updates - Fields to update
- * @returns {Object} Updated product data
+ * Update an existing product with permission checking
+ * @param {Number} id - Product ID
+ * @param {Object} updates - Updates to apply (name, price, categoryName, description)
+ * @param {String} sessionId - User session ID for permission checking
+ * @returns {Object} Updated product data or pending change creation result
  */
-async function updateExistingProduct(id, updates) {
-    console.log(`(SERVICE STUB) Updating product ${id} with:`, updates);
-    return { 
-        success: true, 
+async function updateExistingProduct(id, updates, sessionId) {
+    logger.info({ 
+        service: 'ProductService', 
+        function: 'updateExistingProduct', 
+        productId: id, 
+        updates,
+        sessionId
+    }, 'Processing product update request');
+
+    try {
+        return await db.transaction(async (trx) => {
+            // Get current user session and permissions
+            const userSession = await trx('user_sessions')
+                .select([
+                    'user_sessions.*',
+                    'users.*',
+                    'roles.role_name',
+                    'roles.permissions',
+                    'roles.can_approve_changes',
+                    'roles.can_manage_users'
+                ])
+                .join('users', 'user_sessions.user_id', 'users.id')
+                .join('roles', 'users.role_id', 'roles.id')
+                .where('user_sessions.session_id', sessionId)
+                .where('user_sessions.is_active', true)
+                .where('user_sessions.expires_at', '>', new Date())
+                .where('users.is_active', true)
+                .first();
+
+            if (!userSession) {
+                throw new Error('Invalid session or user not authenticated');
+            }
+
+            // Get current product data
+            const currentProduct = await trx('items').where('id', id).first();
+            if (!currentProduct) {
+                throw new Error('Product not found');
+            }
+
+            const permissions = JSON.parse(userSession.permissions);
+            const canEditProducts = permissions.includes('products.edit') || 
+                                   permissions.includes('system.admin') || 
+                                   userSession.can_approve_changes;
+
+            if (canEditProducts) {
+                // Manager/Admin: Apply changes immediately
+                return await applyProductUpdateDirectly(trx, id, updates, userSession, currentProduct);
+            } else {
+                // Cashier: Create pending change for approval
+                return await createPendingProductUpdate(trx, id, updates, userSession, currentProduct);
+            }
+        });
+
+    } catch (error) {
+        logger.error({ 
+            service: 'ProductService', 
+            function: 'updateExistingProduct',
+            productId: id,
+            error: error.message 
+        }, 'Failed to update product');
+        
+        return {
+            success: false,
+            message: 'Error updating product: ' + error.message,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Apply product update directly (for managers/admins)
+ * @param {Object} trx - Database transaction
+ * @param {Number} id - Product ID
+ * @param {Object} updates - Updates to apply
+ * @param {Object} userSession - User session data
+ * @param {Object} currentProduct - Current product data
+ * @returns {Object} Update result
+ */
+async function applyProductUpdateDirectly(trx, id, updates, userSession, currentProduct) {
+    const updateData = {};
+    
+    // Handle name update
+    if (updates.name && updates.name !== JSON.parse(currentProduct.display_names).menu.de) {
+        updateData.display_names = JSON.stringify({
+            menu: { de: updates.name },
+            button: { de: updates.name },
+            receipt: { de: updates.name }
+        });
+    }
+    
+    // Handle price update
+    if (updates.price !== undefined && parseFloat(updates.price) !== parseFloat(currentProduct.item_price_value)) {
+        updateData.item_price_value = parseFloat(updates.price);
+    }
+    
+    // Handle category update
+    if (updates.categoryName) {
+        const newCategory = await trx('categories')
+            .whereRaw("JSON_EXTRACT(category_names, '$.de') = ?", [updates.categoryName])
+            .first();
+        
+        if (!newCategory) {
+            throw new Error(`Category '${updates.categoryName}' not found`);
+        }
+        
+        if (newCategory.id !== currentProduct.associated_category_unique_identifier) {
+            updateData.associated_category_unique_identifier = newCategory.id;
+        }
+    }
+
+    // Update audit trail
+    updateData.audit_trail = JSON.stringify({
+        last_modified_at: new Date().toISOString(),
+        last_modified_by: userSession.username,
+        version: Date.now(),
+        change_log: [{
+            timestamp: new Date().toISOString(),
+            user: userSession.username,
+            action: 'direct_update',
+            changes: updates,
+            user_role: userSession.role_name
+        }]
+    });
+
+    // Apply updates if any
+    if (Object.keys(updateData).length > 0) {
+        await trx('items').where('id', id).update(updateData);
+        
+        logger.info({ 
+            productId: id,
+            userId: userSession.user_id,
+            username: userSession.username,
+            role: userSession.role_name,
+            updates: updateData
+        }, 'Product updated directly by manager/admin');
+    }
+
+    return {
+        success: true,
+        type: 'direct_update',
         productId: id,
         updated: true,
-        changes: updates
+        changes: updates,
+        appliedBy: {
+            username: userSession.username,
+            role: userSession.role_name,
+            timestamp: new Date().toISOString()
+        },
+        message: 'Product updated successfully'
+    };
+}
+
+/**
+ * Create pending change for product update (for cashiers)
+ * @param {Object} trx - Database transaction
+ * @param {Number} id - Product ID
+ * @param {Object} updates - Updates to apply
+ * @param {Object} userSession - User session data
+ * @param {Object} currentProduct - Current product data
+ * @returns {Object} Pending change creation result
+ */
+async function createPendingProductUpdate(trx, id, updates, userSession, currentProduct) {
+    const changeId = require('crypto').randomUUID();
+    
+    // Prepare original data
+    const originalData = {
+        id: currentProduct.id,
+        name: JSON.parse(currentProduct.display_names).menu.de,
+        price: parseFloat(currentProduct.item_price_value),
+        category_id: currentProduct.associated_category_unique_identifier
+    };
+
+    // Prepare proposed data
+    const proposedData = { ...originalData, ...updates };
+    
+    // Determine priority based on type of change
+    let priority = 'normal';
+    if (updates.price !== undefined) {
+        const priceDiff = Math.abs(parseFloat(updates.price) - parseFloat(currentProduct.item_price_value));
+        if (priceDiff > 10) { // Price change > €10
+            priority = 'high';
+        }
+    }
+
+    // Create pending change record
+    await trx('pending_changes').insert({
+        change_id: changeId,
+        requested_by_user_id: userSession.user_id,
+        change_type: 'product_update',
+        target_entity_type: 'product',
+        target_entity_id: id,
+        original_data: JSON.stringify(originalData),
+        proposed_data: JSON.stringify(proposedData),
+        reason: updates.reason || 'Product update requested',
+        priority: priority,
+        status: 'pending',
+        requires_admin_approval: true,
+        audit_trail: JSON.stringify({
+            created_at: new Date().toISOString(),
+            created_by: userSession.username,
+            version: 1,
+            action: 'pending_change_creation'
+        })
+    });
+
+    logger.info({ 
+        productId: id,
+        changeId,
+        userId: userSession.user_id,
+        username: userSession.username,
+        role: userSession.role_name,
+        priority,
+        updates
+    }, 'Pending product update created for manager approval');
+
+    return {
+        success: true,
+        type: 'pending_change',
+        productId: id,
+        changeId: changeId,
+        status: 'pending_approval',
+        changes: updates,
+        priority: priority,
+        requestedBy: {
+            username: userSession.username,
+            role: userSession.role_name,
+            timestamp: new Date().toISOString()
+        },
+        message: 'Product update request submitted for manager approval',
+        note: 'Changes will be applied after manager approval'
     };
 }
 

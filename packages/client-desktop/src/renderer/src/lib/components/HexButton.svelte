@@ -13,14 +13,56 @@
   // Use the full label without truncation to allow proper wrapping
   $: displayLabel = label;
   
+  let longPressTimer;
+  let isLongPressing = false;
+
   function handleClick() {
-    if (!disabled) {
+    if (!disabled && !isLongPressing) {
       dispatch('click', { data, label });
     }
   }
+
+  function handleContextMenu(event) {
+    if (!disabled) {
+      event.preventDefault();
+      dispatch('secondaryaction', { 
+        data, 
+        label, 
+        mouseX: event.clientX, 
+        mouseY: event.clientY,
+        originalEvent: event
+      });
+    }
+  }
+
+  function handleMouseDown(event) {
+    if (!disabled && event.button === 0) { // Left mouse button
+      isLongPressing = false;
+      longPressTimer = setTimeout(() => {
+        isLongPressing = true;
+        dispatch('secondaryaction', { 
+          data, 
+          label, 
+          mouseX: event.clientX, 
+          mouseY: event.clientY,
+          originalEvent: event
+        });
+      }, 500); // 500ms for long press
+    }
+  }
+
+  function handleMouseUp() {
+    clearTimeout(longPressTimer);
+    setTimeout(() => { isLongPressing = false; }, 10);
+  }
+
+  function handleMouseLeave() {
+    clearTimeout(longPressTimer);
+    isLongPressing = false;
+  }
 </script>
 
-<button class="hex-button" class:disabled style="--hex-bg-color: {color}; --hex-width: {width}px; --hex-height: {height}px;" title={label} on:click={handleClick}>
+<button class="hex-button" class:disabled style="--hex-bg-color: {color}; --hex-width: {width}px; --hex-height: {height}px;" title={label} on:click={handleClick} on:contextmenu={handleContextMenu} on:mousedown={handleMouseDown} on:mouseup={handleMouseUp} on:mouseleave={handleMouseLeave}>
   <div class="hex-shape">
     {#if $$slots.default}
       <div class="slot-container">
@@ -71,14 +113,18 @@
   }
   .hex-text {
     color: white;
-    font-weight: bold;
+    font-weight: normal;
+    font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Helvetica Neue Condensed', 'Arial', sans-serif;
+    font-stretch: ultra-condensed;
+    /* Removed scaleX to fix text wrapping calculation */
     text-align: center;
-    font-size: 13px; /* Slightly smaller font for better wrapping */
-    line-height: 1.2; /* Adjust line spacing for multiline text */
-    word-break: break-word; /* Force text to wrap */
-    white-space: normal; /* Ensure whitespace is handled normally for wrapping */
+    font-size: 22px; /* Increased by 20% from 18px */
+    line-height: 1.1; /* Tighter line spacing for condensed text */
+    letter-spacing: -0.5px; /* Negative spacing to compensate for scaleX */
+    word-break: break-word;
+    white-space: normal;
     padding: 5px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 2px 2px 3px rgba(0,0,0,0.8); /* Stronger shadow for better contrast */
   }
   .hex-button.disabled {
     pointer-events: none;

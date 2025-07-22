@@ -1536,6 +1536,58 @@
             "Пользователи и роли с системой прав доступа"
           ],
           "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 3,
+          "n": "12.6",
+          "txt": "Двухуровневая Система Управления (Идея Пользователя)"
+        },
+        {
+          "type": "pgh",
+          "txt": "Концепция разграничения прав на изменение данных и отмену операций через систему доверия и кредитования."
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "12.6.1",
+          "txt": "Система Отложенных Изменений (Pending Changes)"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Сотрудники с ограниченными правами могут создавать 'заявки на изменения'",
+            "Изменения товаров, цен, категорий требуют подтверждения администратора",
+            "Отложенные изменения отображаются в специальном интерфейсе для ревизии",
+            "Система уведомлений для администраторов о ожидающих изменениях",
+            "Автоматическое применение изменений после указанного времени (опционально)",
+            "Возможность групповой обработки изменений (одобрить/отклонить сразу несколько)"
+          ],
+          "ord": false
+        },
+        {
+          "type": "hdr",
+          "l": 4,
+          "n": "12.6.2",
+          "txt": "Кредитная Система Сторно (Storno Credit)"
+        },
+        {
+          "type": "lst",
+          "i": [
+            "Каждый сотрудник имеет кредитный лимит для отмены операций (например, €50/день)",
+            "Простые сторно (в пределах лимита) выполняются мгновенно",
+            "Превышение лимита требует авторизации старшего персонала",
+            "Система отслеживания 'истории доверия' для корректировки лимитов",
+            "Автоматическое восстановление кредита в начале смены/дня",
+            "Экстренные сторно (технические сбои) с отдельным лимитом",
+            "Детальные логи всех операций сторно для аудита"
+          ],
+          "ord": false
+        },
+        {
+          "type": "cb",
+          "cap": "Пример реализации системы управления правами",
+          "c": "class TwoLevelManagementSystem {\n  constructor() {\n    this.pendingChanges = new Map();\n    this.employeeCredits = new Map();\n    this.trustScores = new Map();\n  }\n  \n  // Система отложенных изменений\n  async requestDataChange(employeeId, changeRequest) {\n    const changeId = this.generateChangeId();\n    \n    const change = {\n      id: changeId,\n      employeeId,\n      type: changeRequest.type, // 'product_update', 'price_change', etc.\n      data: changeRequest.data,\n      reason: changeRequest.reason,\n      timestamp: new Date(),\n      status: 'pending',\n      priority: this.calculatePriority(changeRequest)\n    };\n    \n    this.pendingChanges.set(changeId, change);\n    await this.notifyAdministrators(change);\n    \n    return {\n      changeId,\n      message: 'Изменение отправлено на рассмотрение администратору',\n      estimatedApprovalTime: this.getEstimatedApprovalTime(change.priority)\n    };\n  }\n  \n  async approveChange(adminId, changeId, approved = true) {\n    const change = this.pendingChanges.get(changeId);\n    if (!change) throw new Error('Изменение не найдено');\n    \n    if (approved) {\n      await this.applyDataChange(change);\n      change.status = 'approved';\n      change.approvedBy = adminId;\n      change.approvedAt = new Date();\n      \n      // Увеличиваем доверие сотрудника\n      this.increaseTrustScore(change.employeeId);\n    } else {\n      change.status = 'rejected';\n      change.rejectedBy = adminId;\n      change.rejectedAt = new Date();\n    }\n    \n    await this.notifyEmployee(change.employeeId, change);\n    return change;\n  }\n  \n  // Кредитная система сторно\n  async requestStorno(employeeId, transactionId, amount, reason) {\n    const employee = await this.getEmployee(employeeId);\n    const dailyCredit = this.getEmployeeDailyCredit(employeeId);\n    const usedCredit = this.getUsedCreditToday(employeeId);\n    const availableCredit = dailyCredit - usedCredit;\n    \n    if (amount <= availableCredit) {\n      // Автоматическое сторно в пределах кредита\n      const storno = await this.executeStorno(transactionId, amount, {\n        employeeId,\n        reason,\n        type: 'automatic',\n        creditUsed: amount\n      });\n      \n      this.updateUsedCredit(employeeId, amount);\n      return {\n        success: true,\n        storno,\n        message: `Сторно выполнено автоматически. Использовано кредита: €${amount}`\n      };\n    } else {\n      // Требуется подтверждение администратора\n      const approvalRequest = {\n        id: this.generateRequestId(),\n        employeeId,\n        transactionId,\n        amount,\n        reason,\n        exceededBy: amount - availableCredit,\n        timestamp: new Date(),\n        status: 'pending_approval'\n      };\n      \n      await this.requestAdminApproval(approvalRequest);\n      return {\n        success: false,\n        message: `Сумма превышает кредитный лимит на €${amount - availableCredit}. Запрос отправлен администратору.`,\n        requestId: approvalRequest.id\n      };\n    }\n  }\n  \n  // Система доверия\n  increaseTrustScore(employeeId) {\n    const currentScore = this.trustScores.get(employeeId) || 50;\n    const newScore = Math.min(100, currentScore + 2);\n    this.trustScores.set(employeeId, newScore);\n    \n    // Корректируем кредитный лимит на основе доверия\n    this.adjustCreditLimit(employeeId, newScore);\n  }\n  \n  adjustCreditLimit(employeeId, trustScore) {\n    const baseLimit = 50; // €50 базовый лимит\n    const trustMultiplier = trustScore / 50; // 1.0 при доверии 50, 2.0 при доверии 100\n    const newLimit = baseLimit * trustMultiplier;\n    \n    this.employeeCredits.set(employeeId, {\n      dailyLimit: newLimit,\n      emergencyLimit: newLimit * 0.5,\n      trustScore\n    });\n  }\n}"
         }
       ]
     },

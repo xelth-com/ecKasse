@@ -98,6 +98,137 @@ async function handleWebSocketMessage(ws, rawMessage) {
       }
       const productService = require('./services/product.service');
       responsePayload = await productService.getProductsByCategoryId(categoryId);
+    
+    // Authentication commands
+    } else if (command === 'login') {
+      const { username, password, ipAddress, userAgent } = payload;
+      if (!username || !password) {
+        throw new Error('Username and password are required');
+      }
+      const authService = require('./services/auth.service');
+      responsePayload = await authService.authenticateUser(
+        username, 
+        password, 
+        ipAddress || 'unknown', 
+        userAgent || 'unknown'
+      );
+    } else if (command === 'logout') {
+      const { sessionId } = payload;
+      if (!sessionId) {
+        throw new Error('SessionId is required');
+      }
+      const authService = require('./services/auth.service');
+      const result = await authService.logout(sessionId);
+      responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
+    } else if (command === 'getCurrentUser') {
+      const { sessionId } = payload;
+      if (!sessionId) {
+        throw new Error('SessionId is required');
+      }
+      const authService = require('./services/auth.service');
+      const user = await authService.getCurrentUser(sessionId);
+      responsePayload = user ? { success: true, user } : { success: false, error: 'Invalid session' };
+    
+    // Product management with permissions
+    } else if (command === 'updateProduct') {
+      const { productId, updates, sessionId } = payload;
+      if (!productId || !updates || !sessionId) {
+        throw new Error('ProductId, updates, and sessionId are required');
+      }
+      const productService = require('./services/product.service');
+      responsePayload = await productService.updateExistingProduct(productId, updates, sessionId);
+    
+    // Storno operations
+    } else if (command === 'performStorno') {
+      const { sessionId, transactionId, amount, reason, isEmergency } = payload;
+      if (!sessionId || !transactionId || !amount || !reason) {
+        throw new Error('SessionId, transactionId, amount, and reason are required');
+      }
+      const transactionService = require('./services/transaction.service');
+      responsePayload = await transactionService.performStorno(
+        sessionId, 
+        transactionId, 
+        parseFloat(amount), 
+        reason, 
+        Boolean(isEmergency)
+      );
+    } else if (command === 'approveStorno') {
+      const { managerSessionId, stornoId, approvalNotes } = payload;
+      if (!managerSessionId || !stornoId) {
+        throw new Error('ManagerSessionId and stornoId are required');
+      }
+      const transactionService = require('./services/transaction.service');
+      responsePayload = await transactionService.approveStorno(managerSessionId, stornoId, approvalNotes);
+    } else if (command === 'rejectStorno') {
+      const { managerSessionId, stornoId, rejectionReason } = payload;
+      if (!managerSessionId || !stornoId) {
+        throw new Error('ManagerSessionId and stornoId are required');
+      }
+      const transactionService = require('./services/transaction.service');
+      responsePayload = await transactionService.rejectStorno(managerSessionId, stornoId, rejectionReason);
+    } else if (command === 'getPendingStornos') {
+      const { sessionId } = payload;
+      if (!sessionId) {
+        throw new Error('SessionId is required');
+      }
+      const transactionService = require('./services/transaction.service');
+      responsePayload = await transactionService.getPendingStornos(sessionId);
+    
+    // Manager operations for pending changes
+    } else if (command === 'getPendingChanges') {
+      const { sessionId, filterType } = payload;
+      if (!sessionId) {
+        throw new Error('SessionId is required');
+      }
+      const managerService = require('./services/manager.service');
+      responsePayload = await managerService.getPendingChanges(sessionId, filterType);
+    } else if (command === 'approveChange') {
+      const { sessionId, changeId, approvalNotes } = payload;
+      if (!sessionId || !changeId) {
+        throw new Error('SessionId and changeId are required');
+      }
+      const managerService = require('./services/manager.service');
+      responsePayload = await managerService.approveChange(sessionId, changeId, approvalNotes);
+    } else if (command === 'rejectChange') {
+      const { sessionId, changeId, rejectionReason } = payload;
+      if (!sessionId || !changeId) {
+        throw new Error('SessionId and changeId are required');
+      }
+      const managerService = require('./services/manager.service');
+      responsePayload = await managerService.rejectChange(sessionId, changeId, rejectionReason);
+    } else if (command === 'batchProcessChanges') {
+      const { sessionId, actions } = payload;
+      if (!sessionId || !actions || !Array.isArray(actions)) {
+        throw new Error('SessionId and actions array are required');
+      }
+      const managerService = require('./services/manager.service');
+      responsePayload = await managerService.batchProcessChanges(sessionId, actions);
+    } else if (command === 'getManagerDashboard') {
+      const { sessionId } = payload;
+      if (!sessionId) {
+        throw new Error('SessionId is required');
+      }
+      const managerService = require('./services/manager.service');
+      responsePayload = await managerService.getDashboardStats(sessionId);
+    
+    // Permission checking
+    } else if (command === 'checkPermission') {
+      const { sessionId, permission } = payload;
+      if (!sessionId || !permission) {
+        throw new Error('SessionId and permission are required');
+      }
+      const authService = require('./services/auth.service');
+      const hasPermission = await authService.hasPermission(sessionId, permission);
+      responsePayload = { hasPermission, permission };
+    } else if (command === 'canPerformAction') {
+      const { sessionId, action } = payload;
+      if (!sessionId || !action) {
+        throw new Error('SessionId and action are required');
+      }
+      const authService = require('./services/auth.service');
+      const canPerform = await authService.canPerformAction(sessionId, action);
+      responsePayload = { canPerform, action };
+    
     } else {
       status = 'error';
       responsePayload = { message: 'Unknown command', originalCommand: command };

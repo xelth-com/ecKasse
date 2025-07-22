@@ -5,9 +5,11 @@
   import HexButton from './lib/components/HexButton.svelte';
   import HalfHexButton from './lib/components/HalfHexButton.svelte';
   import SquareButton from './lib/components/SquareButton.svelte';
+  import RectButton from './lib/components/RectButton.svelte';
   import OctagonButton from './lib/components/OctagonButton.svelte';
   import Pinpad from './lib/components/Pinpad.svelte';
   import PinpadPreview from './lib/components/PinpadPreview.svelte';
+  import ContextMenu from './lib/components/ContextMenu.svelte';
 
   let categories = [];
   let products = [];
@@ -15,8 +17,14 @@
   let isConnected = false;
   let currentView = 'categories'; // 'categories' or 'products'
   let selectedCategory = null;
-  let layoutType = '6-6-6'; // '6-6-6' or '4-8-8'
+  let layoutType = '6-6-6'; // '6-6-6', '4-8-8', or '4-4-4'
   let isPinpadVisible = false; // State for the pop-up Pinpad
+  
+  // Context menu state
+  let contextMenuVisible = false;
+  let contextMenuItem = null;
+  let contextMenuX = 0;
+  let contextMenuY = 0;
   
   let containerWidth = 0;
   let containerHeight = 0;
@@ -44,6 +52,13 @@
   let octagonHeight = MIN_OCTAGON_SIZE;
   let octagonItemsPerRow = 1;
   let octagonTotalRows = 1;
+
+  // Variables for 4-4-4 rectangular grid layout (same as octagon algorithm)
+  let rectButtonWidth = MIN_OCTAGON_SIZE; // Use same minimum as octagons
+  let rectButtonHeight = MIN_OCTAGON_SIZE; // Use same minimum as octagons
+  let rectItemsPerRow = 1; // Dynamic: calculated columns
+  let rectTotalRows = 1; // Dynamic: calculated rows
+  const RECT_VERTICAL_PADDING = 6; // Same padding as octagon layout
 
   // --- REACTIVE CALCULATIONS ---
   // Calculate optimal button width and items per row (for 6-6-6 layout)
@@ -94,11 +109,32 @@
           octagonWidth = availableWidth - 2 * OCTAGON_GAP;
         }
       }
+    } else if (containerWidth > 0 && layoutType === '4-4-4') {
+      const availableWidth = containerWidth;
+      // Use exact same algorithm as octagon width calculation
+      let maxPossibleRects = Math.floor((availableWidth - 2 * OCTAGON_GAP) / (MIN_OCTAGON_SIZE + OCTAGON_GAP));
+      let calculatedRectWidth = (availableWidth - (maxPossibleRects + 1) * OCTAGON_GAP) / maxPossibleRects;
+      
+      if (calculatedRectWidth >= MIN_OCTAGON_SIZE && maxPossibleRects > 0) {
+        rectButtonWidth = calculatedRectWidth;
+        rectItemsPerRow = maxPossibleRects;
+      } else {
+        rectItemsPerRow = Math.max(1, maxPossibleRects - 1);
+        if (rectItemsPerRow > 0) {
+          rectButtonWidth = (availableWidth - (rectItemsPerRow + 1) * OCTAGON_GAP) / rectItemsPerRow;
+        } else {
+          rectItemsPerRow = 1;
+          rectButtonWidth = availableWidth - 2 * OCTAGON_GAP;
+        }
+      }
     } else {
       itemsPerRow = 1;
       optimalHexWidth = MIN_HEX_WIDTH;
       octagonItemsPerRow = 1;
       octagonWidth = MIN_OCTAGON_SIZE;
+      rectItemsPerRow = 1;
+      rectButtonWidth = MIN_OCTAGON_SIZE;
+      rectButtonHeight = MIN_OCTAGON_SIZE;
     }
   }
   
@@ -155,11 +191,35 @@
           octagonHeight = Math.max(availableHeightForGrid, minOctagonHeight);
         }
       }
+    } else if (containerHeight > 0 && layoutType === '4-4-4' && rectButtonWidth > 0) {
+      // Use exact same algorithm as octagon height calculation
+      const availableHeightForGrid = containerHeight - 2 * RECT_VERTICAL_PADDING;
+      const targetRectHeight = rectButtonWidth * (3 / 4); // Same 3:4 ratio as octagons
+      let maxPossibleRectRows = Math.floor((availableHeightForGrid + OCTAGON_GAP) / (targetRectHeight + OCTAGON_GAP));
+      let calculatedRectHeight = (availableHeightForGrid - (maxPossibleRectRows - 1) * OCTAGON_GAP) / maxPossibleRectRows;
+      const minRectHeight = rectButtonWidth * 0.7; // Same ratio as octagons
+      
+      if (calculatedRectHeight >= minRectHeight && maxPossibleRectRows > 0) {
+        rectButtonHeight = calculatedRectHeight;
+        rectTotalRows = maxPossibleRectRows;
+      } else {
+        rectTotalRows = Math.max(1, maxPossibleRectRows - 1);
+        if (rectTotalRows > 0) {
+          rectButtonHeight = (availableHeightForGrid - (rectTotalRows - 1) * OCTAGON_GAP) / rectTotalRows;
+          if (rectButtonHeight < minRectHeight) {
+            rectButtonHeight = minRectHeight;
+          }
+        } else {
+          rectTotalRows = 1;
+          rectButtonHeight = Math.max(availableHeightForGrid, minRectHeight);
+        }
+      }
     } else {
       totalRows = 1;
       optimalHexHeight = MIN_HEX_WIDTH * 0.7;
       octagonTotalRows = 1;
       octagonHeight = MIN_OCTAGON_SIZE;
+      rectTotalRows = 1;
     }
   }
   
@@ -170,6 +230,8 @@
         addLog('DEBUG', `REBUILDING GRID: ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
         gridCells = buildGridStructure();
       } else if (layoutType === '4-8-8' && octagonItemsPerRow > 0 && octagonTotalRows > 0) {
+        gridCells = buildGridStructure();
+      } else if (layoutType === '4-4-4' && rectItemsPerRow > 0 && rectTotalRows > 0) {
         gridCells = buildGridStructure();
       }
     }
@@ -194,11 +256,13 @@
       }
     } else if (layoutType === '4-8-8') {
       buildMosaicLayout(cells);
+    } else if (layoutType === '4-4-4') {
+      buildRectGridLayout(cells);
     }
     
     // Designate the bottom-left full button as the Pinpad trigger
     if (cells.length > 0) {
-        let potentialTriggers = cells.filter(c => c.type === 'full' || c.type === 'octagon');
+        let potentialTriggers = cells.filter(c => c.type === 'full' || c.type === 'octagon' || c.type === 'rect-grid');
         if (potentialTriggers.length > 0) {
             potentialTriggers.sort((a,b) => (b.rowIndex - a.rowIndex) || (a.columnIndex - b.columnIndex));
             potentialTriggers[0].isPinpadTrigger = true;
@@ -246,6 +310,23 @@
     }
   }
   
+  function buildRectGridLayout(cells) {
+    // Dynamic rectangular grid based on calculated dimensions
+    for (let row = 0; row < rectTotalRows; row++) {
+      for (let col = 0; col < rectItemsPerRow; col++) {
+        cells.push({ 
+          id: `rect-grid-${row}-${col}`, 
+          type: 'rect-grid', 
+          content: null, 
+          rowIndex: row, 
+          columnIndex: col,
+          width: rectButtonWidth,
+          height: rectButtonHeight
+        });
+      }
+    }
+  }
+  
   function clearGridContent() {
     gridCells.forEach(cell => {
       cell.content = null;
@@ -267,7 +348,7 @@
     let categoryIndex = 0;
     for (const cell of grid) {
       if (categoryIndex >= categories.length) break;
-      if ((cell.type === 'full' || cell.type === 'octagon') && !cell.isPinpadTrigger) {
+      if ((cell.type === 'full' || cell.type === 'octagon' || cell.type === 'rect-grid') && !cell.isPinpadTrigger) {
         cell.content = categories[categoryIndex];
         categoryIndex++;
       }
@@ -280,10 +361,18 @@
       backButtonCell.content = { isBackButton: true, icon: '←' };
     }
     
+    // For 4-4-4 layout, add back button to first rect-grid cell
+    if (layoutType === '4-4-4') {
+      const firstRectCell = grid.find(cell => cell.type === 'rect-grid');
+      if (firstRectCell) {
+        firstRectCell.content = { isBackButton: true, icon: '←' };
+      }
+    }
+    
     let productIndex = 0;
     for (const cell of grid) {
       if (productIndex >= products.length) break;
-      if (cell.type === 'full' && !cell.content) {
+      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.content) {
         cell.content = products[productIndex];
         productIndex++;
       }
@@ -383,7 +472,37 @@
   }
   
   function toggleLayoutType() {
-    layoutType = layoutType === '6-6-6' ? '4-8-8' : '6-6-6';
+    if (layoutType === '6-6-6') {
+      layoutType = '4-8-8';
+    } else if (layoutType === '4-8-8') {
+      layoutType = '4-4-4';
+    } else {
+      layoutType = '6-6-6';
+    }
+  }
+
+  function handleSecondaryAction(event) {
+    const { data, mouseX, mouseY } = event.detail;
+    if (data && !data.isBackButton) {
+      contextMenuItem = data;
+      contextMenuX = mouseX;
+      contextMenuY = mouseY;
+      contextMenuVisible = true;
+    }
+  }
+
+  function handleContextMenuClose() {
+    contextMenuVisible = false;
+    contextMenuItem = null;
+  }
+
+  function handleContextMenuEdit(event) {
+    const { item } = event.detail;
+    console.log('Edit item:', item);
+    // TODO: Implement edit functionality - open edit dialog/modal
+    // For now, just log the item to console
+    const itemType = item.category_names ? 'Category' : 'Product';
+    addLog('INFO', `Edit requested for: ${item.id} - ${itemType}`);
   }
 </script>
 
@@ -396,6 +515,15 @@
       </div>
     </div>
   {/if}
+
+  <ContextMenu 
+    item={contextMenuItem} 
+    x={contextMenuX} 
+    y={contextMenuY} 
+    visible={contextMenuVisible} 
+    on:close={handleContextMenuClose}
+    on:edit={handleContextMenuEdit}
+  />
 
   <div class="layout-controls">
     <button class="layout-toggle" on:click={toggleLayoutType}>
@@ -418,9 +546,9 @@
               {:else if cell.type === 'full'}
                 {#if cell.content}
                   {#if currentView === 'categories'}
-                    <HexButton label={JSON.parse(cell.content.category_names).de || 'Unnamed'} data={cell.content} width={optimalHexWidth} height={optimalHexHeight} on:click={handleCategoryClick}/>
+                    <HexButton label={JSON.parse(cell.content.category_names).de || 'Unnamed'} data={cell.content} width={optimalHexWidth} height={optimalHexHeight} on:click={handleCategoryClick} on:secondaryaction={handleSecondaryAction}/>
                   {:else}
-                    <HexButton label={JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product'} data={cell.content} color="#8f7bd6" width={optimalHexWidth} height={optimalHexHeight} on:click={handleProductClick}/>
+                    <HexButton label={JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product'} data={cell.content} width={optimalHexWidth} height={optimalHexHeight} on:click={handleProductClick} on:secondaryaction={handleSecondaryAction}/>
                   {/if}
                 {:else}
                   <HexButton disabled={true} width={optimalHexWidth} height={optimalHexHeight} />
@@ -449,9 +577,9 @@
                 </OctagonButton>
               {:else if cell.content}
                 {#if currentView === 'categories'}
-                  <OctagonButton label={JSON.parse(cell.content.category_names).de || 'Unnamed'} data={cell.content} width={cell.width} height={cell.height} on:click={handleCategoryClick}/>
+                  <OctagonButton label={JSON.parse(cell.content.category_names).de || 'Unnamed'} data={cell.content} width={cell.width} height={cell.height} color="#666666" on:click={handleCategoryClick} on:secondaryaction={handleSecondaryAction}/>
                 {:else}
-                  <OctagonButton label={JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product'} data={cell.content} color="#8f7bd6" width={cell.width} height={cell.height} on:click={handleProductClick}/>
+                  <OctagonButton label={JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product'} data={cell.content} width={cell.width} height={cell.height} color="#666666" on:click={handleProductClick} on:secondaryaction={handleSecondaryAction}/>
                 {/if}
               {:else}
                 <OctagonButton disabled={true} width={cell.width} height={cell.height} />
@@ -468,15 +596,16 @@
                         width={squareCell.width}
                         height={squareCell.height}
                         on:click={handleCategoryClick}
+                        on:secondaryaction={handleSecondaryAction}
                       />
                     {:else}
                       <SquareButton 
                         label={JSON.parse(squareCell.content.display_names).menu.de || 'Unnamed Product'}
                         data={squareCell.content}
-                        color="#8f7bd6"
                         width={squareCell.width}
                         height={squareCell.height}
                         on:click={handleProductClick}
+                        on:secondaryaction={handleSecondaryAction}
                       />
                     {/if}
                   {:else}
@@ -485,6 +614,42 @@
                 </div>
               {/each}
             </div>
+          {/each}
+        </div>
+      </div>
+    {:else if layoutType === '4-4-4'}
+      <div class="square-grid-container" data-layout={layoutType} style="--rect-vertical-padding: {RECT_VERTICAL_PADDING}px;">
+        <div class="rect-grid" style="grid-template-columns: repeat({rectItemsPerRow}, {rectButtonWidth}px); grid-template-rows: repeat({rectTotalRows}, {rectButtonHeight}px); gap: {OCTAGON_GAP}px;">
+          {#each gridCells.filter(c => c.type === 'rect-grid') as cell (cell.id)}
+            {#if cell.isPinpadTrigger}
+              <RectButton width={cell.width} height={cell.height} on:click={() => isPinpadVisible = true}>
+                <PinpadPreview />
+              </RectButton>
+            {:else if cell.content}
+              {#if cell.content.isBackButton}
+                <RectButton icon="←" width={cell.width} height={cell.height} on:click={goBackToCategories} />
+              {:else if currentView === 'categories'}
+                <RectButton 
+                  label={JSON.parse(cell.content.category_names).de || 'Unnamed'} 
+                  data={cell.content}
+                  width={cell.width}
+                  height={cell.height}
+                  on:click={handleCategoryClick}
+                  on:secondaryaction={handleSecondaryAction}
+                />
+              {:else}
+                <RectButton 
+                  label={JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product'}
+                  data={cell.content}
+                  width={cell.width}
+                  height={cell.height}
+                  on:click={handleProductClick}
+                  on:secondaryaction={handleSecondaryAction}
+                />
+              {/if}
+            {:else}
+              <RectButton disabled={true} width={cell.width} height={cell.height} />
+            {/if}
           {/each}
         </div>
       </div>
@@ -606,6 +771,21 @@
   
   .square-relative :global(.square-button) {
     pointer-events: auto;
+  }
+  
+  .square-grid-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: var(--rect-vertical-padding, 6px) 0px;
+  }
+  
+  .rect-grid {
+    display: grid;
+    align-items: center;
+    justify-items: center;
+    width: fit-content;
+    margin: 0 auto;
   }
 
   @keyframes expand {

@@ -436,6 +436,350 @@
             }
           }
         },
+        "user_management": {
+          "type": "object",
+          "required": ["roles", "users"],
+          "properties": {
+            "roles": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["role_unique_identifier", "role_name", "role_display_names", "permissions"],
+                "properties": {
+                  "role_unique_identifier": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "role_name": {
+                    "type": "string",
+                    "pattern": "^[a-z_]+$",
+                    "minLength": 1,
+                    "maxLength": 50
+                  },
+                  "role_display_names": {
+                    "$ref": "#/definitions/multilingual_text"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z_]+\\.[a-z_]+$"
+                    },
+                    "minItems": 1
+                  },
+                  "storno_limits": {
+                    "type": "object",
+                    "properties": {
+                      "daily_limit": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      },
+                      "emergency_limit": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      }
+                    }
+                  },
+                  "approval_rights": {
+                    "type": "object",
+                    "properties": {
+                      "can_approve_changes": {
+                        "type": "boolean"
+                      },
+                      "can_manage_users": {
+                        "type": "boolean"
+                      },
+                      "max_approval_amount": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      }
+                    }
+                  },
+                  "is_system_role": {
+                    "type": "boolean"
+                  },
+                  "audit_trail": {
+                    "$ref": "#/definitions/audit_trail"
+                  }
+                }
+              }
+            },
+            "users": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["user_unique_identifier", "username", "email", "full_name", "role_unique_identifier", "storno_limits"],
+                "properties": {
+                  "user_unique_identifier": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "username": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "minLength": 3,
+                    "maxLength": 50
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "full_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "role_unique_identifier": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "assigned_pos_device_unique_identifier": {
+                    "type": ["integer", "null"],
+                    "minimum": 1
+                  },
+                  "storno_limits": {
+                    "type": "object",
+                    "required": ["daily_limit", "emergency_limit"],
+                    "properties": {
+                      "daily_limit": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      },
+                      "emergency_limit": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      },
+                      "used_today": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      }
+                    }
+                  },
+                  "trust_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "status": {
+                    "type": "object",
+                    "properties": {
+                      "is_active": {
+                        "type": "boolean"
+                      },
+                      "force_password_change": {
+                        "type": "boolean"
+                      },
+                      "last_login_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "failed_login_attempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "locked_until": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    }
+                  },
+                  "preferences": {
+                    "type": "object",
+                    "properties": {
+                      "language": {
+                        "type": "string",
+                        "pattern": "^[a-z]{2}$"
+                      },
+                      "theme": {
+                        "type": "string",
+                        "enum": ["light", "dark", "auto"]
+                      },
+                      "notifications": {
+                        "type": "object",
+                        "properties": {
+                          "pending_changes": {
+                            "type": "boolean"
+                          },
+                          "storno_requests": {
+                            "type": "boolean"
+                          },
+                          "system_alerts": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "audit_trail": {
+                    "$ref": "#/definitions/audit_trail"
+                  }
+                }
+              }
+            },
+            "pending_changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["change_unique_identifier", "requested_by_user_unique_identifier", "change_type", "status"],
+                "properties": {
+                  "change_unique_identifier": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9-]+$"
+                  },
+                  "requested_by_user_unique_identifier": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "change_type": {
+                    "type": "string",
+                    "enum": ["product_create", "product_update", "product_delete", "category_create", "category_update", "category_delete", "price_change", "user_update", "role_update"]
+                  },
+                  "target_entity": {
+                    "type": "object",
+                    "required": ["type", "identifier"],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["product", "category", "user", "role", "pos_device"]
+                      },
+                      "identifier": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  },
+                  "original_data": {
+                    "type": "object"
+                  },
+                  "proposed_data": {
+                    "type": "object"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["low", "normal", "high", "urgent"]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "approved", "rejected", "auto_applied"]
+                  },
+                  "review_info": {
+                    "type": "object",
+                    "properties": {
+                      "reviewed_by_user_unique_identifier": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "reviewed_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "review_notes": {
+                        "type": "string",
+                        "maxLength": 1000
+                      }
+                    }
+                  },
+                  "auto_apply_at": {
+                    "type": ["string", "null"],
+                    "format": "date-time"
+                  },
+                  "audit_trail": {
+                    "$ref": "#/definitions/audit_trail"
+                  }
+                }
+              }
+            },
+            "storno_log": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["storno_unique_identifier", "user_unique_identifier", "transaction_reference", "amount", "type"],
+                "properties": {
+                  "storno_unique_identifier": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9-]+$"
+                  },
+                  "user_unique_identifier": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "transaction_reference": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "multipleOf": 0.01
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["automatic", "admin_approved", "emergency"]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "approval_info": {
+                    "type": "object",
+                    "properties": {
+                      "approved_by_user_unique_identifier": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "approved_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "approval_status": {
+                        "type": "string",
+                        "enum": ["automatic", "pending", "approved", "rejected"]
+                      }
+                    }
+                  },
+                  "credit_usage": {
+                    "type": "object",
+                    "properties": {
+                      "within_limit": {
+                        "type": "boolean"
+                      },
+                      "credit_used": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      },
+                      "remaining_credit": {
+                        "type": "number",
+                        "minimum": 0,
+                        "multipleOf": 0.01
+                      }
+                    }
+                  },
+                  "audit_trail": {
+                    "$ref": "#/definitions/audit_trail"
+                  }
+                }
+              }
+            }
+          }
+        },
         "branches": {
           "type": "array",
           "minItems": 1,

@@ -30,16 +30,27 @@ exports.seed = async function (knex) {
 
   // Inserts seed categories
   const [foodCategoryId] = await knex('categories').insert([
-    { pos_device_id: posDeviceId.id, category_names: JSON.stringify({ de: 'Speisen' }), category_type: 'food' },
+    { 
+      pos_device_id: posDeviceId.id, 
+      source_unique_identifier: 'cat_food_001',
+      category_names: JSON.stringify({ de: 'Speisen' }), 
+      category_type: 'food' 
+    },
   ]).returning('id');
   const [drinksCategoryId] = await knex('categories').insert([
-      { pos_device_id: posDeviceId.id, category_names: JSON.stringify({ de: 'Getränke' }), category_type: 'drink' }
+      { 
+        pos_device_id: posDeviceId.id, 
+        source_unique_identifier: 'cat_drink_001',
+        category_names: JSON.stringify({ de: 'Getränke' }), 
+        category_type: 'drink' 
+      }
   ]).returning('id');
 
   // Inserts seed items
   await knex('items').insert([
     {
       pos_device_id: posDeviceId.id,
+      source_unique_identifier: 'item_widget_001',
       associated_category_unique_identifier: foodCategoryId.id,
       display_names: JSON.stringify({ menu: { de: 'Super Widget' }, button: { de: 'Widget' }, receipt: { de: 'Super Widget' } }),
       item_price_value: 19.99,
@@ -48,6 +59,7 @@ exports.seed = async function (knex) {
     },
     {
         pos_device_id: posDeviceId.id,
+        source_unique_identifier: 'item_mug_001',
         associated_category_unique_identifier: drinksCategoryId.id,
         display_names: JSON.stringify({ menu: { de: 'Eco Mug' }, button: { de: 'Mug' }, receipt: { de: 'Eco Mug' } }),
         item_price_value: 12.50,
