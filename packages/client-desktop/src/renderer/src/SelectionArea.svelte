@@ -87,57 +87,7 @@
     const availableWidth = containerWidth;
     const availableHeight = containerHeight - 2 * verticalPadding;
     
-    if (!hasOverlap) { // Rectangular layout logic (unchanged)
-        let maxPossibleCols = Math.floor((availableWidth - 2 * buttonGap) / (minButtonSize + buttonGap));
-        if (maxPossibleCols < 1) maxPossibleCols = 1;
-
-        let calculatedButtonWidth = (availableWidth - (maxPossibleCols + 1) * buttonGap) / maxPossibleCols;
-        let optimalCols, buttonWidth;
-
-        if (calculatedButtonWidth >= minButtonSize && maxPossibleCols > 0) {
-            buttonWidth = calculatedButtonWidth;
-            optimalCols = maxPossibleCols;
-        } else {
-            optimalCols = Math.max(1, maxPossibleCols - 1);
-            if (optimalCols > 0) {
-                buttonWidth = (availableWidth - (optimalCols + 1) * buttonGap) / optimalCols;
-            } else {
-                optimalCols = 1;
-                buttonWidth = availableWidth - 2 * buttonGap;
-            }
-        }
-
-        const targetButtonHeight = buttonWidth * targetAspectRatio;
-        let effectiveRowHeight = targetButtonHeight * 0.75 + buttonGap;
-        let maxPossibleRows = Math.floor(availableHeight / effectiveRowHeight);
-        
-        let hexCalculatedHeight = (availableHeight - (maxPossibleRows - 1) * buttonGap) / (1 + (maxPossibleRows - 1) * 0.75);
-        const minButtonHeight = buttonWidth * (targetAspectRatio * 0.7);
-        
-        let optimalRows;
-        if (hexCalculatedHeight >= minButtonHeight && maxPossibleRows > 0) {
-          optimalRows = maxPossibleRows;
-        } else {
-          optimalRows = Math.max(1, maxPossibleRows - 1);
-        }
-        
-        let calculatedButtonHeight;
-        if (optimalRows > 0) {
-            calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
-        } else {
-            calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
-        }
-        
-        return {
-            columns: optimalCols,
-            rows: optimalRows,
-            buttonWidth,
-            buttonHeight: calculatedButtonHeight,
-            layout: 'rectangular'
-        };
-    }
-
-    // Hexagonal layout logic - test both patterns and choose the best
+    // Universal layout testing functions for both hex and rect
     function testSymmetricalLayout(cols) {
         const buttonWidth = (availableWidth - (cols + 1) * buttonGap) / cols;
         if (buttonWidth < minButtonSize) return null;
@@ -156,11 +106,22 @@
           optimalRows = Math.max(1, maxPossibleRows - 1);
         }
         
+        // Button height calculation depends on hasOverlap (rendering type)
         let calculatedButtonHeight;
-        if (optimalRows > 0) {
-            calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+        if (hasOverlap) {
+            // Hex-style overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
         } else {
-            calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            // Rect-style non-overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
         }
 
         return {
@@ -190,11 +151,22 @@
           optimalRows = Math.max(1, maxPossibleRows - 1);
         }
         
+        // Button height calculation depends on hasOverlap (rendering type)
         let calculatedButtonHeight;
-        if (optimalRows > 0) {
-            calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+        if (hasOverlap) {
+            // Hex-style overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
         } else {
-            calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            // Rect-style non-overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
         }
 
         return {
@@ -206,7 +178,7 @@
         };
     }
 
-    // Test different column counts and find the best layout
+    // Universal algorithm: test different column counts and find the best layout
     let bestLayout = null;
     let maxCols = Math.floor((availableWidth - buttonGap) / minButtonSize);
 
@@ -214,18 +186,18 @@
         const symm = testSymmetricalLayout(cols);
         const asymm = testAsymmetricalLayout(cols);
 
-        // Choose the layout with larger buttons, but prefer asymmetrical when buttons are similar size
+        // Choose the best layout for both hex and rect using same logic
         const candidates = [symm, asymm].filter(l => l !== null);
         for (const candidate of candidates) {
             if (!bestLayout) {
                 bestLayout = candidate;
             } else {
-                // Prioritize the layout that fits more columns.
+                // Prioritize the layout that fits more columns
                 if (candidate.columns > bestLayout.columns) {
                     bestLayout = candidate;
                 } else if (candidate.columns === bestLayout.columns) {
                     // If column count is equal, prefer asymmetrical for density,
-                    // or the one with slightly larger buttons if the layout is the same.
+                    // or the one with slightly larger buttons if the layout is the same
                     if (candidate.layout === 'asymmetrical' && bestLayout.layout === 'symmetrical') {
                         bestLayout = candidate;
                     } else if (candidate.buttonWidth > bestLayout.buttonWidth) {
@@ -341,7 +313,7 @@
         buildHoneycombRow(cells, rowIndex, chosenLayout);
       }
     } else if (layoutType === '4-4-4') {
-      buildRectGridLayout(cells);
+      buildRectGridLayout(cells, chosenLayout);
     }
     
     // Designate the bottom-left full button as the Pinpad trigger
@@ -391,67 +363,108 @@
   }
   
   
-  function buildRectGridLayout(cells) {
+  function buildRectGridLayout(cells, layoutType) {
     // Build rectangular grid with alternating full/half rows like honeycomb
     for (let rowIndex = 0; rowIndex < rectTotalRows; rowIndex++) {
-      buildRectRow(cells, rowIndex);
+      buildRectRow(cells, rowIndex, layoutType);
     }
   }
   
-  function buildRectRow(cells, rowIndex) {
+  function buildRectRow(cells, rowIndex, layoutType) {
     const isOddRow = rowIndex % 2 === 1;
-    
-    // Рассчитываем количество полных кнопок для этого ряда
-    // Четные ряды: rectItemsPerRow-1 полных кнопок
-    // Нечетные ряды: rectItemsPerRow полных кнопок  
-    const fullButtonsInRow = isOddRow ? rectItemsPerRow : rectItemsPerRow - 1;
-    
-    if (!isOddRow) {
-      // Четный ряд: половинка → (rectItemsPerRow-1) целых → половинка
-      cells.push({ 
-        id: `rect-half-start-${rowIndex}`, 
-        type: 'left-half-rect', 
-        content: null, 
-        rowIndex, 
-        columnIndex: 0,
-        width: rectButtonWidth / 2 - RECT_GAP / 2,
-        height: rectButtonHeight
-      });
-      
-      for (let i = 0; i < fullButtonsInRow; i++) {
-        cells.push({ 
-          id: `rect-full-${rowIndex}-${i}`, 
-          type: 'rect-grid', 
-          content: null, 
-          rowIndex, 
-          columnIndex: i + 1,
-          width: rectButtonWidth,
-          height: rectButtonHeight
-        });
-      }
-      
-      cells.push({ 
-        id: `rect-half-end-${rowIndex}`, 
-        type: 'right-half-rect', 
-        content: null, 
-        rowIndex, 
-        columnIndex: fullButtonsInRow + 1,
-        width: rectButtonWidth / 2 - RECT_GAP / 2,
-        height: rectButtonHeight
-      });
-    } else {
-      // Нечетный ряд: только rectItemsPerRow целых кнопок (без половинок)
-      for (let i = 0; i < fullButtonsInRow; i++) {
-        cells.push({ 
-          id: `rect-full-${rowIndex}-${i}`, 
-          type: 'rect-grid', 
-          content: null, 
-          rowIndex, 
-          columnIndex: i,
-          width: rectButtonWidth,
-          height: rectButtonHeight
-        });
-      }
+
+    if (layoutType === 'symmetrical') {
+        const fullButtonsInRow = isOddRow ? rectItemsPerRow : rectItemsPerRow - 1;
+        if (fullButtonsInRow < 0) return; // Avoid creating rows with negative buttons
+
+        if (!isOddRow) {
+            cells.push({ 
+                id: `rect-half-start-${rowIndex}`, 
+                type: 'left-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: 0,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i + 1,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+            cells.push({ 
+                id: `rect-half-end-${rowIndex}`, 
+                type: 'right-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: fullButtonsInRow + 1,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+        } else {
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+        }
+    } else { // Asymmetrical
+        const fullButtonsInRow = rectItemsPerRow;
+        if (!isOddRow) {
+            cells.push({ 
+                id: `rect-half-start-${rowIndex}`, 
+                type: 'left-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: 0,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i + 1,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+        } else {
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+            cells.push({ 
+                id: `rect-half-end-${rowIndex}`, 
+                type: 'right-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: fullButtonsInRow,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+        }
     }
   }
   
