@@ -155,7 +155,7 @@
   /* Special styling for half hex buttons */
   .universal-button.hex.half .button-shape {
     background-color: #5a7aad;
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: none;
   }
 
   /* Active half buttons (back button and layout toggle) use receipt area color */

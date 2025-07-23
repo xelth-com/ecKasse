@@ -134,7 +134,7 @@
     }
 
     function testAsymmetricalLayout(cols) {
-        const buttonWidth = (availableWidth - (cols) * buttonGap) / (cols + 0.5);
+        const buttonWidth = (availableWidth - (cols + 1) * buttonGap) / (cols + 0.5);
         if (buttonWidth < minButtonSize) return null;
 
         const targetButtonHeight = buttonWidth * targetAspectRatio;
@@ -486,11 +486,16 @@
   }
   
   function populateWithCategories(grid, categories) {
-    // Add layout toggle to right half buttons (top row)
-    const rightHalfCell = grid.find(cell => 
-      (cell.type === 'right-half' || cell.type === 'right-half-rect') && cell.rowIndex === 0
+    // Add layout toggle to right half buttons - find the topmost right half button
+    const rightHalfCells = grid.filter(cell => 
+      cell.type === 'right-half' || cell.type === 'right-half-rect'
     );
-    if (rightHalfCell) {
+    
+    // Sort by row index and take the first (topmost) one
+    if (rightHalfCells.length > 0) {
+      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+      const rightHalfCell = rightHalfCells[0];
+      
       rightHalfCell.content = { 
         isLayoutToggle: true, 
         icon: '', // убираем цифру
@@ -522,11 +527,16 @@
       }
     }
 
-    // Add layout toggle to right half buttons (top row)
-    const rightHalfCell = grid.find(cell => 
-      (cell.type === 'right-half' || cell.type === 'right-half-rect') && cell.rowIndex === 0
+    // Add layout toggle to right half buttons - find the topmost right half button
+    const rightHalfCells = grid.filter(cell => 
+      cell.type === 'right-half' || cell.type === 'right-half-rect'
     );
-    if (rightHalfCell) {
+    
+    // Sort by row index and take the first (topmost) one
+    if (rightHalfCells.length > 0) {
+      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+      const rightHalfCell = rightHalfCells[0];
+      
       rightHalfCell.content = { 
         isLayoutToggle: true, 
         icon: '', // убираем цифру
