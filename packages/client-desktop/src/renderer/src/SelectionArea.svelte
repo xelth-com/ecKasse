@@ -296,13 +296,21 @@
     }
   }
   
-  // Update grid content when grid structure changes OR when data/view changes
+  // Update grid content when grid structure changes OR when data/view changes OR when order state changes
   $: {
     if (gridCells.length > 0 && (
       (currentView === 'categories' && categories.length >= 0) ||
       (currentView === 'products' && products.length >= 0)
     )) {
       updateGridContent();
+    }
+  }
+  
+  // Force grid content update when order state changes (for payment button reactivity)
+  $: {
+    if (gridCells.length > 0 && $orderStore) {
+      // This will trigger re-rendering of payment buttons when order state changes
+      gridCells = [...gridCells];
     }
   }
   
@@ -487,27 +495,13 @@
   }
   
   function populateWithCategories(grid, categories) {
-    // Add layout toggle to right half buttons - find the topmost right half button
-    const rightHalfCells = grid.filter(cell => 
-      cell.type === 'right-half' || cell.type === 'right-half-rect'
-    );
-    
-    // Sort by row index and take the first (topmost) one
-    if (rightHalfCells.length > 0) {
-      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
-      const rightHalfCell = rightHalfCells[0];
-      
-      rightHalfCell.content = { 
-        isLayoutToggle: true, 
-        icon: '', // убираем цифру
-        showShape: layoutType === '6-6-6' ? 'rect' : 'hex' // показываем фигуру следующего режима
-      };
-    }
+    // Find bottom row full buttons and assign payment functions from right to left
+    assignPaymentButtons(grid);
     
     let categoryIndex = 0;
     for (const cell of grid) {
       if (categoryIndex >= categories.length) break;
-      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger) {
+      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.content) {
         cell.content = categories[categoryIndex];
         categoryIndex++;
       }
@@ -515,43 +509,77 @@
   }
   
   function populateWithProducts(grid, products) {
-    const backButtonCell = grid.find(cell => cell.type === 'left-half');
-    if (backButtonCell) {
-      backButtonCell.content = { isBackButton: true, icon: '←' };
-    }
-    
-    // For 4-4-4 layout, add back button to left half rect button
-    if (layoutType === '4-4-4') {
-      const leftHalfRectCell = grid.find(cell => cell.type === 'left-half-rect');
-      if (leftHalfRectCell) {
-        leftHalfRectCell.content = { isBackButton: true, icon: '←' };
-      }
+    // Add back button to topmost left half button
+    const leftHalfCells = grid.filter(cell => 
+      cell.type === 'left-half' || cell.type === 'left-half-rect'
+    );
+    if (leftHalfCells.length > 0) {
+      leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+      const leftHalfCell = leftHalfCells[0];
+      leftHalfCell.content = { isBackButton: true, icon: '←' };
     }
 
-    // Add layout toggle to right half buttons - find the topmost right half button
+    // Add layout toggle to topmost right half button
     const rightHalfCells = grid.filter(cell => 
       cell.type === 'right-half' || cell.type === 'right-half-rect'
     );
-    
-    // Sort by row index and take the first (topmost) one
     if (rightHalfCells.length > 0) {
       rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
       const rightHalfCell = rightHalfCells[0];
-      
       rightHalfCell.content = { 
         isLayoutToggle: true, 
-        icon: '', // убираем цифру
-        showShape: layoutType === '6-6-6' ? 'rect' : 'hex' // показываем фигуру следующего режима
+        icon: '', 
+        showShape: layoutType === '6-6-6' ? 'rect' : 'hex'
       };
     }
+
+    // Find bottom row full buttons and assign payment functions from right to left
+    assignPaymentButtons(grid);
     
     let productIndex = 0;
     for (const cell of grid) {
       if (productIndex >= products.length) break;
-      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.content) {
+      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.content) {
         cell.content = products[productIndex];
         productIndex++;
       }
+    }
+  }
+
+  function assignPaymentButtons(grid) {
+    // Find all full buttons in the bottom row, excluding the Pinpad trigger
+    const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
+    const bottomRowFullButtons = grid.filter(cell => 
+      cell.rowIndex === maxRowIndex && 
+      (cell.type === 'full' || cell.type === 'rect-grid') && 
+      !cell.isPinpadTrigger
+    );
+    
+    addLog('DEBUG', `Found ${bottomRowFullButtons.length} bottom row buttons for payment assignment`);
+    
+    // Sort by column index from right to left (descending)
+    bottomRowFullButtons.sort((a, b) => b.columnIndex - a.columnIndex);
+    
+    // Payment buttons in priority order (right to left) - muted professional colors
+    const paymentButtons = [
+      { type: 'bar', label: 'Bar', color: '#5a7a5a' },        // muted green
+      { type: 'karte', label: 'Karte', color: '#4a5a7a' },    // muted blue  
+      { type: 'zwischenrechnung', label: 'Zwischenrechnung', color: '#7a6a4a' } // muted orange/brown
+    ];
+    
+    // Assign payment buttons to rightmost available positions
+    for (let i = 0; i < Math.min(paymentButtons.length, bottomRowFullButtons.length); i++) {
+      const button = paymentButtons[i];
+      const cell = bottomRowFullButtons[i];
+      
+      cell.content = {
+        isPaymentButton: true,
+        paymentType: button.type,
+        label: button.label,
+        color: button.color
+      };
+      
+      addLog('DEBUG', `Assigned payment button: ${button.label} at row ${cell.rowIndex}, col ${cell.columnIndex}`);
     }
   }
 
@@ -639,17 +667,8 @@
   function handleProductClick(event) {
     const productData = event.detail.data;
     if (productData && productData.id) {
-      let currentStore;
-      orderStore.subscribe(s => currentStore = s)();
-
-      if (currentStore.status === 'idle') {
-        addLog('INFO', 'No active order. Initializing...');
-        orderStore.initializeOrder(1); // Hardcode user 1 for now
-      } else if (currentStore.status === 'active') {
-        orderStore.addItem(productData.id, 1, 1); // Hardcode user 1
-      } else {
-        addLog('WARN', `Ignoring click, order status is '${currentStore.status}'`);
-      }
+      // Always call addItem - it will handle initialization automatically
+      orderStore.addItem(productData.id, 1, 1);
     }
   }
 
@@ -662,6 +681,33 @@
   
   function toggleLayoutType() {
     layoutType = layoutType === '6-6-6' ? '4-4-4' : '6-6-6';
+  }
+
+  function handlePaymentClick(paymentType) {
+    addLog('INFO', `Payment method selected: ${paymentType}`);
+    
+    // Get current order state
+    let currentOrderState;
+    orderStore.subscribe(state => currentOrderState = state)();
+    
+    if (currentOrderState.total <= 0) {
+      addLog('WARNING', 'Cannot process payment: Order total is zero');
+      return;
+    }
+    
+    if (paymentType === 'bar' || paymentType === 'karte') {
+      // Process payment through orderStore
+      const paymentData = { 
+        type: paymentType === 'bar' ? 'Bar' : 'Karte', 
+        amount: currentOrderState.total 
+      };
+      orderStore.finishOrder(paymentData);
+      addLog('SUCCESS', `Payment processed: ${paymentData.type} - ${paymentData.amount.toFixed(2)}€`);
+    } else if (paymentType === 'zwischenrechnung') {
+      // Interim receipt - just log for now
+      addLog('INFO', 'Interim receipt requested');
+      console.log('Interim receipt requested');
+    }
   }
 
   function handleSecondaryAction(event) {
@@ -711,6 +757,19 @@
     if (!cell.content) return { disabled: true };
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
     if (cell.content.isLayoutToggle) return { icon: cell.content.icon || '', onClick: toggleLayoutType, active: true, showShape: cell.content.showShape };
+    if (cell.content.isPaymentButton) {
+      const hasOrder = $orderStore.total > 0;
+      const buttonProps = { 
+        label: cell.content.label, 
+        onClick: hasOrder ? () => handlePaymentClick(cell.content.paymentType) : undefined, 
+        active: hasOrder, 
+        disabled: !hasOrder,
+        paymentButton: true,
+        color: hasOrder ? cell.content.color : '#666'
+      };
+      addLog('DEBUG', `Payment button props for ${cell.content.label}: active=${buttonProps.active}, disabled=${buttonProps.disabled}, color=${buttonProps.color}`);
+      return buttonProps;
+    }
     
     const isCategory = currentView === 'categories';
     const label = isCategory 
@@ -767,6 +826,8 @@
                   <UniversalButton {...getButtonProps(cell)} on:click={() => isPinpadVisible = true}>
                     <PinpadPreview />
                   </UniversalButton>
+                {:else if content.paymentButton}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} on:click={content.onClick} />
                 {:else if content.disabled}
                   <UniversalButton {...getButtonProps(cell)} disabled={true} />
                 {:else if content.icon !== undefined || content.showShape}

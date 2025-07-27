@@ -59,13 +59,6 @@
           <span>Total:</span>
           <span class="price">{$orderStore.total.toFixed(2)}€</span>
         </div>
-        {#if $orderStore.total > 0}
-        <div class="payment-section">
-          <button class="pay-button" on:click={() => orderStore.finishOrder({ type: 'Bar', amount: $orderStore.total })}>
-            PAY {$orderStore.total.toFixed(2)}€
-          </button>
-        </div>
-        {/if}
       </div>
     {:else if currentView === 'logs'}
       <div class="view-content">
@@ -301,26 +294,4 @@
     color: #e0e0e0;
   }
 
-  /* Payment section styles */
-  .payment-section { 
-    margin-top: 16px; 
-    display: flex; 
-  }
-  
-  .pay-button { 
-    flex-grow: 1; 
-    padding: 20px; 
-    font-size: 24px; 
-    font-weight: bold; 
-    background-color: #27ae60; 
-    color: white; 
-    border: none; 
-    border-radius: 8px; 
-    cursor: pointer; 
-    transition: background-color 0.2s; 
-  }
-  
-  .pay-button:hover { 
-    background-color: #2ecc71; 
-  }
 </style>
