@@ -10,6 +10,7 @@ const app = require('./app'); // Ваше Express-приложение
 const logger = require('./config/logger');
 const layoutService = require('./services/layout.service');
 const db = require('./db/knex');
+const loggingService = require('./services/logging.service');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -77,6 +78,7 @@ async function handleWebSocketMessage(ws, rawMessage) {
   // --- Обработка команды ---
   let responsePayload;
   let status = 'success';
+  let responseCommand = command + 'Response';
 
   try {
     if (command === 'ping_ws') {
@@ -89,6 +91,36 @@ async function handleWebSocketMessage(ws, rawMessage) {
     } else if (command === 'saveLayout') {
       const categories = await db('categories').select('*'); // Example: saving current state
       responsePayload = await layoutService.saveLayout(payload.name, categories);
+    } else if (command === 'findOrCreateActiveTransaction') {
+      const { criteria, userId } = payload;
+      const transactionManagementService = require('./services/transaction_management.service.js');
+      responsePayload = await transactionManagementService.findOrCreateActiveTransaction(criteria, userId);
+      if (responsePayload && responsePayload.id) {
+          const items = await db('active_transaction_items')
+            .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+            .select('active_transaction_items.*', 'items.display_names')
+            .where('active_transaction_items.active_transaction_id', responsePayload.id);
+          responsePayload.items = items;
+      }
+      responseCommand = 'orderUpdated';
+    } else if (command === 'addItemToTransaction') {
+      const { transactionId, itemId, quantity, userId } = payload;
+      const transactionManagementService = require('./services/transaction_management.service.js');
+      responsePayload = await transactionManagementService.addItemToTransaction(transactionId, itemId, quantity, userId);
+      // Fetch items with display_names from products table
+      if (responsePayload && responsePayload.id) {
+          const items = await db('active_transaction_items')
+            .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+            .select('active_transaction_items.*', 'items.display_names')
+            .where('active_transaction_items.active_transaction_id', responsePayload.id);
+          responsePayload.items = items;
+      }
+      responseCommand = 'orderUpdated';
+    } else if (command === 'finishTransaction') {
+      const { transactionId, paymentData, userId } = payload;
+      const transactionManagementService = require('./services/transaction_management.service.js');
+      responsePayload = await transactionManagementService.finishTransaction(transactionId, paymentData, userId);
+      responseCommand = 'transactionFinished';
     } else if (command === 'getCategories') {
       responsePayload = await db('categories').select('*');
     } else if (command === 'getItemsByCategory') {
@@ -98,6 +130,11 @@ async function handleWebSocketMessage(ws, rawMessage) {
       }
       const productService = require('./services/product.service');
       responsePayload = await productService.getProductsByCategoryId(categoryId);
+    } else if (command === 'logClientEvent') {
+      const { level, message, context } = payload;
+      // Log the event from the client without sending a response back
+      loggingService.logSystemEvent(level, message, { ...context, source: 'frontend', clientId: ws.id });
+      return; // End execution here for fire-and-forget logs
     
     // Authentication commands
     } else if (command === 'login') {
@@ -243,7 +280,7 @@ async function handleWebSocketMessage(ws, rawMessage) {
 
   const response = { 
     operationId, 
-    command: command + 'Response', 
+    command: responseCommand, 
     status, 
     payload: responsePayload, 
     channel: 'websocket' 
@@ -273,6 +310,21 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ message: 'Welcome to ecKasse WebSocket API!', clientId: ws.id }));
 });
 
-httpServer.listen(PORT, () => {
-  logger.info(`Backend server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
-});
+/**
+ * Initializes and starts the server.
+ * Runs the recovery process for pending fiscal operations before accepting connections.
+ */
+async function startServer() {
+  const { recoverPendingFiscalOperations } = require('./scripts/recover_pending_operations');
+  
+  // Ensure data integrity by recovering any pending operations from the last session.
+  await recoverPendingFiscalOperations();
+
+  // Now, start the server.
+  httpServer.listen(PORT, () => {
+    logger.info(`Backend server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
+  });
+}
+
+// Start the server with the recovery mechanism.
+startServer();

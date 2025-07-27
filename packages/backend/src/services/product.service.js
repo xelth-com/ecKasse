@@ -3,16 +3,17 @@
 const db = require('../db/knex');
 const logger = require('../config/logger');
 const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
+const loggingService = require('./logging.service');
 
 /**
  * Create a new product in the database
  * @param {Object} productData - Product details (name, price, categoryName, description)
  * @returns {Object} Created product data
  */
-async function createProduct(productData) {
+async function createProduct(productData, initiator = { type: 'system', id: null }) {
     const { name, price, categoryName, description } = productData;
     
-    logger.info({ service: 'ProductService', function: 'createProduct', productData }, 'Creating new product...');
+    logger.info({ service: 'ProductService', function: 'createProduct', productData, initiator }, 'Creating new product...');
 
     try {
         return await db.transaction(async (trx) => {
@@ -50,7 +51,8 @@ async function createProduct(productData) {
 
             const auditTrail = JSON.stringify({
                 created_at: new Date().toISOString(),
-                created_by: 'ai_agent',
+                created_by: initiator.type,
+                initiator_id: initiator.id,
                 version: 1
             });
 
@@ -84,19 +86,28 @@ async function createProduct(productData) {
 
             logger.info({ newItemId }, 'Vector embedding inserted into vec_items table');
 
-            // Step 9: Return success response
+            // Step 9: Create result data structure
+            const createdProduct = {
+                id: newItemId,
+                name: name,
+                price: parseFloat(price),
+                categoryName: categoryName,
+                categoryId: category.id,
+                sourceUniqueIdentifier: sourceUniqueIdentifier,
+                description: description || name,
+                createdAt: new Date().toISOString()
+            };
+
+            // Step 10: Log fiscal event for master data change
+            await loggingService.logFiscalEvent('master_data_change_create', initiator.id, {
+                entity: 'product',
+                product: createdProduct,
+                initiator
+            });
+
             const result = {
                 success: true,
-                data: {
-                    id: newItemId,
-                    name: name,
-                    price: parseFloat(price),
-                    categoryName: categoryName,
-                    categoryId: category.id,
-                    sourceUniqueIdentifier: sourceUniqueIdentifier,
-                    description: description || name,
-                    createdAt: new Date().toISOString()
-                }
+                data: createdProduct
             };
 
             logger.info({ service: 'ProductService', result }, 'Product created successfully');
@@ -125,7 +136,7 @@ async function createNewProduct(details) {
         price: details.price,
         categoryName: details.category,
         description: details.description
-    });
+    }, { type: 'user', id: details.userId }); // Assume legacy calls are from users
 }
 
 /**
@@ -262,6 +273,14 @@ async function applyProductUpdateDirectly(trx, id, updates, userSession, current
     // Apply updates if any
     if (Object.keys(updateData).length > 0) {
         await trx('items').where('id', id).update(updateData);
+        
+        // Log fiscal event for master data change
+        await loggingService.logFiscalEvent('master_data_change_update', userSession.user_id, {
+            entity: 'product',
+            product_id: id,
+            changes: updates,
+            initiator: { type: 'user', id: userSession.user_id, username: userSession.username }
+        });
         
         logger.info({ 
             productId: id,

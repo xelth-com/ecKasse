@@ -7,7 +7,7 @@ const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErro
 const USE_MOCK_EMBEDDINGS = false;
 
 /**
- * Generate embedding vector for text using Google's gemini-embedding-exp-03-07 model
+ * Generate embedding vector for text using Google's gemini-embedding-001 model
  * @param {string} text - Text to generate embedding for
  * @param {Object} options - Additional options
  * @returns {Promise<number[]>} - Array of 768 float values representing the embedding
@@ -18,7 +18,7 @@ async function generateEmbedding(text, options = {}) {
     console.log(`🔍 Генерирую embedding для: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
     
     const response = await ai.models.embedContent({
-      model: options.model || 'gemini-embedding-exp-03-07',
+      model: options.model || 'gemini-embedding-001',
       contents: [text],
       config: {
         taskType: options.taskType || "RETRIEVAL_DOCUMENT",
@@ -85,7 +85,7 @@ async function generateBatchEmbeddings(texts, options = {}) {
     console.log(`🔍 Генерирую batch embeddings для ${texts.length} текстов`);
     
     const response = await ai.models.embedContent({
-      model: options.model || 'gemini-embedding-exp-03-07',
+      model: options.model || 'gemini-embedding-001',
       contents: texts,
       config: {
         taskType: options.taskType || "RETRIEVAL_DOCUMENT",
@@ -124,7 +124,7 @@ async function getEmbeddingStats(text, options = {}) {
   
   try {
     const response = await ai.models.embedContent({
-      model: options.model || 'gemini-embedding-exp-03-07',
+      model: options.model || 'gemini-embedding-001',
       contents: [text],
       config: {
         taskType: options.taskType || "RETRIEVAL_DOCUMENT",

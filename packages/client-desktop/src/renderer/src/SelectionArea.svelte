@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { wsStore } from './lib/wsStore.js';
   import { addLog } from './lib/logStore.js';
+  import { orderStore } from './lib/orderStore.js';
   import UniversalButton from './lib/components/UniversalButton.svelte';
   import Pinpad from './lib/components/Pinpad.svelte';
   import PinpadPreview from './lib/components/PinpadPreview.svelte';
@@ -637,7 +638,19 @@
 
   function handleProductClick(event) {
     const productData = event.detail.data;
-    console.log('Product clicked:', productData);
+    if (productData && productData.id) {
+      let currentStore;
+      orderStore.subscribe(s => currentStore = s)();
+
+      if (currentStore.status === 'idle') {
+        addLog('INFO', 'No active order. Initializing...');
+        orderStore.initializeOrder(1); // Hardcode user 1 for now
+      } else if (currentStore.status === 'active') {
+        orderStore.addItem(productData.id, 1, 1); // Hardcode user 1
+      } else {
+        addLog('WARN', `Ignoring click, order status is '${currentStore.status}'`);
+      }
+    }
   }
 
   function goBackToCategories() {

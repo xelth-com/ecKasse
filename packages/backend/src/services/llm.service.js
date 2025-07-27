@@ -226,7 +226,7 @@ const toolFunctions = {
                 description: args.description || `A new ${args.name}`
             };
             
-            const result = await createProduct(productData);
+            const result = await createProduct(productData, { type: 'ai_agent', model: 'gemini-2.5-flash' });
             return result;
         } catch (error) {
             logger.error({ tool: 'createProduct', error: error.message }, 'Error in createProduct tool');

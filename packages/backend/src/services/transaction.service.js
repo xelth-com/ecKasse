@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const db = require('../db/knex');
 const logger = require('../config/logger');
+const loggingService = require('./logging.service');
 
 /**
  * TransactionService handles financial operations, especially storno (void) operations
@@ -115,6 +116,15 @@ class TransactionService {
                 version: 1,
                 action: 'automatic_storno_execution'
             })
+        });
+
+        // *** FISCAL LOG INTEGRATION ***
+        await loggingService.logFiscalEvent('storno_automatic', user.id, {
+            storno_id: stornoId,
+            original_transaction_id: transactionId,
+            amount: amount,
+            reason: reason,
+            type: isEmergency ? 'emergency' : 'daily_credit'
         });
 
         // Update trust score for successful automatic storno
@@ -306,6 +316,17 @@ class TransactionService {
                         reviewed_at: new Date(),
                         review_notes: approvalNotes
                     });
+
+                // *** FISCAL LOG INTEGRATION ***
+                await loggingService.logFiscalEvent('storno_approved', manager.id, {
+                    storno_id: stornoId,
+                    original_transaction_id: storno.transaction_id,
+                    amount: parseFloat(storno.storno_amount),
+                    reason: storno.reason,
+                    requested_by: originalUser.id,
+                    approved_by: manager.id,
+                    notes: approvalNotes
+                });
 
                 // Increase trust score for approved storno (smaller increase than automatic)
                 await this.updateTrustScore(trx, originalUser.id, 0.5);

@@ -1,33 +1,15 @@
 <script>
   import { logEntries, addLog } from './lib/logStore.js';
+  import { orderStore } from './lib/orderStore.js';
   
   // Data-driven tabs configuration
   const views = [
     { id: 'order', label: 'Bestellung' },
-    { id: 'receipt', label: 'Receipt' },
     { id: 'logs', label: 'Logs' },
     { id: 'agent', label: 'Agent' }
   ];
 
   let currentView = 'order';
-  let windowWidth = 0;
-  let windowHeight = 0;
-  let functionButtonsWidth = 0;
-  let functionButtonsHeight = 0;
-
-  // Sample data for different views
-  const orderItems = [
-    { name: 'Klassik Riedberg', qty: 1, price: 15.50 },
-    { name: 'A la Italia', qty: 2, price: 18.50 },
-  ];
-  const orderTotal = orderItems.reduce((sum, item) => sum + item.price * item.qty, 0);
-
-  const receiptItems = [
-    { name: 'Klassik Riedberg', qty: 1, price: 15.50 },
-    { name: 'A la Italia', qty: 2, price: 18.50 },
-    { name: 'Margherita', qty: 1, price: 12.50 },
-  ];
-  const receiptTotal = receiptItems.reduce((sum, item) => sum + item.price * item.qty, 0);
 
   const agentMessages = [
     { timestamp: '10:30', type: 'user', message: 'Найди товар Кофе' },
@@ -40,55 +22,6 @@
 
   function selectView(viewId) {
     currentView = viewId;
-  }
-
-  function updateWindowSize() {
-    windowWidth = window.innerWidth;
-    windowHeight = window.innerHeight;
-    
-    // Calculate FunctionButtons area size
-    const functionArea = document.querySelector('.grid-function-area');
-    if (functionArea) {
-      const pinpadElement = document.querySelector('.pinpad-wrapper');
-      if (pinpadElement) {
-        const pinpadRect = pinpadElement.getBoundingClientRect();
-        const functionAreaRect = functionArea.getBoundingClientRect();
-        
-        // Detailed logging for debugging
-        addLog('DEBUG', `Window: ${windowWidth}x${windowHeight}px`);
-        addLog('DEBUG', `FunctionArea rect: ${functionAreaRect.width.toFixed(2)}x${functionAreaRect.height.toFixed(2)}px`);
-        addLog('DEBUG', `Pinpad rect: ${pinpadRect.width.toFixed(2)}x${pinpadRect.height.toFixed(2)}px`);
-        addLog('DEBUG', `Pinpad position: left=${pinpadRect.left.toFixed(2)}, top=${pinpadRect.top.toFixed(2)}`);
-        addLog('DEBUG', `FunctionArea position: left=${functionAreaRect.left.toFixed(2)}, top=${functionAreaRect.top.toFixed(2)}`);
-        
-        functionButtonsWidth = functionAreaRect.width - pinpadRect.width;
-        functionButtonsHeight = functionAreaRect.height;
-        
-        addLog('DEBUG', `Calculated FunctionButtons: ${functionButtonsWidth.toFixed(2)}x${functionButtonsHeight.toFixed(2)}px`);
-        
-        // Check for potential layout issues
-        const functionButtonsElement = document.querySelector('.function-buttons-wrapper');
-        if (functionButtonsElement) {
-          const fbRect = functionButtonsElement.getBoundingClientRect();
-          addLog('DEBUG', `Actual FunctionButtons element: ${fbRect.width.toFixed(2)}x${fbRect.height.toFixed(2)}px`);
-          addLog('DEBUG', `Difference: calculated=${functionButtonsWidth.toFixed(2)}px vs actual=${fbRect.width.toFixed(2)}px (diff=${(functionButtonsWidth - fbRect.width).toFixed(2)}px)`);
-        }
-      }
-    }
-    
-    addLog('INFO', `Window resized: ${windowWidth}x${windowHeight}px, FunctionButtons area: ${functionButtonsWidth.toFixed(0)}x${functionButtonsHeight.toFixed(0)}px`);
-  }
-
-  // Initialize window size tracking
-  if (typeof window !== 'undefined') {
-    windowWidth = window.innerWidth;
-    windowHeight = window.innerHeight;
-    
-    // Add resize listener
-    window.addEventListener('resize', updateWindowSize);
-    
-    // Initial size calculation after component mounts
-    setTimeout(updateWindowSize, 100);
   }
 </script>
 
@@ -110,45 +43,29 @@
   <div class="content-area">
     {#if currentView === 'order'}
       <div class="view-content">
-        <h2>Order #123</h2>
+        <h2>Order #{$orderStore.transactionId || '...'}</h2>
         <div class="scroll-content">
           <ul class="item-list">
-            {#each orderItems as item}
+            {#each $orderStore.items as item (item.id)}
               <li>
-                <span class="qty">{item.qty}x</span>
-                <span class="name">{item.name}</span>
-                <span class="price">{(item.price * item.qty).toFixed(2)}€</span>
+                <span class="qty">{item.quantity}x</span>
+                <span class="name">{item.display_names ? ( (typeof item.display_names === 'string' ? JSON.parse(item.display_names) : item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
+                <span class="price">{item.total_price.toFixed(2)}€</span>
               </li>
             {/each}
           </ul>
         </div>
         <div class="total">
           <span>Total:</span>
-          <span class="price">{orderTotal.toFixed(2)}€</span>
+          <span class="price">{$orderStore.total.toFixed(2)}€</span>
         </div>
-      </div>
-    {:else if currentView === 'receipt'}
-      <div class="view-content">
-        <h2>Receipt #124</h2>
-        <div class="scroll-content">
-          <ul class="item-list">
-            {#each receiptItems as item}
-              <li>
-                <span class="qty">{item.qty}x</span>
-                <span class="name">{item.name}</span>
-                <span class="price">{(item.price * item.qty).toFixed(2)}€</span>
-              </li>
-            {/each}
-          </ul>
+        {#if $orderStore.total > 0}
+        <div class="payment-section">
+          <button class="pay-button" on:click={() => orderStore.finishOrder({ type: 'Bar', amount: $orderStore.total })}>
+            PAY {$orderStore.total.toFixed(2)}€
+          </button>
         </div>
-        <div class="total">
-          <span>Total:</span>
-          <span class="price">{receiptTotal.toFixed(2)}€</span>
-        </div>
-        <div class="receipt-footer">
-          <p>Thank you for your order!</p>
-          <p>Date: 2024-01-15 10:35:00</p>
-        </div>
+        {/if}
       </div>
     {:else if currentView === 'logs'}
       <div class="view-content">
@@ -382,5 +299,28 @@
     margin: 0 0 16px 0;
     font-size: 24px;
     color: #e0e0e0;
+  }
+
+  /* Payment section styles */
+  .payment-section { 
+    margin-top: 16px; 
+    display: flex; 
+  }
+  
+  .pay-button { 
+    flex-grow: 1; 
+    padding: 20px; 
+    font-size: 24px; 
+    font-weight: bold; 
+    background-color: #27ae60; 
+    color: white; 
+    border: none; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    transition: background-color 0.2s; 
+  }
+  
+  .pay-button:hover { 
+    background-color: #2ecc71; 
   }
 </style>
