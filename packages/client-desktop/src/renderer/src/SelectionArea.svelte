@@ -744,12 +744,30 @@
     const isActive = currentOrderState.status === 'active';
     const hasActiveTransaction = currentOrderState.transactionId;
     
-    if (hasActiveTransaction) {
-      // Case 1: Active transaction exists - activate pinpad for table entry regardless of items
+    if (hasActiveTransaction && hasItems && hasTable) {
+      // Case 1: Active transaction with items and table assigned - park the order
+      addLog('INFO', `Parking order with table ${hasTable} to complete table workflow`);
+      try {
+        await orderStore.parkCurrentOrder(hasTable);
+        addLog('SUCCESS', 'Order parked successfully');
+        
+        // Force refresh parked orders and reset view
+        await parkedOrdersStore.refresh();
+        currentView = 'categories';
+        selectedCategory = null;
+      } catch (error) {
+        addLog('ERROR', `Failed to park order: ${error.message}`);
+      }
+    } else if (hasActiveTransaction && !hasTable) {
+      // Case 2: Active transaction without table - activate pinpad for table entry
       addLog('INFO', 'Activating pinpad for table number entry');
       pinpadStore.activateTableEntry();
+    } else if (hasActiveTransaction && hasTable && !hasItems) {
+      // Case 3: Active transaction with table but no items - allow table number change
+      addLog('INFO', 'Changing table number for empty order');
+      pinpadStore.activateTableEntry();
     } else if (!hasActiveTransaction) {
-      // Case 3: No active transaction - initialize new order first
+      // Case 4: No active transaction - initialize new order first
       addLog('INFO', 'No active order - initializing new order for table entry');
       try {
         await orderStore.initializeOrder(1, {});

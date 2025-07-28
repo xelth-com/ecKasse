@@ -2,9 +2,11 @@
   import { onMount, onDestroy } from 'svelte';
   import { parkedOrdersStore } from '../parkedOrdersStore.js';
   import { orderStore } from '../orderStore.js';
+  import { wsStore } from '../wsStore.js';
 
   let parkedOrders = [];
   let unsubscribe;
+  let wsUnsubscribe;
 
   onMount(async () => {
     // Subscribe to parked orders store
@@ -12,13 +14,21 @@
       parkedOrders = value;
     });
 
-    // Initial load of parked orders
-    await parkedOrdersStore.refreshParkedOrders();
+    // Wait for WebSocket connection before loading parked orders
+    wsUnsubscribe = wsStore.subscribe(async (wsState) => {
+      if (wsState.connected && parkedOrders.length === 0) {
+        // Only load once when WebSocket connects and we haven't loaded yet
+        await parkedOrdersStore.refreshParkedOrders();
+      }
+    });
   });
 
   onDestroy(() => {
     if (unsubscribe) {
       unsubscribe();
+    }
+    if (wsUnsubscribe) {
+      wsUnsubscribe();
     }
   });
 

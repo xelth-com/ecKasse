@@ -46,6 +46,70 @@ logger.info(`Serving static files from: ${staticPath}`);
 // app.use('/api', mainRoutes); // Когда у вас будут роуты
 app.use('/api/llm', llmRoutes); // Mount the LLM routes
 
+// HTTP fallback endpoint for WebSocket commands
+app.post('/api/websocket-fallback', async (req, res) => {
+  const { operationId, command, payload } = req.body;
+
+  if (!operationId) {
+    logger.warn({ msg: 'HTTP fallback request without operationId' });
+    return res.status(400).json({ error: 'operationId is required' });
+  }
+
+  if (processedHttpOperationIds.has(operationId)) {
+    logger.info({ msg: 'Duplicate HTTP fallback operationId received', operationId });
+    return res.json({
+      operationId,
+      status: 'already_processed',
+      message: `Operation ${operationId} was already processed via HTTP.`,
+      channel: 'http'
+    });
+  }
+
+  processedHttpOperationIds.add(operationId);
+  setTimeout(() => {
+    processedHttpOperationIds.delete(operationId);
+  }, HTTP_OPERATION_ID_TTL);
+
+  // Reuse the same command handling logic from WebSocket server
+  let responsePayload;
+  let status = 'success';
+  let responseCommand = command + 'Response';
+
+  try {
+    if (command === 'getParkedTransactions') {
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.getParkedTransactions();
+    } else if (command === 'activateTransaction') {
+      const { transactionId, userId } = payload;
+      if (!transactionId || !userId) {
+        throw new Error('TransactionId and userId are required');
+      }
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.activateTransaction(transactionId, userId);
+      responseCommand = 'orderUpdated';
+    } else {
+      status = 'error';
+      responsePayload = { message: 'Command not supported in HTTP fallback', originalCommand: command };
+      logger.warn({ msg: 'Unsupported HTTP fallback command', command, operationId });
+    }
+  } catch (error) {
+    status = 'error';
+    responsePayload = { message: 'Command execution failed', error: error.message };
+    logger.error({ msg: 'HTTP fallback command execution error', command, operationId, error: error.message });
+  }
+
+  const response = {
+    operationId,
+    command: responseCommand,
+    status,
+    payload: responsePayload,
+    channel: 'http'
+  };
+
+  logger.info({ type: 'http_response', direction: 'out', data: response });
+  res.json(response);
+});
+
 
 // Пример простого маршрута для теста
 app.get('/api/ping', (req, res) => {

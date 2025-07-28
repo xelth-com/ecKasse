@@ -3,7 +3,8 @@ import { writable } from 'svelte/store';
 // Create a writable store for WebSocket state
 function createWebSocketStore() {
   const { subscribe, set, update } = writable({
-    isConnected: false,
+    connected: false,
+    isConnected: false, // Keep for backward compatibility
     lastMessage: null,
     error: null
   });
@@ -18,7 +19,7 @@ function createWebSocketStore() {
       
       ws.onopen = () => {
         console.log('WebSocket connected');
-        update(state => ({ ...state, isConnected: true, error: null }));
+        update(state => ({ ...state, connected: true, isConnected: true, error: null }));
       };
 
       ws.onmessage = (event) => {
@@ -42,7 +43,7 @@ function createWebSocketStore() {
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
-        update(state => ({ ...state, isConnected: false }));
+        update(state => ({ ...state, connected: false, isConnected: false }));
         // Auto-reconnect after 3 seconds
         setTimeout(connect, 3000);
       };
@@ -61,7 +62,7 @@ function createWebSocketStore() {
   function send(message) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       const messageWithId = {
-        operationId: crypto.randomUUID(),
+        operationId: generateUUID(),
         ...message
       };
       
@@ -81,9 +82,18 @@ function createWebSocketStore() {
         }, 10000);
       });
     } else {
-      console.error('WebSocket is not connected');
+      // Silently fail if WebSocket is not connected (avoids startup errors)
       return Promise.resolve({ error: 'WebSocket not connected' });
     }
+  }
+
+  // Simple UUID v4 generator (to avoid crypto.randomUUID dependency issues)
+  function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   // Initialize connection

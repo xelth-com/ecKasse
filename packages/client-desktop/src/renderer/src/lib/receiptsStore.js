@@ -47,10 +47,23 @@ function createReceiptsStore() {
 		update(store => ({ ...store, loading: true, error: null }));
 		addLog('INFO', `Loading recent receipts (limit: ${limit})...`);
 		
-		wsStore.send({
-			command: 'getRecentReceipts',
-			payload: { limit }
-		});
+		// Check if WebSocket is connected before sending
+		let currentWsState;
+		wsStore.subscribe(state => currentWsState = state)();
+		
+		if (currentWsState && currentWsState.connected) {
+			wsStore.send({
+				command: 'getRecentReceipts',
+				payload: { limit }
+			});
+		} else {
+			addLog('WARNING', 'WebSocket not connected, skipping receipt load');
+			update(store => ({ 
+				...store, 
+				loading: false, 
+				error: 'WebSocket connection not available' 
+			}));
+		}
 	}
 
 	function refresh() {

@@ -80,7 +80,11 @@
           <div class="active-order-section">
             <div class="order-content">
               <!-- Fixed header at top -->
-              <h2>Order #<span class="table-number">{$pinpadStore.isActive && $pinpadStore.mode === 'table' ? $pinpadStore.liveValue : ($orderStore.metadata?.table || ($orderStore.transactionId ? $orderStore.transactionId : '...'))}</span> {$orderStore.status !== 'idle' ? `(${$orderStore.status})` : ''}</h2>
+              <h2>Order #{$orderStore.transactionId || '...'} {$orderStore.status !== 'idle' ? `(${$orderStore.status})` : ''} 
+                {#if $orderStore.metadata?.table || ($pinpadStore.isActive && $pinpadStore.mode === 'table')}
+                  - Table: <span class="table-number">{$pinpadStore.isActive && $pinpadStore.mode === 'table' ? $pinpadStore.liveValue : $orderStore.metadata?.table}</span>
+                {/if}
+              </h2>
               <!-- Scrollable items area -->
               <div class="scrollable-items-content">
                 <ul class="item-list">

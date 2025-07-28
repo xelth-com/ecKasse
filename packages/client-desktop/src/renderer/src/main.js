@@ -24,6 +24,7 @@ window.addEventListener('unhandledrejection', event => {
   });
 });
 
+
 const app = mount(App, {
   target: document.getElementById('app'),
 })

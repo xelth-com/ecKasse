@@ -298,6 +298,13 @@ async function handleWebSocketMessage(ws, rawMessage) {
     } else if (command === 'getParkedTransactions') {
       const transactionManagementService = require('./services/transaction_management.service');
       responsePayload = await transactionManagementService.getParkedTransactions();
+    } else if (command === 'updateTransactionMetadata') {
+      const { transactionId, metadata, userId } = payload;
+      if (!transactionId || !metadata || !userId) {
+        throw new Error('TransactionId, metadata, and userId are required');
+      }
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.updateTransactionMetadata(transactionId, metadata, userId);
     
     } else {
       status = 'error';

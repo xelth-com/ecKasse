@@ -253,6 +253,42 @@ function createOrderStore() {
 		addLog('SUCCESS', `Order ${orderData.id} loaded successfully`);
 	}
 
+	async function assignTableNumber(tableNumber, userId = 1) {
+		let currentStoreState;
+		subscribe(s => currentStoreState = s)();
+
+		if (!currentStoreState.transactionId || currentStoreState.status !== 'active') {
+			addLog('ERROR', 'No active order to assign table number to.');
+			return;
+		}
+
+		addLog('INFO', `Assigning table ${tableNumber} to transaction ${currentStoreState.transactionId}...`);
+		
+		// Update local metadata immediately for UI responsiveness
+		update(store => ({
+			...store,
+			metadata: {
+				...store.metadata,
+				table: tableNumber
+			}
+		}));
+
+		// Send update to backend
+		wsStore.send({
+			command: 'updateTransactionMetadata',
+			payload: {
+				transactionId: currentStoreState.transactionId,
+				metadata: {
+					...currentStoreState.metadata,
+					table: tableNumber
+				},
+				userId
+			}
+		});
+
+		addLog('SUCCESS', `Table ${tableNumber} assigned to order`);
+	}
+
 	async function clearActiveOrderView() {
 		addLog('INFO', 'Clearing active order view');
 		resetOrder();
@@ -273,6 +309,7 @@ function createOrderStore() {
 		finishOrder,
 		resetOrder,
 		parkCurrentOrder,
+		assignTableNumber,
 		loadOrder,
 		clearActiveOrderView
 	};

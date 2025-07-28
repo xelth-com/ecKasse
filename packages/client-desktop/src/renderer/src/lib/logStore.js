@@ -27,8 +27,11 @@ export function addLog(level, message, context = {}) {
   const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
   logEntries.update(entries => [...entries.slice(-100), { timestamp, level, message, context }]);
 
-  // Fire-and-forget log to the backend
-  if (wsStore) {
+  // Fire-and-forget log to the backend (only if WebSocket is connected)
+  let currentWsState;
+  wsStore.subscribe(state => currentWsState = state)();
+  
+  if (wsStore && currentWsState && currentWsState.connected) {
     wsStore.send({
       command: 'logClientEvent',
       payload: { level, message, context: sanitizeContext(context) }

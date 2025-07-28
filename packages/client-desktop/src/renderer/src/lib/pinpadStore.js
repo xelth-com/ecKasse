@@ -149,7 +149,7 @@ function createPinpadStore() {
                 'table',
                 async (tableNumber) => {
                     if (tableNumber && tableNumber.trim()) {
-                        return await orderStore.parkCurrentOrder(tableNumber.trim());
+                        return await orderStore.assignTableNumber(tableNumber.trim());
                     }
                 },
                 () => {

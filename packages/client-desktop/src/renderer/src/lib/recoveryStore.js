@@ -50,6 +50,16 @@ function createRecoveryStore() {
     addLog('INFO', `Attempting to resolve transaction ${transactionId} with action: ${resolution}`);
     update(s => ({ ...s, status: 'resolving', error: null }));
 
+    // Check if WebSocket is connected before sending
+    let currentWsState;
+    wsStore.subscribe(state => currentWsState = state)();
+    
+    if (!currentWsState || !currentWsState.connected) {
+      addLog('ERROR', 'WebSocket not connected, cannot resolve transaction');
+      update(s => ({ ...s, status: 'awaiting_resolution', error: 'WebSocket connection not available' }));
+      return;
+    }
+
     try {
       const response = await wsStore.send({
         command: 'resolvePendingTransaction',

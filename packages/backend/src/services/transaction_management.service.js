@@ -592,6 +592,75 @@ class TransactionManagementService {
       throw error;
     }
   }
+
+  /**
+   * Updates the metadata of an active transaction.
+   * @param {number} transactionId - The ID of the transaction to update.
+   * @param {object} metadata - The new metadata object.
+   * @param {number} userId - The ID of the user performing the update.
+   * @returns {Promise<object>} The updated transaction object.
+   */
+  async updateTransactionMetadata(transactionId, metadata, userId) {
+    logger.info({ 
+      service: 'TransactionManagementService', 
+      function: 'updateTransactionMetadata', 
+      transactionId, 
+      metadata, 
+      userId 
+    });
+
+    try {
+      // Find the existing transaction
+      const existingTransaction = await db('active_transactions')
+        .where({ id: transactionId, status: 'active' })
+        .first();
+
+      if (!existingTransaction) {
+        throw new Error(`Active transaction with ID ${transactionId} not found`);
+      }
+
+      // Update the transaction metadata
+      const [updatedTransaction] = await db('active_transactions')
+        .where({ id: transactionId })
+        .update({ 
+          metadata: JSON.stringify(metadata),
+          updated_at: new Date().toISOString()
+        })
+        .returning('*');
+
+      // Log the fiscal event for metadata update
+      const fiscalLogResult = await loggingService.logFiscalEvent('updateTransactionMetadata', userId, {
+        transaction_uuid: existingTransaction.uuid,
+        old_metadata: existingTransaction.metadata,
+        new_metadata: JSON.stringify(metadata)
+      });
+
+      if (!fiscalLogResult.success) {
+        logger.error({ 
+          msg: 'Failed to create fiscal log for metadata update', 
+          error: fiscalLogResult.error,
+          transactionId 
+        });
+      }
+
+      logger.info({ 
+        msg: 'Transaction metadata updated successfully', 
+        transactionId 
+      });
+
+      return {
+        ...updatedTransaction,
+        metadata: JSON.parse(updatedTransaction.metadata)
+      };
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to update transaction metadata', 
+        error: error.message,
+        transactionId
+      });
+      throw error;
+    }
+  }
 }
 
 // Export a singleton instance of the service
