@@ -1,9 +1,11 @@
 <script>
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
+  import RecoveryModal from './lib/components/RecoveryModal.svelte';
 </script>
 
 <main class="pos-grid">
+  <RecoveryModal />
   <div class="grid-item-display">
     <ConsoleView />
   </div>

@@ -130,6 +130,10 @@ async function handleWebSocketMessage(ws, rawMessage) {
       }
       const productService = require('./services/product.service');
       responsePayload = await productService.getProductsByCategoryId(categoryId);
+    } else if (command === 'getRecentReceipts') {
+      const { limit } = payload || {};
+      const reportingService = require('./services/reporting.service');
+      responsePayload = await reportingService.getRecentTransactions(limit);
     } else if (command === 'logClientEvent') {
       const { level, message, context } = payload;
       // Log the event from the client without sending a response back
@@ -266,6 +270,35 @@ async function handleWebSocketMessage(ws, rawMessage) {
       const canPerform = await authService.canPerformAction(sessionId, action);
       responsePayload = { canPerform, action };
     
+    // Pending transaction resolution
+    } else if (command === 'resolvePendingTransaction') {
+      const { transactionId, resolution, userId } = payload;
+      if (!transactionId || !resolution || !userId) {
+        throw new Error('TransactionId, resolution, and userId are required');
+      }
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.resolvePendingTransaction(transactionId, resolution, userId);
+    
+    // Parked orders management
+    } else if (command === 'parkTransaction') {
+      const { transactionId, tableIdentifier, userId } = payload;
+      if (!transactionId || !tableIdentifier || !userId) {
+        throw new Error('TransactionId, tableIdentifier, and userId are required');
+      }
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.parkTransaction(transactionId, tableIdentifier, userId);
+    } else if (command === 'activateTransaction') {
+      const { transactionId, userId } = payload;
+      if (!transactionId || !userId) {
+        throw new Error('TransactionId and userId are required');
+      }
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.activateTransaction(transactionId, userId);
+      responseCommand = 'orderUpdated';
+    } else if (command === 'getParkedTransactions') {
+      const transactionManagementService = require('./services/transaction_management.service');
+      responsePayload = await transactionManagementService.getParkedTransactions();
+    
     } else {
       status = 'error';
       responsePayload = { message: 'Unknown command', originalCommand: command };
@@ -308,7 +341,84 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.send(JSON.stringify({ message: 'Welcome to ecKasse WebSocket API!', clientId: ws.id }));
+
+  // Send pending recovery transactions to the newly connected client
+  (async () => {
+    try {
+      const transactionManagementService = require('./services/transaction_management.service');
+      const pendingTransactions = await transactionManagementService.getPendingTransactions();
+      
+      if (pendingTransactions.length > 0) {
+        const pendingMessage = {
+          command: 'pendingTransactions',
+          payload: {
+            transactions: pendingTransactions,
+            count: pendingTransactions.length
+          },
+          timestamp: new Date().toISOString(),
+          clientId: ws.id
+        };
+        
+        ws.send(JSON.stringify(pendingMessage));
+        logger.info({ 
+          msg: 'Sent pending recovery transactions to client', 
+          clientId: ws.id, 
+          count: pendingTransactions.length 
+        });
+      } else {
+        logger.info({ 
+          msg: 'No pending recovery transactions to send to client', 
+          clientId: ws.id 
+        });
+      }
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to send pending recovery transactions to client', 
+        clientId: ws.id, 
+        error: error.message 
+      });
+    }
+  })();
 });
+
+/**
+ * Runs recovery process to identify stale active transactions and mark them as pending for manual resolution.
+ * This function runs on startup and finds transactions left in 'active' state from previous sessions.
+ */
+async function runRecoveryProcess() {
+  logger.info('Starting recovery process for stale active transactions...');
+  
+  try {
+    // Find all transactions that are still 'active' but have resolution_status 'none'
+    // These are transactions that were left hanging from a previous session
+    const staleTransactions = await db('active_transactions')
+      .where('status', 'active')
+      .where('resolution_status', 'none')
+      .select('id', 'uuid', 'created_at');
+
+    if (staleTransactions.length > 0) {
+      // Update their resolution_status to 'pending' for manual resolution
+      await db('active_transactions')
+        .where('status', 'active')
+        .where('resolution_status', 'none')
+        .update('resolution_status', 'pending');
+
+      logger.warn({ 
+        count: staleTransactions.length,
+        transactions: staleTransactions.map(t => ({ id: t.id, uuid: t.uuid, created_at: t.created_at }))
+      }, `Marked ${staleTransactions.length} stale transactions as pending for recovery.`);
+    } else {
+      logger.info('No stale active transactions found. System is clean.');
+    }
+  } catch (error) {
+    logger.error({ 
+      msg: 'Failed to run recovery process for stale active transactions.', 
+      error: error.message, 
+      stack: error.stack 
+    });
+    // Continue startup even if recovery fails, but log the critical error
+  }
+}
 
 /**
  * Initializes and starts the server.
@@ -319,6 +429,9 @@ async function startServer() {
   
   // Ensure data integrity by recovering any pending operations from the last session.
   await recoverPendingFiscalOperations();
+  
+  // Run recovery process for stale active transactions
+  await runRecoveryProcess();
 
   // Now, start the server.
   httpServer.listen(PORT, () => {

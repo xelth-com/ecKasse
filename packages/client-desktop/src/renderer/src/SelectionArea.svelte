@@ -3,10 +3,13 @@
   import { wsStore } from './lib/wsStore.js';
   import { addLog } from './lib/logStore.js';
   import { orderStore } from './lib/orderStore.js';
+  import { parkedOrdersStore } from './lib/parkedOrdersStore.js';
+  import { currentView as consoleView } from './lib/viewStore.js';
   import UniversalButton from './lib/components/UniversalButton.svelte';
   import Pinpad from './lib/components/Pinpad.svelte';
   import PinpadPreview from './lib/components/PinpadPreview.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
+  import TableNumberModal from './lib/components/TableNumberModal.svelte';
 
   let categories = [];
   let products = [];
@@ -16,6 +19,8 @@
   let selectedCategory = null;
   let layoutType = '6-6-6'; // '6-6-6' or '4-4-4'
   let isPinpadVisible = false; // State for the pop-up Pinpad
+  let isTableModalVisible = false; // State for table number modal
+  let currentTableNumber = ''; // Current table number for modal
   
   // Context menu state
   let contextMenuVisible = false;
@@ -334,6 +339,19 @@
         }
     }
 
+    // Designate the second bottom-left button as the Table button
+    if (cells.length > 0) {
+        let potentialTableButtons = cells.filter(c => 
+            (c.type === 'full' || c.type === 'rect-grid') && 
+            !c.isPinpadTrigger
+        );
+        if (potentialTableButtons.length > 0) {
+            // Sort by row (bottom first), then by column (left first)
+            potentialTableButtons.sort((a,b) => (b.rowIndex - a.rowIndex) || (a.columnIndex - b.columnIndex));
+            potentialTableButtons[0].isTableButton = true;
+        }
+    }
+
     return cells;
   }
   
@@ -547,12 +565,13 @@
   }
 
   function assignPaymentButtons(grid) {
-    // Find all full buttons in the bottom row, excluding the Pinpad trigger
+    // Find all full buttons in the bottom row, excluding the Pinpad and Table triggers
     const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
     const bottomRowFullButtons = grid.filter(cell => 
       cell.rowIndex === maxRowIndex && 
       (cell.type === 'full' || cell.type === 'rect-grid') && 
-      !cell.isPinpadTrigger
+      !cell.isPinpadTrigger &&
+      !cell.isTableButton
     );
     
     addLog('DEBUG', `Found ${bottomRowFullButtons.length} bottom row buttons for payment assignment`);
@@ -710,6 +729,76 @@
     }
   }
 
+  function handleTableClick() {
+    // Always switch to orders view first
+    consoleView.set('order');
+    
+    // Get current order state
+    let currentOrderState;
+    orderStore.subscribe(state => currentOrderState = state)();
+    
+    const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
+    const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
+    const isActive = currentOrderState.status === 'active';
+    
+    if (isActive && hasItems) {
+      // Case 1: Active order with items - close the table (reset to initial state)
+      addLog('INFO', 'Closing table - resetting to initial state');
+      orderStore.clearActiveOrderView();
+      goBackToCategories();
+    } else if (isActive && !hasItems) {
+      // Case 2: Active order without items - show modal for table number (even if already has table)
+      addLog('INFO', 'Showing modal for table number input');
+      currentTableNumber = hasTable ? currentOrderState.metadata.table : '1';
+      isTableModalVisible = true;
+    } else if (!isActive) {
+      // Case 3: No active order - show modal for table number and reset to categories
+      addLog('INFO', 'No active order - showing modal for table number and resetting categories');
+      goBackToCategories();
+      currentTableNumber = '1';
+      isTableModalVisible = true;
+    }
+  }
+
+  function handleTableNumberSubmit(event) {
+    const tableNumber = event.detail;
+    handlePinpadSubmit(tableNumber);
+  }
+
+  function handleTableNumberCancel() {
+    isTableModalVisible = false;
+  }
+
+  function handlePinpadSubmit(tableNumber) {
+    if (tableNumber && tableNumber.trim()) {
+      addLog('INFO', `Setting table number to ${tableNumber}`);
+      
+      // Get current order state
+      let currentOrderState;
+      orderStore.subscribe(state => currentOrderState = state)();
+      
+      if (currentOrderState.status === 'active') {
+        // Update existing order with table number
+        const metadata = { ...currentOrderState.metadata, table: tableNumber.trim() };
+        updateOrderMetadata(metadata);
+      } else {
+        // Create new order with table metadata
+        orderStore.initializeOrder(1, { table: tableNumber.trim() });
+      }
+      
+      isTableModalVisible = false;
+    }
+  }
+
+  function updateOrderMetadata(metadata) {
+    // This is a simplified approach - in a real implementation, 
+    // you might want to send this to the backend
+    orderStore.update(store => ({
+      ...store,
+      metadata: metadata
+    }));
+  }
+
   function handleSecondaryAction(event) {
     const { data, mouseX, mouseY } = event.detail;
     if (data && !data.isBackButton) {
@@ -754,11 +843,19 @@
 
   function getButtonContent(cell) {
     if (cell.isPinpadTrigger) return { isPinpadTrigger: true };
+    if (cell.isTableButton) {
+      return { 
+        label: 'Стол', 
+        onClick: handleTableClick, 
+        active: true,
+        color: '#6c5ce7' // Purple color for table button
+      };
+    }
     if (!cell.content) return { disabled: true };
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
     if (cell.content.isLayoutToggle) return { icon: cell.content.icon || '', onClick: toggleLayoutType, active: true, showShape: cell.content.showShape };
     if (cell.content.isPaymentButton) {
-      const hasOrder = $orderStore.total > 0;
+      const hasOrder = $orderStore.total > 0 && $orderStore.status === 'active';
       const buttonProps = { 
         label: cell.content.label, 
         onClick: hasOrder ? () => handlePaymentClick(cell.content.paymentType) : undefined, 
@@ -771,13 +868,19 @@
       return buttonProps;
     }
     
+    // Regular category/product buttons are always enabled (auto-reset handles finished state)
     const isCategory = currentView === 'categories';
     const label = isCategory 
       ? JSON.parse(cell.content.category_names).de || 'Unnamed'
       : JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product';
     const onClick = isCategory ? handleCategoryClick : handleProductClick;
     
-    return { label, data: cell.content, onClick };
+    return { 
+      label, 
+      data: cell.content, 
+      onClick,
+      active: true
+    };
   }
 </script>
 
@@ -790,6 +893,13 @@
       </div>
     </div>
   {/if}
+
+  <TableNumberModal 
+    bind:visible={isTableModalVisible} 
+    currentValue={currentTableNumber}
+    on:submit={handleTableNumberSubmit}
+    on:cancel={handleTableNumberCancel}
+  />
 
   <ContextMenu 
     item={contextMenuItem} 
@@ -828,12 +938,14 @@
                   </UniversalButton>
                 {:else if content.paymentButton}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} on:click={content.onClick} />
+                {:else if content.label && !content.data}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} on:click={content.onClick} />
                 {:else if content.disabled}
                   <UniversalButton {...getButtonProps(cell)} disabled={true} />
                 {:else if content.icon !== undefined || content.showShape}
                   <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} on:click={content.onClick} />
                 {:else if content.label}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
                 {/if}
               {/if}
             {/each}

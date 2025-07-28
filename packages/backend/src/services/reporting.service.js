@@ -105,8 +105,73 @@ async function getSlowMovingItems(period, threshold = 5) {
     };
 }
 
+/**
+ * Get recent finished transactions with their items
+ * @param {number} limit - Maximum number of transactions to return
+ * @returns {Promise<Object>} Recent transactions data
+ */
+async function getRecentTransactions(limit = 20) {
+    logger.info({ service: 'ReportingService', function: 'getRecentTransactions', limit }, 'Fetching recent transactions...');
+
+    try {
+        // Get recent finished transactions
+        const transactions = await db('active_transactions')
+            .where('status', 'finished')
+            .orderBy('updated_at', 'asc')
+            .limit(limit)
+            .select('*');
+
+        // For each transaction, fetch its items
+        const transactionsWithItems = await Promise.all(
+            transactions.map(async (transaction) => {
+                const items = await db('active_transaction_items')
+                    .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+                    .select(
+                        'active_transaction_items.*',
+                        'items.display_names',
+                        'items.item_price_value'
+                    )
+                    .where('active_transaction_items.active_transaction_id', transaction.id);
+
+                return {
+                    ...transaction,
+                    items: items.map(item => ({
+                        ...item,
+                        display_names: item.display_names ? JSON.parse(item.display_names) : null
+                    }))
+                };
+            })
+        );
+
+        logger.info({ 
+            service: 'ReportingService', 
+            count: transactionsWithItems.length, 
+            msg: 'Recent transactions fetched successfully'
+        });
+
+        return { 
+            success: true, 
+            transactions: transactionsWithItems 
+        };
+
+    } catch (error) {
+        logger.error({ 
+            service: 'ReportingService', 
+            error: error.message, 
+            stack: error.stack 
+        }, 'Failed to fetch recent transactions.');
+        
+        return { 
+            success: false, 
+            message: 'Error fetching recent transactions: ' + error.message,
+            error: error.message 
+        };
+    }
+}
+
 module.exports = { 
     generateSalesReport, 
     getTopSellingItems, 
-    getSlowMovingItems 
+    getSlowMovingItems,
+    getRecentTransactions
 };

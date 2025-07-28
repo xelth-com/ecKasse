@@ -1,15 +1,40 @@
 <script>
+  import { afterUpdate } from 'svelte';
   import { logEntries, addLog } from './lib/logStore.js';
   import { orderStore } from './lib/orderStore.js';
+  import { receiptsStore } from './lib/receiptsStore.js';
+  import { currentView } from './lib/viewStore.js';
+  import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
+  import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   
   // Data-driven tabs configuration
   const views = [
     { id: 'order', label: 'Bestellung' },
-    { id: 'logs', label: 'Logs' },
+    { id: 'receipts', label: 'Чеки' },
     { id: 'agent', label: 'Agent' }
   ];
 
-  let currentView = 'order';
+  let agentScrollElement;
+
+  // Track previous order status to detect transitions
+  let previousOrderStatus = $orderStore.status;
+  
+  // Auto-switch to receipts after transaction is finished and then reset
+  $: {
+    // Detect when order status changes from 'finished' to 'idle' (auto-reset happened)
+    if (previousOrderStatus === 'finished' && $orderStore.status === 'idle') {
+      currentView.set('receipts');
+      receiptsStore.refresh(); // Refresh receipts to show the latest transaction
+    }
+    previousOrderStatus = $orderStore.status;
+  }
+
+  // Auto-scroll agent messages to bottom
+  afterUpdate(() => {
+    if ($currentView === 'agent' && agentScrollElement) {
+      agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+    }
+  });
 
   const agentMessages = [
     { timestamp: '10:30', type: 'user', message: 'Найди товар Кофе' },
@@ -21,7 +46,7 @@
   ];
 
   function selectView(viewId) {
-    currentView = viewId;
+    currentView.set(viewId);
   }
 </script>
 
@@ -31,7 +56,7 @@
     {#each views as view}
       <button 
         class="tab-button"
-        class:active={currentView === view.id}
+        class:active={$currentView === view.id}
         on:click={() => selectView(view.id)}
       >
         {view.label}
@@ -41,44 +66,49 @@
 
   <!-- Content area -->
   <div class="content-area">
-    {#if currentView === 'order'}
-      <div class="view-content">
-        <h2>Order #{$orderStore.transactionId || '...'}</h2>
-        <div class="scroll-content">
-          <ul class="item-list">
-            {#each $orderStore.items as item (item.id)}
-              <li>
-                <span class="qty">{item.quantity}x</span>
-                <span class="name">{item.display_names ? ( (typeof item.display_names === 'string' ? JSON.parse(item.display_names) : item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
-                <span class="price">{item.total_price.toFixed(2)}€</span>
-              </li>
-            {/each}
-          </ul>
-        </div>
-        <div class="total">
-          <span>Total:</span>
-          <span class="price">{$orderStore.total.toFixed(2)}€</span>
-        </div>
-      </div>
-    {:else if currentView === 'logs'}
-      <div class="view-content">
-        <h2>System Logs</h2>
-        <div class="scroll-content">
-          <div class="log-entries">
-            {#each $logEntries as entry}
-              <div class="log-entry" class:error={entry.level === 'ERROR'} class:debug={entry.level === 'DEBUG'}>
-                <span class="log-timestamp">{entry.timestamp}</span>
-                <span class="log-level">{entry.level}</span>
-                <span class="log-message">{entry.message}</span>
+    {#if $currentView === 'order'}
+      <div class="view-content order-view">
+        <!-- Combined orders container -->
+        <div class="orders-stack">
+          <!-- Parked Orders Section (stacked above active order) -->
+          <div class="parked-orders-section">
+            <ParkedOrdersDisplay />
+          </div>
+          
+          <!-- Active Order Section (always at bottom) -->
+          <div class="active-order-section">
+            <div class="order-content">
+              <!-- Fixed header at top -->
+              <h2>Order #{$orderStore.transactionId || '...'} {$orderStore.status !== 'idle' ? `(${$orderStore.status})` : ''}</h2>
+              <!-- Scrollable items area -->
+              <div class="scrollable-items-content">
+                <ul class="item-list">
+                  {#each $orderStore.items as item (item.id)}
+                    <li>
+                      <span class="qty">{item.quantity}x</span>
+                      <span class="name">{item.display_names ? ( (typeof item.display_names === 'string' ? JSON.parse(item.display_names) : item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
+                      <span class="price">{item.total_price.toFixed(2)}€</span>
+                    </li>
+                  {/each}
+                </ul>
               </div>
-            {/each}
+              <!-- Fixed total at bottom -->
+              <div class="total">
+                <span>Total:</span>
+                <span class="price">{$orderStore.total.toFixed(2)}€</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    {:else if currentView === 'agent'}
+    {:else if $currentView === 'receipts'}
+      <div class="view-content">
+        <ReceiptFeed />
+      </div>
+    {:else if $currentView === 'agent'}
       <div class="view-content">
         <h2>Agent Console</h2>
-        <div class="scroll-content">
+        <div class="scroll-content" bind:this={agentScrollElement}>
           <div class="agent-messages">
             {#each agentMessages as message}
               <div class="agent-message" class:user={message.type === 'user'} class:agent={message.type === 'agent'}>
@@ -143,6 +173,63 @@
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+  }
+
+  .view-content.order-view {
+    padding: 8px;
+  }
+
+  .orders-stack {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .parked-orders-section {
+    flex-shrink: 0;
+    margin-bottom: 8px;
+    /* Stack above active order - will grow upward */
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .active-order-section {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Active order always at bottom */
+  }
+
+  .order-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .scrollable-items-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    margin-bottom: 16px;
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .active-order-section h2 {
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    color: #e0e0e0;
+    flex-shrink: 0;
   }
 
   .scroll-content {
@@ -250,6 +337,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 100%;
+    justify-content: flex-end;
   }
 
   .agent-message {

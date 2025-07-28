@@ -11,27 +11,31 @@ class TransactionManagementService {
 
   /**
    * Finds an existing active transaction based on metadata (e.g., table number) or creates a new one.
-   * @param {object} criteria - Criteria to find the transaction (e.g., { metadata: { table: 5 } }).
+   * @param {object} criteria - Criteria to find the transaction (e.g., { transactionId: 123 } or { metadata: { table: 5 } }).
    * @param {number} userId - The ID of the user creating the transaction.
    * @returns {Promise<object>} The active transaction object.
    */
   async findOrCreateActiveTransaction(criteria, userId) {
     logger.info({ service: 'TransactionManagementService', function: 'findOrCreateActiveTransaction', criteria, userId });
 
-    // For now, criteria are simple. This can be expanded for table numbers etc.
-    // Example: trx('active_transactions').where('metadata->>table', criteria.metadata.table)
-    const existingTransaction = await db('active_transactions')
-      .where({ status: 'active' })
-      // This is a simplified find logic. A real implementation would use criteria more effectively.
-      .first();
+    let existingTransaction = null;
 
-    if (existingTransaction) {
-      logger.info({ msg: 'Found existing active transaction', id: existingTransaction.id });
-      return existingTransaction;
+    // Only attempt to find an existing transaction if a specific transactionId is provided
+    if (criteria.transactionId) {
+      existingTransaction = await db('active_transactions')
+        .where({ id: criteria.transactionId, status: 'active' })
+        .first();
+
+      if (existingTransaction) {
+        logger.info({ msg: 'Found existing active transaction by ID', id: existingTransaction.id });
+        return existingTransaction;
+      } else {
+        logger.warn({ msg: 'Specified transaction not found or not active', transactionId: criteria.transactionId });
+      }
     }
 
-    // No active transaction found, create a new one.
-    logger.info('No active transaction found, creating a new one.');
+    // No specific transaction ID provided or specified transaction not found - create a new one
+    logger.info('Creating a new transaction (no specific transactionId provided or specified transaction not found).');
     const newTransactionUUID = crypto.randomUUID();
 
     // Create the transaction record first
@@ -153,12 +157,12 @@ class TransactionManagementService {
    * Finishes an active transaction, processing payment and triggering final fiscalization.
    * @param {number} transactionId - The ID of the active transaction to finish.
    * @param {object} paymentData - Information about the payment (e.g., { type: 'CASH', amount: 55.00 }).
-   * @returns {Promise<object>} The result of the final fiscal logging.
+   * @returns {Promise<object>} The result including the complete finished transaction with items.
    */
   async finishTransaction(transactionId, paymentData, userId) {
     logger.info({ service: 'TransactionManagementService', function: 'finishTransaction', transactionId, paymentData });
 
-    let transaction, processData;
+    let transaction, processData, finishedTransaction;
 
     // First phase: Update transaction status and prepare fiscal data in database transaction
     const updateResult = await db.transaction(async (trx) => {
@@ -194,7 +198,29 @@ class TransactionManagementService {
       processData = `Beleg^${bruttoSteuerumsaetze}^${zahlungen}`;
 
       // 5. Update transaction status to 'finished'.
-      await trx('active_transactions').where({ id: transactionId }).update({ status: 'finished' });
+      const [updatedTransaction] = await trx('active_transactions').where({ id: transactionId }).update({ 
+        status: 'finished',
+        payment_type: paymentData.type,
+        payment_amount: paymentAmount
+      }).returning('*');
+
+      // 6. Fetch the complete transaction with items for the response
+      const items = await trx('active_transaction_items')
+        .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+        .select(
+          'active_transaction_items.*',
+          'items.display_names',
+          'items.item_price_value'
+        )
+        .where('active_transaction_items.active_transaction_id', transactionId);
+
+      finishedTransaction = {
+        ...updatedTransaction,
+        items: items.map(item => ({
+          ...item,
+          display_names: item.display_names ? JSON.parse(item.display_names) : null
+        }))
+      };
 
       return { totalAmount };
     });
@@ -211,11 +237,360 @@ class TransactionManagementService {
     if (!fiscalLogResult.success) {
       // If fiscal logging fails after transaction is finished, log error but don't revert transaction
       logger.error({ msg: 'Failed to create fiscal log for finished transaction (transaction already committed)', error: fiscalLogResult.error, transactionId });
-      return { success: true, warning: 'Transaction finished but fiscal logging failed', fiscal_log_error: fiscalLogResult.error };
+      return { 
+        success: true, 
+        warning: 'Transaction finished but fiscal logging failed', 
+        fiscal_log_error: fiscalLogResult.error,
+        transaction: finishedTransaction
+      };
     }
 
     logger.info({ msg: 'Transaction finished successfully', transactionId });
-    return { success: true, fiscal_log: fiscalLogResult.log };
+    return { 
+      success: true, 
+      fiscal_log: fiscalLogResult.log,
+      transaction: finishedTransaction
+    };
+  }
+
+  /**
+   * Retrieves all transactions that require manual recovery (resolution_status = 'pending').
+   * Includes associated transaction items with display names for frontend display.
+   * @returns {Promise<Array>} Array of pending recovery transactions with their items.
+   */
+  async getPendingTransactions() {
+    logger.info({ service: 'TransactionManagementService', function: 'getPendingTransactions' });
+
+    try {
+      // Find all transactions with resolution_status = 'pending'
+      const pendingTransactions = await db('active_transactions')
+        .where('resolution_status', 'pending')
+        .select('*')
+        .orderBy('created_at', 'asc');
+
+      if (pendingTransactions.length === 0) {
+        logger.info('No pending recovery transactions found');
+        return [];
+      }
+
+      // For each pending transaction, fetch its associated items
+      const transactionsWithItems = await Promise.all(
+        pendingTransactions.map(async (transaction) => {
+          const items = await db('active_transaction_items')
+            .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+            .select(
+              'active_transaction_items.*',
+              'items.display_names',
+              'items.item_price_value'
+            )
+            .where('active_transaction_items.active_transaction_id', transaction.id);
+
+          return {
+            ...transaction,
+            items: items.map(item => ({
+              ...item,
+              display_names: item.display_names ? JSON.parse(item.display_names) : null
+            }))
+          };
+        })
+      );
+
+      logger.info({ 
+        count: transactionsWithItems.length,
+        msg: 'Retrieved pending recovery transactions with items'
+      });
+
+      return transactionsWithItems;
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to retrieve pending recovery transactions', 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Resolves a pending transaction with the specified resolution type.
+   * @param {number} transactionId - The ID of the transaction to resolve.
+   * @param {string} resolution - The resolution type: 'postpone', 'cancel', or 'fiscalize'.
+   * @param {number} userId - The ID of the user performing the resolution.
+   * @returns {Promise<object>} The result of the resolution operation.
+   */
+  async resolvePendingTransaction(transactionId, resolution, userId) {
+    logger.info({ 
+      service: 'TransactionManagementService', 
+      function: 'resolvePendingTransaction', 
+      transactionId, 
+      resolution, 
+      userId 
+    });
+
+    try {
+      // First, verify the transaction exists and is in pending status
+      const transaction = await db('active_transactions')
+        .where({ id: transactionId, resolution_status: 'pending' })
+        .first();
+
+      if (!transaction) {
+        throw new Error(`Transaction with ID ${transactionId} not found or not in pending status`);
+      }
+
+      let result;
+
+      switch (resolution) {
+        case 'postpone':
+          // Update the transaction's resolution_status to 'postponed'
+          await db('active_transactions')
+            .where({ id: transactionId })
+            .update({ 
+              resolution_status: 'postponed',
+              updated_at: new Date().toISOString()
+            });
+
+          // Log the fiscal event for postponement
+          const fiscalLogResult = await loggingService.logFiscalEvent('postponeTransaction', userId, {
+            transaction_uuid: transaction.uuid,
+            original_status: 'pending',
+            new_status: 'postponed'
+          });
+
+          if (!fiscalLogResult.success) {
+            logger.error({ 
+              msg: 'Failed to create fiscal log for transaction postponement', 
+              error: fiscalLogResult.error,
+              transactionId 
+            });
+          }
+
+          result = { 
+            success: true, 
+            action: 'postponed',
+            transactionId,
+            fiscal_log: fiscalLogResult.success ? fiscalLogResult.log : null
+          };
+          break;
+
+        case 'cancel':
+          // TODO: Implement transaction cancellation logic
+          // This should update status to 'cancelled' and create appropriate fiscal logs
+          throw new Error('Transaction cancellation not yet implemented');
+
+        case 'fiscalize':
+          // TODO: Implement transaction fiscalization logic
+          // This should complete the fiscal process and update status accordingly
+          throw new Error('Transaction fiscalization not yet implemented');
+
+        default:
+          throw new Error(`Unknown resolution type: ${resolution}`);
+      }
+
+      logger.info({ 
+        msg: `Transaction ${resolution} completed successfully`, 
+        transactionId, 
+        resolution 
+      });
+
+      return result;
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to resolve pending transaction', 
+        error: error.message,
+        transactionId,
+        resolution
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Parks an active transaction with a table identifier.
+   * @param {number} transactionId - The ID of the transaction to park.
+   * @param {string} tableIdentifier - The table identifier (e.g., "5", "Table A").
+   * @param {number} userId - The ID of the user performing the operation.
+   * @returns {Promise<object>} The parked transaction object.
+   */
+  async parkTransaction(transactionId, tableIdentifier, userId) {
+    logger.info({ 
+      service: 'TransactionManagementService', 
+      function: 'parkTransaction', 
+      transactionId, 
+      tableIdentifier, 
+      userId 
+    });
+
+    try {
+      // First, verify the transaction exists and is active
+      const transaction = await db('active_transactions')
+        .where({ id: transactionId, status: 'active' })
+        .first();
+
+      if (!transaction) {
+        throw new Error(`Active transaction with ID ${transactionId} not found`);
+      }
+
+      // Parse existing metadata
+      const metadata = transaction.metadata ? JSON.parse(transaction.metadata) : {};
+      metadata.table = tableIdentifier;
+
+      // Update transaction status to 'parked' and add table info
+      const [parkedTransaction] = await db('active_transactions')
+        .where({ id: transactionId })
+        .update({ 
+          status: 'parked',
+          metadata: JSON.stringify(metadata),
+          updated_at: new Date().toISOString()
+        })
+        .returning('*');
+
+      // Log the fiscal event for parking
+      const fiscalLogResult = await loggingService.logFiscalEvent('parkTransaction', userId, {
+        transaction_uuid: transaction.uuid,
+        table_identifier: tableIdentifier,
+        original_status: 'active',
+        new_status: 'parked'
+      });
+
+      if (!fiscalLogResult.success) {
+        logger.error({ 
+          msg: 'Failed to create fiscal log for transaction parking', 
+          error: fiscalLogResult.error,
+          transactionId 
+        });
+      }
+
+      logger.info({ 
+        msg: 'Transaction parked successfully', 
+        transactionId, 
+        tableIdentifier 
+      });
+
+      return parkedTransaction;
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to park transaction', 
+        error: error.message,
+        transactionId,
+        tableIdentifier
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Activates a parked transaction.
+   * @param {number} transactionId - The ID of the transaction to activate.
+   * @param {number} userId - The ID of the user performing the operation.
+   * @returns {Promise<object>} The activated transaction object with items.
+   */
+  async activateTransaction(transactionId, userId) {
+    logger.info({ 
+      service: 'TransactionManagementService', 
+      function: 'activateTransaction', 
+      transactionId, 
+      userId 
+    });
+
+    try {
+      // First, verify the transaction exists and is parked
+      const transaction = await db('active_transactions')
+        .where({ id: transactionId, status: 'parked' })
+        .first();
+
+      if (!transaction) {
+        throw new Error(`Parked transaction with ID ${transactionId} not found`);
+      }
+
+      // Update transaction status to 'active'
+      const [activatedTransaction] = await db('active_transactions')
+        .where({ id: transactionId })
+        .update({ 
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .returning('*');
+
+      // Fetch the complete transaction with items
+      const items = await db('active_transaction_items')
+        .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+        .select(
+          'active_transaction_items.*',
+          'items.display_names',
+          'items.item_price_value'
+        )
+        .where('active_transaction_items.active_transaction_id', transactionId);
+
+      const completeTransaction = {
+        ...activatedTransaction,
+        items: items.map(item => ({
+          ...item,
+          display_names: item.display_names ? JSON.parse(item.display_names) : null
+        }))
+      };
+
+      // Log the fiscal event for activation
+      const fiscalLogResult = await loggingService.logFiscalEvent('activateTransaction', userId, {
+        transaction_uuid: transaction.uuid,
+        original_status: 'parked',
+        new_status: 'active'
+      });
+
+      if (!fiscalLogResult.success) {
+        logger.error({ 
+          msg: 'Failed to create fiscal log for transaction activation', 
+          error: fiscalLogResult.error,
+          transactionId 
+        });
+      }
+
+      logger.info({ 
+        msg: 'Transaction activated successfully', 
+        transactionId 
+      });
+
+      return completeTransaction;
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to activate transaction', 
+        error: error.message,
+        transactionId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves all parked transactions.
+   * @returns {Promise<Array>} Array of parked transactions with their metadata.
+   */
+  async getParkedTransactions() {
+    logger.info({ service: 'TransactionManagementService', function: 'getParkedTransactions' });
+
+    try {
+      const parkedTransactions = await db('active_transactions')
+        .where('status', 'parked')
+        .select('*')
+        .orderBy('updated_at', 'desc');
+
+      // Parse metadata for each transaction
+      const transactionsWithParsedMetadata = parkedTransactions.map(transaction => ({
+        ...transaction,
+        metadata: transaction.metadata ? JSON.parse(transaction.metadata) : {}
+      }));
+
+      logger.info({ 
+        count: transactionsWithParsedMetadata.length,
+        msg: 'Retrieved parked transactions'
+      });
+
+      return transactionsWithParsedMetadata;
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to retrieve parked transactions', 
+        error: error.message 
+      });
+      throw error;
+    }
   }
 }
 
