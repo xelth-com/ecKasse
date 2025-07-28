@@ -80,12 +80,12 @@ app.post('/api/websocket-fallback', async (req, res) => {
       const transactionManagementService = require('./services/transaction_management.service');
       responsePayload = await transactionManagementService.getParkedTransactions();
     } else if (command === 'activateTransaction') {
-      const { transactionId, userId } = payload;
+      const { transactionId, userId, updateTimestamp } = payload;
       if (!transactionId || !userId) {
         throw new Error('TransactionId and userId are required');
       }
       const transactionManagementService = require('./services/transaction_management.service');
-      responsePayload = await transactionManagementService.activateTransaction(transactionId, userId);
+      responsePayload = await transactionManagementService.activateTransaction(transactionId, userId, updateTimestamp);
       responseCommand = 'orderUpdated';
     } else {
       status = 'error';

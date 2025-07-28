@@ -8,7 +8,8 @@ function createPinpadStore() {
         liveValue: '',
         confirmCallback: null,
         cancelCallback: null,
-        lastRedClickTime: 0
+        lastRedClickTime: 0,
+        errorMessage: null
     });
 
     return {
@@ -21,7 +22,8 @@ function createPinpadStore() {
                 liveValue: '',
                 confirmCallback,
                 cancelCallback,
-                lastRedClickTime: 0
+                lastRedClickTime: 0,
+                errorMessage: null
             });
         },
 
@@ -32,7 +34,8 @@ function createPinpadStore() {
                 liveValue: '',
                 confirmCallback: null,
                 cancelCallback: null,
-                lastRedClickTime: 0
+                lastRedClickTime: 0,
+                errorMessage: null
             });
         },
 
@@ -41,7 +44,8 @@ function createPinpadStore() {
                 if (!state.isActive) return state;
                 return {
                     ...state,
-                    liveValue: state.liveValue + digit
+                    liveValue: state.liveValue + digit,
+                    errorMessage: null // Clear error when user starts typing
                 };
             });
         },
@@ -51,7 +55,8 @@ function createPinpadStore() {
                 if (!state.isActive) return state;
                 return {
                     ...state,
-                    liveValue: state.liveValue.slice(0, -1)
+                    liveValue: state.liveValue.slice(0, -1),
+                    errorMessage: null // Clear error when user starts typing
                 };
             });
         },
@@ -61,7 +66,8 @@ function createPinpadStore() {
                 if (!state.isActive) return state;
                 return {
                     ...state,
-                    liveValue: ''
+                    liveValue: '',
+                    errorMessage: null // Clear error when clearing
                 };
             });
         },
@@ -93,18 +99,21 @@ function createPinpadStore() {
                     liveValue: '',
                     confirmCallback: null,
                     cancelCallback: null,
-                    lastRedClickTime: 0
+                    lastRedClickTime: 0,
+                    errorMessage: null
                 }));
             } catch (error) {
                 console.error('Pinpad confirm callback failed:', error);
-                // Still deactivate on error to prevent stuck state
+                
+                // For all errors, deactivate to prevent stuck state
                 update(() => ({
                     isActive: false,
                     mode: null,
                     liveValue: '',
                     confirmCallback: null,
                     cancelCallback: null,
-                    lastRedClickTime: 0
+                    lastRedClickTime: 0,
+                    errorMessage: null
                 }));
             }
         },
@@ -124,7 +133,8 @@ function createPinpadStore() {
                         liveValue: '',
                         confirmCallback: null,
                         cancelCallback: null,
-                        lastRedClickTime: 0
+                        lastRedClickTime: 0,
+                        errorMessage: null
                     };
                     
                     if (callback) {
@@ -137,7 +147,8 @@ function createPinpadStore() {
                     return {
                         ...state,
                         liveValue: '',
-                        lastRedClickTime: now
+                        lastRedClickTime: now,
+                        errorMessage: null // Clear error on single click
                     };
                 }
             });
@@ -149,7 +160,23 @@ function createPinpadStore() {
                 'table',
                 async (tableNumber) => {
                     if (tableNumber && tableNumber.trim()) {
-                        return await orderStore.assignTableNumber(tableNumber.trim());
+                        try {
+                            const result = await orderStore.assignTableNumber(tableNumber.trim());
+                            // Check if table was in use
+                            if (result && result.tableInUse) {
+                                // Just clear the input and keep pinpad open - no error message needed
+                                update(state => ({
+                                    ...state,
+                                    liveValue: '' // Clear the input
+                                }));
+                                // Return nothing - this will NOT close the pinpad but also won't break flow
+                                return;
+                            }
+                            return result;
+                        } catch (error) {
+                            // For other errors, still throw to close pinpad
+                            throw error;
+                        }
                     }
                 },
                 () => {

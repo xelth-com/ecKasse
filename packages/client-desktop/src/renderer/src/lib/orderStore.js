@@ -192,7 +192,7 @@ function createOrderStore() {
 		});
 	}
 
-	async function parkCurrentOrder(tableIdentifier, userId = 1) {
+	async function parkCurrentOrder(tableIdentifier, userId = 1, updateTimestamp = true) {
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
 
@@ -201,7 +201,7 @@ function createOrderStore() {
 			return;
 		}
 
-		addLog('INFO', `Parking transaction ${currentStoreState.transactionId} to table ${tableIdentifier}...`);
+		addLog('INFO', `Parking transaction ${currentStoreState.transactionId} to table ${tableIdentifier} (updateTime: ${updateTimestamp})...`);
 		
 		return new Promise(async (resolve, reject) => {
 			const unsubscribe = wsStore.subscribe(async (state) => {
@@ -232,7 +232,8 @@ function createOrderStore() {
 				payload: {
 					transactionId: currentStoreState.transactionId,
 					tableIdentifier,
-					userId
+					userId,
+					updateTimestamp
 				}
 			});
 		});
@@ -253,40 +254,83 @@ function createOrderStore() {
 		addLog('SUCCESS', `Order ${orderData.id} loaded successfully`);
 	}
 
+
 	async function assignTableNumber(tableNumber, userId = 1) {
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
 
 		if (!currentStoreState.transactionId || currentStoreState.status !== 'active') {
 			addLog('ERROR', 'No active order to assign table number to.');
-			return;
+			throw new Error('No active order to assign table number to.');
 		}
 
-		addLog('INFO', `Assigning table ${tableNumber} to transaction ${currentStoreState.transactionId}...`);
+		addLog('INFO', `Checking availability and assigning table ${tableNumber} to transaction ${currentStoreState.transactionId}...`);
 		
-		// Update local metadata immediately for UI responsiveness
-		update(store => ({
-			...store,
-			metadata: {
-				...store.metadata,
-				table: tableNumber
-			}
-		}));
+		try {
+			// Check table availability first
+			const operationId = Math.random().toString(36).substring(2, 15);
+			const checkResult = await new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					if (unsubscribe) unsubscribe();
+					reject(new Error('Table availability check timeout'));
+				}, 5000);
 
-		// Send update to backend
-		wsStore.send({
-			command: 'updateTransactionMetadata',
-			payload: {
-				transactionId: currentStoreState.transactionId,
+				let unsubscribe;
+				unsubscribe = wsStore.subscribe(state => {
+					if (state.lastMessage?.command === 'checkTableAvailabilityResponse' &&
+						state.lastMessage?.operationId === operationId) {
+						clearTimeout(timeout);
+						if (unsubscribe) unsubscribe();
+						resolve(state.lastMessage);
+					}
+				});
+
+				wsStore.send({
+					operationId,
+					command: 'checkTableAvailability',
+					payload: {
+						tableNumber,
+						excludeTransactionId: currentStoreState.transactionId
+					}
+				});
+			});
+
+			console.log('Table availability check result:', checkResult);
+
+			if (checkResult.status === 'success' && checkResult.payload.isInUse) {
+				addLog('ERROR', `Table ${tableNumber} is already in use by another order`);
+				// Return special signal instead of throwing error
+				return { tableInUse: true };
+			}
+
+			// Table is available, proceed with assignment
+			// Update local metadata immediately for UI responsiveness
+			update(store => ({
+				...store,
 				metadata: {
-					...currentStoreState.metadata,
+					...store.metadata,
 					table: tableNumber
-				},
-				userId
-			}
-		});
+				}
+			}));
 
-		addLog('SUCCESS', `Table ${tableNumber} assigned to order`);
+			// Send update to backend
+			wsStore.send({
+				command: 'updateTransactionMetadata',
+				payload: {
+					transactionId: currentStoreState.transactionId,
+					metadata: {
+						...currentStoreState.metadata,
+						table: tableNumber
+					},
+					userId
+				}
+			});
+
+			addLog('SUCCESS', `Table ${tableNumber} assigned to order`);
+		} catch (error) {
+			addLog('ERROR', `Failed to assign table ${tableNumber}: ${error.message}`);
+			throw error;
+		}
 	}
 
 	async function clearActiveOrderView() {
@@ -303,6 +347,7 @@ function createOrderStore() {
 
 	return {
 		subscribe,
+		set,
 		update,
 		initializeOrder,
 		addItem,

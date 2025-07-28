@@ -7,6 +7,7 @@
   let parkedOrders = [];
   let unsubscribe;
   let wsUnsubscribe;
+  let hasLoadedOnce = false; // Flag to prevent multiple loads
 
   onMount(async () => {
     // Subscribe to parked orders store
@@ -16,8 +17,9 @@
 
     // Wait for WebSocket connection before loading parked orders
     wsUnsubscribe = wsStore.subscribe(async (wsState) => {
-      if (wsState.connected && parkedOrders.length === 0) {
-        // Only load once when WebSocket connects and we haven't loaded yet
+      if (wsState.connected && !hasLoadedOnce) {
+        // Only load once when WebSocket connects
+        hasLoadedOnce = true;
         await parkedOrdersStore.refreshParkedOrders();
       }
     });
@@ -34,11 +36,44 @@
 
   async function handleOrderClick(order) {
     try {
-      const activatedOrder = await parkedOrdersStore.activateOrder(order.id);
-      // Load the activated order into the main order store
-      orderStore.set(activatedOrder);
+      // Импортируем функцию сворачивания из SelectionArea
+      const { orderStore } = await import('../orderStore.js');
+      
+      // Проверяем, есть ли активный заказ
+      let currentOrderState;
+      orderStore.subscribe(state => currentOrderState = state)();
+      
+      if (currentOrderState.transactionId && currentOrderState.status === 'active') {
+        // Есть активный заказ - сворачиваем его сначала
+        const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
+        const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
+        
+        if (hasItems && hasTable) {
+          // Паркуем текущий заказ БЕЗ обновления времени
+          await orderStore.parkCurrentOrder(hasTable, 1, false);
+          await parkedOrdersStore.refreshParkedOrders();
+        } else if (hasItems && !hasTable) {
+          // Заказ с товарами но без стола - принудительно открываем пинпад для присвоения стола
+          const { pinpadStore } = await import('../pinpadStore.js');
+          const { consoleView } = await import('../viewStore.js');
+          
+          // Переключаемся на view заказов и открываем пинпад
+          consoleView.set('order');
+          pinpadStore.activateTableEntry();
+          
+          // Не продолжаем выполнение - ждем присвоения стола
+          return;
+        } else {
+          // Просто сбрасываем незавершенный заказ без товаров
+          orderStore.resetOrder();
+        }
+      }
+      
+      // Теперь активируем выбранный заказ без обновления времени
+      const activatedOrder = await parkedOrdersStore.activateOrder(order.id, false);
+      orderStore.loadOrder(activatedOrder);
     } catch (error) {
-      console.error('Failed to activate order:', error);
+      console.error('Failed to switch to order:', error);
       // TODO: Show user-friendly error message
     }
   }

@@ -85,6 +85,11 @@
                   - Table: <span class="table-number">{$pinpadStore.isActive && $pinpadStore.mode === 'table' ? $pinpadStore.liveValue : $orderStore.metadata?.table}</span>
                 {/if}
               </h2>
+              {#if $pinpadStore.errorMessage}
+                <div class="pinpad-error-message">
+                  {$pinpadStore.errorMessage}
+                </div>
+              {/if}
               <!-- Scrollable items area -->
               <div class="scrollable-items-content">
                 <ul class="item-list">
@@ -391,6 +396,18 @@
   .table-number {
     color: #4a69bd;
     font-weight: bold;
+  }
+
+  .pinpad-error-message {
+    background-color: #4a1a1a;
+    border: 1px solid #d32f2f;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    color: #ffcdd2;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
   }
 
 </style>

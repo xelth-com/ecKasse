@@ -112,17 +112,20 @@ class ParkedOrdersStore {
     return this.refreshParkedOrders();
   }
 
-  async activateOrder(transactionId) {
+  async activateOrder(transactionId, updateTimestamp = false) {
     try {
       const operationId = this.generateUUID();
       const result = await this.sendRequestWithFallback(operationId, 'activateTransaction', {
         transactionId: transactionId,
-        userId: 1 // TODO: Get from auth store when available
+        userId: 1, // TODO: Get from auth store when available
+        updateTimestamp: updateTimestamp
       });
       
       if (result.status === 'success') {
-        // Refresh the parked orders list after activation
-        await this.refreshParkedOrders();
+        // Only refresh the parked orders list if we're actually changing the order
+        if (updateTimestamp) {
+          await this.refreshParkedOrders();
+        }
         return result.payload;
       } else {
         throw new Error(result.payload?.message || 'Failed to activate order');

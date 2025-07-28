@@ -281,19 +281,19 @@ async function handleWebSocketMessage(ws, rawMessage) {
     
     // Parked orders management
     } else if (command === 'parkTransaction') {
-      const { transactionId, tableIdentifier, userId } = payload;
+      const { transactionId, tableIdentifier, userId, updateTimestamp } = payload;
       if (!transactionId || !tableIdentifier || !userId) {
         throw new Error('TransactionId, tableIdentifier, and userId are required');
       }
       const transactionManagementService = require('./services/transaction_management.service');
-      responsePayload = await transactionManagementService.parkTransaction(transactionId, tableIdentifier, userId);
+      responsePayload = await transactionManagementService.parkTransaction(transactionId, tableIdentifier, userId, updateTimestamp);
     } else if (command === 'activateTransaction') {
-      const { transactionId, userId } = payload;
+      const { transactionId, userId, updateTimestamp } = payload;
       if (!transactionId || !userId) {
         throw new Error('TransactionId and userId are required');
       }
       const transactionManagementService = require('./services/transaction_management.service');
-      responsePayload = await transactionManagementService.activateTransaction(transactionId, userId);
+      responsePayload = await transactionManagementService.activateTransaction(transactionId, userId, updateTimestamp);
       responseCommand = 'orderUpdated';
     } else if (command === 'getParkedTransactions') {
       const transactionManagementService = require('./services/transaction_management.service');
@@ -305,6 +305,15 @@ async function handleWebSocketMessage(ws, rawMessage) {
       }
       const transactionManagementService = require('./services/transaction_management.service');
       responsePayload = await transactionManagementService.updateTransactionMetadata(transactionId, metadata, userId);
+    } else if (command === 'checkTableAvailability') {
+      const { tableNumber, excludeTransactionId } = payload;
+      if (!tableNumber) {
+        throw new Error('Table number is required');
+      }
+      const transactionManagementService = require('./services/transaction_management.service');
+      const isInUse = await transactionManagementService.checkTableNumberInUse(tableNumber, excludeTransactionId);
+      responsePayload = { tableNumber, isInUse };
+      responseCommand = 'checkTableAvailabilityResponse';
     
     } else {
       status = 'error';

@@ -119,7 +119,8 @@ class TransactionManagementService {
 
         updatedTransaction = (await trx('active_transactions').where({ id: transactionId }).update({
             total_amount: newTotalAmount,
-            tax_amount: newTaxAmount
+            tax_amount: newTaxAmount,
+            updated_at: new Date().toISOString()
         }).returning('*'))[0];
 
         const updatedItems = await trx('active_transaction_items').where({ active_transaction_id: transactionId });
@@ -410,13 +411,14 @@ class TransactionManagementService {
    * @param {number} userId - The ID of the user performing the operation.
    * @returns {Promise<object>} The parked transaction object.
    */
-  async parkTransaction(transactionId, tableIdentifier, userId) {
+  async parkTransaction(transactionId, tableIdentifier, userId, updateTimestamp = true) {
     logger.info({ 
       service: 'TransactionManagementService', 
       function: 'parkTransaction', 
       transactionId, 
       tableIdentifier, 
-      userId 
+      userId,
+      updateTimestamp
     });
 
     try {
@@ -434,13 +436,17 @@ class TransactionManagementService {
       metadata.table = tableIdentifier;
 
       // Update transaction status to 'parked' and add table info
+      const updateData = { 
+        status: 'parked',
+        metadata: JSON.stringify(metadata)
+      };
+      if (updateTimestamp) {
+        updateData.updated_at = new Date().toISOString();
+      }
+      
       const [parkedTransaction] = await db('active_transactions')
         .where({ id: transactionId })
-        .update({ 
-          status: 'parked',
-          metadata: JSON.stringify(metadata),
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .returning('*');
 
       // Log the fiscal event for parking
@@ -481,14 +487,16 @@ class TransactionManagementService {
    * Activates a parked transaction.
    * @param {number} transactionId - The ID of the transaction to activate.
    * @param {number} userId - The ID of the user performing the operation.
+   * @param {boolean} updateTimestamp - Whether to update the updated_at timestamp (default: false).
    * @returns {Promise<object>} The activated transaction object with items.
    */
-  async activateTransaction(transactionId, userId) {
+  async activateTransaction(transactionId, userId, updateTimestamp = false) {
     logger.info({ 
       service: 'TransactionManagementService', 
       function: 'activateTransaction', 
       transactionId, 
-      userId 
+      userId,
+      updateTimestamp
     });
 
     try {
@@ -501,13 +509,16 @@ class TransactionManagementService {
         throw new Error(`Parked transaction with ID ${transactionId} not found`);
       }
 
+      // Prepare update data
+      const updateData = { status: 'active' };
+      if (updateTimestamp) {
+        updateData.updated_at = new Date().toISOString();
+      }
+
       // Update transaction status to 'active'
       const [activatedTransaction] = await db('active_transactions')
         .where({ id: transactionId })
-        .update({ 
-          status: 'active',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .returning('*');
 
       // Fetch the complete transaction with items
@@ -620,6 +631,7 @@ class TransactionManagementService {
       }
 
       // Update the transaction metadata
+      // Note: Table availability is already checked in assignTableNumber before calling this function
       const [updatedTransaction] = await db('active_transactions')
         .where({ id: transactionId })
         .update({ 
@@ -661,6 +673,51 @@ class TransactionManagementService {
       throw error;
     }
   }
+
+  /**
+   * Checks if a table number is already in use by a parked transaction.
+   * @param {string} tableNumber - The table number to check.
+   * @param {number} excludeTransactionId - Optional transaction ID to exclude from check.
+   * @returns {Promise<boolean>} True if table number is already in use.
+   */
+  async checkTableNumberInUse(tableNumber, excludeTransactionId = null) {
+    logger.info({ 
+      service: 'TransactionManagementService', 
+      function: 'checkTableNumberInUse', 
+      tableNumber,
+      excludeTransactionId
+    });
+
+    try {
+      let query = db('active_transactions')
+        .where('status', 'parked')
+        .whereRaw("JSON_EXTRACT(metadata, '$.table') = ?", [tableNumber]);
+      
+      if (excludeTransactionId) {
+        query = query.whereNot('id', excludeTransactionId);
+      }
+      
+      const existingTransaction = await query.first();
+      const isInUse = !!existingTransaction;
+      
+      logger.info({ 
+        msg: 'Table number availability checked', 
+        tableNumber,
+        isInUse,
+        existingTransactionId: existingTransaction ? existingTransaction.id : null
+      });
+
+      return isInUse;
+    } catch (error) {
+      logger.error({ 
+        msg: 'Failed to check table number availability', 
+        error: error.message,
+        tableNumber
+      });
+      throw error;
+    }
+  }
+
 }
 
 // Export a singleton instance of the service

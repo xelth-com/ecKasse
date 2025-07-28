@@ -731,6 +731,38 @@
     }
   }
 
+  // Единая функция сворачивания текущего заказа
+  async function collapseCurrentOrder() {
+    let currentOrderState;
+    orderStore.subscribe(state => currentOrderState = state)();
+    
+    const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
+    const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
+    const isActive = currentOrderState.status === 'active';
+    const hasActiveTransaction = currentOrderState.transactionId;
+    
+    if (isActive && hasActiveTransaction && hasItems && hasTable) {
+      // Есть активный заказ с товарами и столом - паркуем БЕЗ обновления времени
+      addLog('INFO', `Collapsing order with table ${hasTable} without time update`);
+      try {
+        await orderStore.parkCurrentOrder(hasTable, 1, false); // updateTimestamp = false
+        addLog('SUCCESS', 'Order collapsed successfully');
+        await parkedOrdersStore.refresh();
+      } catch (error) {
+        addLog('ERROR', `Failed to collapse order: ${error.message}`);
+        throw error;
+      }
+    } else if (isActive && hasActiveTransaction && hasItems && !hasTable) {
+      // Есть заказ с товарами но БЕЗ стола - ПРИНУДИТЕЛЬНО требуем присвоение стола
+      addLog('WARNING', 'Order has items but no table - forcing table assignment');
+      throw new Error('FORCE_TABLE_ASSIGNMENT');
+    } else if (hasActiveTransaction) {
+      // Есть активный заказ без товаров - просто сбрасываем
+      addLog('INFO', 'Resetting empty order');
+      orderStore.resetOrder();
+    }
+  }
+
   async function handleTableClick() {
     // Always switch to orders view first
     consoleView.set('order');
@@ -744,30 +776,29 @@
     const isActive = currentOrderState.status === 'active';
     const hasActiveTransaction = currentOrderState.transactionId;
     
-    if (hasActiveTransaction && hasItems && hasTable) {
-      // Case 1: Active transaction with items and table assigned - park the order
-      addLog('INFO', `Parking order with table ${hasTable} to complete table workflow`);
+    if (isActive && hasActiveTransaction && (hasItems || hasTable)) {
+      // Есть активный заказ - сворачиваем и возвращаемся к стартовому состоянию
+      addLog('INFO', 'Collapsing current order and returning to start position');
       try {
-        await orderStore.parkCurrentOrder(hasTable);
-        addLog('SUCCESS', 'Order parked successfully');
+        await collapseCurrentOrder();
         
-        // Force refresh parked orders and reset view
-        await parkedOrdersStore.refresh();
+        // Возврат к стартовому состоянию кассы
+        orderStore.resetOrder();
         currentView = 'categories';
         selectedCategory = null;
+        addLog('INFO', 'Returned to start position');
       } catch (error) {
-        addLog('ERROR', `Failed to park order: ${error.message}`);
+        if (error.message === 'FORCE_TABLE_ASSIGNMENT') {
+          // Заказ с товарами но без стола - принудительно открываем пинпад
+          addLog('INFO', 'Forcing table assignment for order with items');
+          pinpadStore.activateTableEntry();
+          return; // Не возвращаемся к стартовому состоянию, ждем присвоения стола
+        } else {
+          addLog('ERROR', `Failed to handle table click: ${error.message}`);
+        }
       }
-    } else if (hasActiveTransaction && !hasTable) {
-      // Case 2: Active transaction without table - activate pinpad for table entry
-      addLog('INFO', 'Activating pinpad for table number entry');
-      pinpadStore.activateTableEntry();
-    } else if (hasActiveTransaction && hasTable && !hasItems) {
-      // Case 3: Active transaction with table but no items - allow table number change
-      addLog('INFO', 'Changing table number for empty order');
-      pinpadStore.activateTableEntry();
     } else if (!hasActiveTransaction) {
-      // Case 4: No active transaction - initialize new order first
+      // Нет активного заказа - инициализируем новый неинициализированный заказ для ввода стола
       addLog('INFO', 'No active order - initializing new order for table entry');
       try {
         await orderStore.initializeOrder(1, {});
@@ -776,6 +807,10 @@
       } catch (error) {
         addLog('ERROR', `Failed to initialize order: ${error.message}`);
       }
+    } else {
+      // Активный заказ без товаров и стола - открываем пинпад для ввода стола
+      addLog('INFO', 'Activating pinpad for table number entry');
+      pinpadStore.activateTableEntry();
     }
   }
 
