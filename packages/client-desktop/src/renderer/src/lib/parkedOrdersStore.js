@@ -25,6 +25,11 @@ class ParkedOrdersStore {
     }
   }
 
+  // Alias for external use
+  refresh() {
+    return this.refreshParkedOrders();
+  }
+
   async activateOrder(transactionId) {
     try {
       const operationId = this.generateUUID();

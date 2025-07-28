@@ -1,4 +1,6 @@
 <script>
+  import { pinpadStore } from '../pinpadStore.js';
+  
   export let onClose = () => {}; // Function to call when closing
   
   let containerHeight = 0;
@@ -17,6 +19,22 @@
     }
   }
 
+  function handleNumberClick(number) {
+    pinpadStore.append(number.toString());
+  }
+
+  function handleBackspace() {
+    pinpadStore.backspace();
+  }
+
+  function handleConfirm() {
+    pinpadStore.confirm();
+  }
+
+  function handleCancel() {
+    pinpadStore.cancel();
+  }
+
   function handleCloseDoubleClick() {
     onClose();
   }
@@ -24,20 +42,20 @@
 
 <div class="pinpad-wrapper" bind:clientHeight={containerHeight}>
   <div class="pinpad-grid" style="--button-height: {buttonHeight}px; --button-width: {buttonWidth}px;">
-    <button class="numpad-key">1</button>
-    <button class="numpad-key">2</button>
-    <button class="numpad-key">3</button>
-    <button class="function-key key-cancel" on:dblclick={handleCloseDoubleClick}>X</button>
-    <button class="numpad-key">4</button>
-    <button class="numpad-key">5</button>
-    <button class="numpad-key">6</button>
-    <button class="function-key key-correct">←</button>
-    <button class="numpad-key">7</button>
-    <button class="numpad-key">8</button>
-    <button class="numpad-key">9</button>
-    <button class="function-key key-enter">↵</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(1)}>1</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(2)}>2</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(3)}>3</button>
+    <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick}>X</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(4)}>4</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(5)}>5</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(6)}>6</button>
+    <button class="function-key key-correct" on:click={handleBackspace}>←</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(7)}>7</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(8)}>8</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(9)}>9</button>
+    <button class="function-key key-enter" on:click={handleConfirm}>↵</button>
     <button class="numpad-key function-key key-plus">+</button>
-    <button class="numpad-key">0</button>
+    <button class="numpad-key" on:click={() => handleNumberClick(0)}>0</button>
     <button class="numpad-key function-key key-minus">-</button>
   </div>
 </div>

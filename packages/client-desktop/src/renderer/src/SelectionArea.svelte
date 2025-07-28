@@ -9,7 +9,7 @@
   import Pinpad from './lib/components/Pinpad.svelte';
   import PinpadPreview from './lib/components/PinpadPreview.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
-  import TableNumberModal from './lib/components/TableNumberModal.svelte';
+  import { pinpadStore } from './lib/pinpadStore.js';
 
   let categories = [];
   let products = [];
@@ -18,9 +18,6 @@
   let currentView = 'categories'; // 'categories' or 'products'
   let selectedCategory = null;
   let layoutType = '6-6-6'; // '6-6-6' or '4-4-4'
-  let isPinpadVisible = false; // State for the pop-up Pinpad
-  let isTableModalVisible = false; // State for table number modal
-  let currentTableNumber = ''; // Current table number for modal
   
   // Context menu state
   let contextMenuVisible = false;
@@ -339,15 +336,20 @@
         }
     }
 
-    // Designate the second bottom-left button as the Table button
+    // Designate the leftmost button of the second-to-last row as the Table button
     if (cells.length > 0) {
+        // Find the second-to-last row (предпоследний ряд)
+        const maxRowIndex = Math.max(...cells.map(c => c.rowIndex));
+        const secondToLastRowIndex = maxRowIndex - 1;
+        
         let potentialTableButtons = cells.filter(c => 
             (c.type === 'full' || c.type === 'rect-grid') && 
-            !c.isPinpadTrigger
+            c.rowIndex === secondToLastRowIndex
         );
+        
         if (potentialTableButtons.length > 0) {
-            // Sort by row (bottom first), then by column (left first)
-            potentialTableButtons.sort((a,b) => (b.rowIndex - a.rowIndex) || (a.columnIndex - b.columnIndex));
+            // Sort by column (left first) 
+            potentialTableButtons.sort((a,b) => a.columnIndex - b.columnIndex);
             potentialTableButtons[0].isTableButton = true;
         }
     }
@@ -729,7 +731,7 @@
     }
   }
 
-  function handleTableClick() {
+  async function handleTableClick() {
     // Always switch to orders view first
     consoleView.set('order');
     
@@ -740,64 +742,25 @@
     const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
     const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
     const isActive = currentOrderState.status === 'active';
+    const hasActiveTransaction = currentOrderState.transactionId;
     
-    if (isActive && hasItems) {
-      // Case 1: Active order with items - close the table (reset to initial state)
-      addLog('INFO', 'Closing table - resetting to initial state');
-      orderStore.clearActiveOrderView();
-      goBackToCategories();
-    } else if (isActive && !hasItems) {
-      // Case 2: Active order without items - show modal for table number (even if already has table)
-      addLog('INFO', 'Showing modal for table number input');
-      currentTableNumber = hasTable ? currentOrderState.metadata.table : '1';
-      isTableModalVisible = true;
-    } else if (!isActive) {
-      // Case 3: No active order - show modal for table number and reset to categories
-      addLog('INFO', 'No active order - showing modal for table number and resetting categories');
-      goBackToCategories();
-      currentTableNumber = '1';
-      isTableModalVisible = true;
-    }
-  }
-
-  function handleTableNumberSubmit(event) {
-    const tableNumber = event.detail;
-    handlePinpadSubmit(tableNumber);
-  }
-
-  function handleTableNumberCancel() {
-    isTableModalVisible = false;
-  }
-
-  function handlePinpadSubmit(tableNumber) {
-    if (tableNumber && tableNumber.trim()) {
-      addLog('INFO', `Setting table number to ${tableNumber}`);
-      
-      // Get current order state
-      let currentOrderState;
-      orderStore.subscribe(state => currentOrderState = state)();
-      
-      if (currentOrderState.status === 'active') {
-        // Update existing order with table number
-        const metadata = { ...currentOrderState.metadata, table: tableNumber.trim() };
-        updateOrderMetadata(metadata);
-      } else {
-        // Create new order with table metadata
-        orderStore.initializeOrder(1, { table: tableNumber.trim() });
+    if (hasActiveTransaction) {
+      // Case 1: Active transaction exists - activate pinpad for table entry regardless of items
+      addLog('INFO', 'Activating pinpad for table number entry');
+      pinpadStore.activateTableEntry();
+    } else if (!hasActiveTransaction) {
+      // Case 3: No active transaction - initialize new order first
+      addLog('INFO', 'No active order - initializing new order for table entry');
+      try {
+        await orderStore.initializeOrder(1, {});
+        addLog('INFO', 'Order initialized, activating pinpad for table number entry');
+        pinpadStore.activateTableEntry();
+      } catch (error) {
+        addLog('ERROR', `Failed to initialize order: ${error.message}`);
       }
-      
-      isTableModalVisible = false;
     }
   }
 
-  function updateOrderMetadata(metadata) {
-    // This is a simplified approach - in a real implementation, 
-    // you might want to send this to the backend
-    orderStore.update(store => ({
-      ...store,
-      metadata: metadata
-    }));
-  }
 
   function handleSecondaryAction(event) {
     const { data, mouseX, mouseY } = event.detail;
@@ -848,7 +811,8 @@
         label: 'Стол', 
         onClick: handleTableClick, 
         active: true,
-        color: '#6c5ce7' // Purple color for table button
+        disabled: false,
+        color: '#6c5ce7' // Always purple and enabled
       };
     }
     if (!cell.content) return { disabled: true };
@@ -886,20 +850,14 @@
 
 <div class="selection-area" bind:this={containerElement}>
   
-  {#if isPinpadVisible}
+  {#if $pinpadStore.isActive}
     <div class="pinpad-overlay">
       <div class="pinpad-container">
-          <Pinpad onClose={() => isPinpadVisible = false} />
+          <Pinpad onClose={() => pinpadStore.deactivate()} />
       </div>
     </div>
   {/if}
 
-  <TableNumberModal 
-    bind:visible={isTableModalVisible} 
-    currentValue={currentTableNumber}
-    on:submit={handleTableNumberSubmit}
-    on:cancel={handleTableNumberCancel}
-  />
 
   <ContextMenu 
     item={contextMenuItem} 
@@ -927,13 +885,13 @@
           <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
             {#each row as cell (`${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
               {#if cell.isPinpadTrigger}
-                <UniversalButton {...getButtonProps(cell)} on:click={() => isPinpadVisible = true}>
+                <UniversalButton {...getButtonProps(cell)} on:click={() => pinpadStore.activate('general', null, null)}>
                   <PinpadPreview />
                 </UniversalButton>
               {:else}
                 {@const content = getButtonContent(cell)}
                 {#if content.isPinpadTrigger}
-                  <UniversalButton {...getButtonProps(cell)} on:click={() => isPinpadVisible = true}>
+                  <UniversalButton {...getButtonProps(cell)} on:click={() => pinpadStore.activate('general', null, null)}>
                     <PinpadPreview />
                   </UniversalButton>
                 {:else if content.paymentButton}

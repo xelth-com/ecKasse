@@ -108,12 +108,13 @@ function createOrderStore() {
 		addLog('INFO', 'Initializing new order...');
 		
 		initializationPromise = new Promise((resolve, reject) => {
-			const unsubscribe = wsStore.subscribe(state => {
+			let unsubscribe;
+			unsubscribe = wsStore.subscribe(state => {
 				if (state.lastMessage?.command === 'orderUpdated' && state.lastMessage.status === 'success') {
-					unsubscribe();
+					if (unsubscribe) unsubscribe();
 					resolve(state.lastMessage.payload);
 				} else if (state.lastMessage?.command === 'orderUpdated' && state.lastMessage.status === 'error') {
-					unsubscribe();
+					if (unsubscribe) unsubscribe();
 					update(s => ({ ...s, status: 'error' }));
 					reject(new Error(state.lastMessage.payload?.message || 'Failed to initialize order'));
 				}
@@ -200,19 +201,24 @@ function createOrderStore() {
 			return;
 		}
 
-		if (!currentStoreState.items || currentStoreState.items.length === 0) {
-			addLog('ERROR', 'Cannot park empty order.');
-			return;
-		}
-
 		addLog('INFO', `Parking transaction ${currentStoreState.transactionId} to table ${tableIdentifier}...`);
 		
-		return new Promise((resolve, reject) => {
-			const unsubscribe = wsStore.subscribe(state => {
+		return new Promise(async (resolve, reject) => {
+			const unsubscribe = wsStore.subscribe(async (state) => {
 				if (state.lastMessage?.command === 'parkTransactionResponse' && state.lastMessage.status === 'success') {
 					unsubscribe();
 					resetOrder();
 					addLog('SUCCESS', `Order parked to table ${tableIdentifier}`);
+					
+					// Refresh parked orders list immediately
+					try {
+						const { parkedOrdersStore } = await import('./parkedOrdersStore.js');
+						await parkedOrdersStore.refresh();
+						addLog('INFO', 'Parked orders list refreshed');
+					} catch (error) {
+						addLog('WARNING', 'Could not refresh parked orders list after parking');
+					}
+					
 					resolve(state.lastMessage.payload);
 				} else if (state.lastMessage?.command === 'parkTransactionResponse' && state.lastMessage.status === 'error') {
 					unsubscribe();

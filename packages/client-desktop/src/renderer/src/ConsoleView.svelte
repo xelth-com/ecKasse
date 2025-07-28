@@ -4,6 +4,7 @@
   import { orderStore } from './lib/orderStore.js';
   import { receiptsStore } from './lib/receiptsStore.js';
   import { currentView } from './lib/viewStore.js';
+  import { pinpadStore } from './lib/pinpadStore.js';
   import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   
@@ -79,7 +80,7 @@
           <div class="active-order-section">
             <div class="order-content">
               <!-- Fixed header at top -->
-              <h2>Order #{$orderStore.transactionId || '...'} {$orderStore.status !== 'idle' ? `(${$orderStore.status})` : ''}</h2>
+              <h2>Order #<span class="table-number">{$pinpadStore.isActive && $pinpadStore.mode === 'table' ? $pinpadStore.liveValue : ($orderStore.metadata?.table || ($orderStore.transactionId ? $orderStore.transactionId : '...'))}</span> {$orderStore.status !== 'idle' ? `(${$orderStore.status})` : ''}</h2>
               <!-- Scrollable items area -->
               <div class="scrollable-items-content">
                 <ul class="item-list">
@@ -381,6 +382,11 @@
     margin: 0 0 16px 0;
     font-size: 24px;
     color: #e0e0e0;
+  }
+
+  .table-number {
+    color: #4a69bd;
+    font-weight: bold;
   }
 
 </style>
