@@ -8,12 +8,6 @@
   import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   
-  // Data-driven tabs configuration
-  const views = [
-    { id: 'order', label: 'Bestellung' },
-    { id: 'receipts', label: 'Чеки' },
-    { id: 'agent', label: 'Agent' }
-  ];
 
   let agentScrollElement;
   let ordersScrollElement;
@@ -22,6 +16,12 @@
   let isAutoScrolling = false; // Flag to prevent infinite scroll loops
   let hasInitializedScroll = false; // Flag to track if initial scroll was done
 
+  // Track the last activated view to determine cycle order
+  let lastActivatedView = 'order'; // Default to order as the initial view
+  
+  // Track if we switched to receipts after payment (to auto-expand latest receipt)
+  let autoExpandLatestReceipt = false;
+  
   // Track previous order status to detect transitions
   let previousOrderStatus = $orderStore.status;
   
@@ -34,10 +34,27 @@
   $: {
     // Detect when order status changes from 'finished' to 'idle' (auto-reset happened)
     if (previousOrderStatus === 'finished' && $orderStore.status === 'idle') {
+      lastActivatedView = 'receipts'; // Update last activated view for automatic switch
+      autoExpandLatestReceipt = true; // Flag to auto-expand latest receipt
       currentView.set('receipts');
       receiptsStore.refresh(); // Refresh receipts to show the latest transaction
+      
+      // Force scroll to bottom after switching to receipts (like other tabs)
+      setTimeout(() => {
+        if (receiptsScrollElement) {
+          receiptsScrollElement.scrollTop = receiptsScrollElement.scrollHeight;
+          checkScrollPosition(); // Update scroll position tracking
+        }
+      }, 300); // Increased delay to allow receipts to load
     }
     previousOrderStatus = $orderStore.status;
+  }
+
+  // Watch for receipts data changes and recalculate scroll position
+  $: if ($receiptsStore.receipts && receiptsScrollElement && $currentView === 'receipts') {
+    setTimeout(() => {
+      checkScrollPosition(); // Recalculate after data changes
+    }, 100);
   }
 
   // Initialize scroll position on mount
@@ -58,6 +75,7 @@
       let currentScrollElement = null;
       if ($currentView === 'order') currentScrollElement = ordersScrollElement;
       else if ($currentView === 'agent') currentScrollElement = agentScrollElement;
+      else if ($currentView === 'receipts') currentScrollElement = receiptsScrollElement;
       
       if (currentScrollElement) {
         setTimeout(() => {
@@ -123,6 +141,13 @@
   ];
 
   function selectView(viewId) {
+    lastActivatedView = viewId; // Update the last activated view
+    
+    // Reset auto-expand flag when manually switching views
+    if (viewId !== 'receipts') {
+      autoExpandLatestReceipt = false;
+    }
+    
     currentView.set(viewId);
   }
   
@@ -143,7 +168,7 @@
         const scrollHeight = currentScrollElement.scrollHeight;
         const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold;
         
-        // Position calculation removed
+        // Debug removed
         
         isAtBottom = isNearBottom;
       } else {
@@ -167,11 +192,37 @@
     }
   }
   
-  // Function to cycle through views
+  // Function to cycle through views with dynamic order based on last activated view
   function cycleViews() {
-    const currentIndex = views.findIndex(view => view.id === $currentView);
-    const nextIndex = (currentIndex + 1) % views.length;
-    currentView.set(views[nextIndex].id);
+    // Define specific cycle orders based on last activated view
+    let cycle;
+    
+    switch (lastActivatedView) {
+      case 'order':
+        cycle = ['order', 'receipts', 'agent'];
+        break;
+      case 'receipts':
+        cycle = ['receipts', 'order', 'agent'];  // receipts -> order -> agent -> receipts
+        break;
+      case 'agent':
+        cycle = ['agent', 'order', 'receipts'];
+        break;
+      default:
+        cycle = ['order', 'receipts', 'agent'];
+    }
+    
+    // Find current view in the cycle and get the next one
+    const currentIndex = cycle.indexOf($currentView);
+    const nextIndex = (currentIndex + 1) % cycle.length;
+    const nextViewId = cycle[nextIndex];
+    
+    // Reset auto-expand flag when cycling away from receipts
+    if ($currentView === 'receipts' && nextViewId !== 'receipts') {
+      autoExpandLatestReceipt = false;
+    }
+    
+    // DON'T update lastActivatedView when cycling - only update on manual/automatic activation
+    currentView.set(nextViewId);
   }
   
   // Getter functions for external access
@@ -184,18 +235,6 @@
 </script>
 
 <div class="console-view">
-  <!-- Tab navigation -->
-  <div class="tab-nav">
-    {#each views as view}
-      <button 
-        class="tab-button"
-        class:active={$currentView === view.id}
-        on:click={() => selectView(view.id)}
-      >
-        {view.label}
-      </button>
-    {/each}
-  </div>
 
   <!-- Content area -->
   <div class="content-area">
@@ -234,6 +273,8 @@
                   {/each}
                 </ul>
               </div>
+              <!-- Flexible spacer to push total to bottom when there's extra space -->
+              <div class="spacer"></div>
               <!-- Fixed total at bottom -->
               <div class="total">
                 <span>Total:</span>
@@ -246,12 +287,11 @@
     {:else if $currentView === 'receipts'}
       <div class="view-content receipts-view">
         <div class="receipts-stack" bind:this={receiptsScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
-          <ReceiptFeed />
+          <ReceiptFeed autoExpandLatest={autoExpandLatestReceipt} />
         </div>
       </div>
     {:else if $currentView === 'agent'}
       <div class="view-content">
-        <h2>Agent Console</h2>
         <div class="scroll-content" bind:this={agentScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <div class="agent-messages">
             {#each agentMessages as message}
@@ -278,33 +318,6 @@
     box-sizing: border-box;
   }
 
-  .tab-nav {
-    display: flex;
-    border-bottom: 1px solid #444;
-    background-color: #1e1e1e;
-  }
-
-  .tab-button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    background-color: transparent;
-    color: #888;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s ease;
-  }
-
-  .tab-button:hover {
-    background-color: #333;
-    color: #ccc;
-  }
-
-  .tab-button.active {
-    background-color: #2c2c2e;
-    color: #e0e0e0;
-    border-bottom: 2px solid #4a69bd;
-  }
 
   .content-area {
     flex-grow: 1;
@@ -370,10 +383,9 @@
   }
 
   .active-order-section {
-    flex-shrink: 0;
+    flex: 1 0 300px; /* grow to fill available space, but min 300px */
     display: flex;
     flex-direction: column;
-    min-height: 300px;
     /* Active order always at bottom */
   }
 
@@ -385,7 +397,8 @@
   }
 
   .scrollable-items-content {
-    flex-grow: 1;
+    /* Don't grow to fill all space - only grow as needed for content */
+    flex: 0 1 auto;
     overflow-y: auto;
     min-height: 0;
     margin-bottom: 16px;
@@ -398,6 +411,12 @@
     /* Hide scrollbar for IE, Edge and Firefox */
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .spacer {
+    /* This spacer will grow to fill available space, pushing total to bottom */
+    flex-grow: 1;
+    min-height: 0;
   }
 
   .active-order-section h2 {
@@ -559,7 +578,7 @@
   }
 
   .table-number {
-    color: #4a69bd;
+    color: #CD853F;
     font-weight: bold;
   }
 

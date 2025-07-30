@@ -117,7 +117,7 @@ async function getRecentTransactions(limit = 20) {
         // Get recent finished transactions
         const transactions = await db('active_transactions')
             .where('status', 'finished')
-            .orderBy('updated_at', 'asc')
+            .orderBy('updated_at', 'desc')
             .limit(limit)
             .select('*');
 

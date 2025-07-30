@@ -3,6 +3,8 @@
   import { receiptsStore } from '../receiptsStore.js';
   import { addLog } from '../logStore.js';
 
+  export let autoExpandLatest = false; // Prop to auto-expand latest receipt
+  
   let expandedReceipt = null;
   let receiptListElement;
 
@@ -11,6 +13,20 @@
     receiptsStore.loadReceipts();
   });
 
+  // Auto-scroll removed - handled by parent ConsoleView
+
+  // Auto-expand latest receipt when requested
+  $: if (autoExpandLatest && $receiptsStore.receipts.length > 0) {
+    // Find the latest receipt (newest by fiscal_timestamp or updated_at)
+    const sortedReceipts = $receiptsStore.receipts.sort((a, b) => 
+      new Date(b.fiscal_timestamp || b.updated_at) - new Date(a.fiscal_timestamp || a.updated_at)
+    );
+    const latestReceiptId = sortedReceipts[0]?.id;
+    
+    if (latestReceiptId && expandedReceipt !== latestReceiptId) {
+      expandedReceipt = latestReceiptId;
+    }
+  }
 
   function toggleReceipt(receiptId) {
     expandedReceipt = expandedReceipt === receiptId ? null : receiptId;
@@ -46,9 +62,6 @@
 </script>
 
 <div class="receipt-feed">
-  <div class="feed-header">
-    <h3>Recent Receipts</h3>
-  </div>
 
   {#if $receiptsStore.loading}
     <div class="loading">Loading receipts...</div>
@@ -60,12 +73,12 @@
     <div class="empty">No receipts found.</div>
   {:else}
     <div class="receipt-list" bind:this={receiptListElement}>
-      {#each $receiptsStore.receipts as receipt (receipt.id)}
+      {#each $receiptsStore.receipts.sort((a, b) => new Date(a.fiscal_timestamp || a.updated_at) - new Date(b.fiscal_timestamp || b.updated_at)) as receipt (receipt.id)}
         <div class="receipt-item" class:expanded={expandedReceipt === receipt.id}>
           <div class="receipt-summary" on:click={() => toggleReceipt(receipt.id)}>
             <div class="receipt-info">
               <div class="receipt-id">#{receipt.id}</div>
-              <div class="receipt-date">{formatDate(receipt.updated_at)}</div>
+              <div class="receipt-date">{formatDate(receipt.fiscal_timestamp || receipt.updated_at)}</div>
               <div class="receipt-payment">
                 {receipt.payment_type || 'Unknown'} - {formatCurrency(receipt.total_amount)}
               </div>
@@ -144,6 +157,7 @@
 
   .receipt-list {
     flex: 1;
+    /* Remove overflow - let parent handle scrolling */
   }
 
   .receipt-item {

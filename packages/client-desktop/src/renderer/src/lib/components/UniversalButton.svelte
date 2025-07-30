@@ -4,6 +4,8 @@
   export let label = '';
   export let icon = '';
   export let color = '#666666';
+  export let textColor = '';
+  export let backgroundStyle = '';
   export let disabled = false;
   export let data = null;
   export let width = 120;
@@ -87,6 +89,8 @@
     --button-width: {width}px; 
     --button-height: {height}px; 
     --button-color: {color};
+    {textColor ? `--button-text-color: ${textColor};` : ''}
+    {backgroundStyle ? `--button-background-style: ${backgroundStyle};` : ''}
     --clip-path: {clipPath};
   " 
   title={label || icon} 
@@ -103,7 +107,7 @@
       </div>
     {:else if icon || showShape}
       {#if icon}
-        <span class="button-icon">{icon}</span>
+        <span class="button-icon">{@html icon}</span>
       {/if}
       {#if showShape}
         <div class="shape-overlay {showShape}"></div>
@@ -152,6 +156,11 @@
     overflow: hidden;
   }
 
+  /* Apply custom background style only when defined */
+  .universal-button[style*="--button-background-style"] .button-shape {
+    background: var(--button-background-style);
+  }
+
   /* Special styling for half hex buttons */
   .universal-button.hex.half .button-shape {
     background-color: #5a7aad;
@@ -194,6 +203,7 @@
     white-space: normal;
     padding: 5px;
     text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
+    color: var(--button-text-color, inherit);
   }
 
   /* Use the same text style for both hex and rect */
@@ -206,6 +216,7 @@
     font-size: 24px;
     font-weight: bold;
     text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
+    color: var(--button-text-color, inherit);
   }
 
   /* Special styling for half hex button text and icons */

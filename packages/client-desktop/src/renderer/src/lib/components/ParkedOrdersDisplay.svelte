@@ -182,13 +182,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #1a1a1c;
+    background: #2E1A16;
     border-radius: 4px;
     margin-right: 8px;
     min-width: 40px;
     font-weight: 900;
     font-size: 24px;
-    color: #e0e0e0;
+    color: #CD853F;
   }
 
   .order-stats {

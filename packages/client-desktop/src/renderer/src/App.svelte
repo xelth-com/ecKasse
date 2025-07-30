@@ -6,18 +6,16 @@
   
   let consoleViewComponent;
   
-  // Smart button handler - scroll down or cycle views
+  // Smart button handler - scroll down or cycle views (universal logic for all panels)
   function handleSmartAction() {
-    const currentIsAtBottom = consoleViewComponent?.getIsAtBottom();
-    
-    if ($currentView === 'order' && consoleViewComponent) {
+    if (consoleViewComponent) {
+      const currentIsAtBottom = consoleViewComponent.getIsAtBottom();
+      
       if (currentIsAtBottom) {
         consoleViewComponent.cycleViews();
       } else {
         consoleViewComponent.scrollToBottom();
       }
-    } else if (consoleViewComponent) {
-      consoleViewComponent.cycleViews();
     }
   }
 </script>
