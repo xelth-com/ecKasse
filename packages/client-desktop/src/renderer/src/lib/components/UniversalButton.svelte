@@ -275,4 +275,24 @@
     /* правильный шестиугольник - фиксированные одинаковые размеры */
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   }
+
+  .shape-overlay.double-arrow-down {
+    width: 50px;
+    height: 50px;
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #404040;
+  }
+
+  .shape-overlay.double-arrow-down::before {
+    content: '';
+    width: 50px;
+    height: 50px;
+    background-image: url("data:image/svg+xml,%3Csvg width='50' height='50' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 13L12 18L17 13M7 6L12 11L17 6' stroke='%23404040' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+  }
 </style>

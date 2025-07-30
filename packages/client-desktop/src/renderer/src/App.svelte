@@ -2,15 +2,33 @@
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
   import RecoveryModal from './lib/components/RecoveryModal.svelte';
+  import { currentView } from './lib/viewStore.js';
+  
+  let consoleViewComponent;
+  
+  // Smart button handler - scroll down or cycle views
+  function handleSmartAction() {
+    const currentIsAtBottom = consoleViewComponent?.getIsAtBottom();
+    
+    if ($currentView === 'order' && consoleViewComponent) {
+      if (currentIsAtBottom) {
+        consoleViewComponent.cycleViews();
+      } else {
+        consoleViewComponent.scrollToBottom();
+      }
+    } else if (consoleViewComponent) {
+      consoleViewComponent.cycleViews();
+    }
+  }
 </script>
 
 <main class="pos-grid">
   <RecoveryModal />
   <div class="grid-item-display">
-    <ConsoleView />
+    <ConsoleView bind:this={consoleViewComponent} />
   </div>
   <div class="grid-selection-area">
-    <SelectionArea />
+    <SelectionArea {handleSmartAction} />
   </div>
 </main>
 

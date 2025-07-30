@@ -28,6 +28,9 @@
   let containerWidth = 0;
   let containerHeight = 0;
   let gridCells = []; // Persistent grid structure
+  
+  // Smart action prop from parent
+  export let handleSmartAction = () => {};
 
   // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
   const MIN_HEX_WIDTH = 160; // minimum button size for touch
@@ -506,12 +509,42 @@
   function updateGridContent() {
     if (gridCells.length === 0) return;
     clearGridContent();
+    
+    // Always initialize system buttons first
+    initializeSystemButtons(gridCells);
+    
     if (currentView === 'categories') {
       populateWithCategories(gridCells, categories);
     } else {
       populateWithProducts(gridCells, products);
     }
     gridCells = [...gridCells];
+  }
+  
+  function initializeSystemButtons(grid) {
+    // Add smart navigation to bottommost left half button (always visible)
+    const leftHalfCells = grid.filter(cell => 
+      cell.type === 'left-half' || cell.type === 'left-half-rect'
+    );
+    if (leftHalfCells.length > 0) {
+      leftHalfCells.sort((a, b) => b.rowIndex - a.rowIndex); // Sort descending to get bottom first
+      const bottomLeftHalfCell = leftHalfCells[0];
+      bottomLeftHalfCell.content = { isSmartNavigation: true };
+    }
+
+    // Add layout toggle to topmost right half button (always visible)
+    const rightHalfCells = grid.filter(cell => 
+      cell.type === 'right-half' || cell.type === 'right-half-rect'
+    );
+    if (rightHalfCells.length > 0) {
+      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+      const rightHalfCell = rightHalfCells[0];
+      rightHalfCell.content = { 
+        isLayoutToggle: true, 
+        icon: '', 
+        showShape: layoutType === '6-6-6' ? 'rect' : 'hex'
+      };
+    }
   }
   
   function populateWithCategories(grid, categories) {
@@ -529,28 +562,14 @@
   }
   
   function populateWithProducts(grid, products) {
-    // Add back button to topmost left half button
+    // Add back button to second topmost left half button (since first is now system button)
     const leftHalfCells = grid.filter(cell => 
-      cell.type === 'left-half' || cell.type === 'left-half-rect'
+      (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
     );
     if (leftHalfCells.length > 0) {
       leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
       const leftHalfCell = leftHalfCells[0];
       leftHalfCell.content = { isBackButton: true, icon: '←' };
-    }
-
-    // Add layout toggle to topmost right half button
-    const rightHalfCells = grid.filter(cell => 
-      cell.type === 'right-half' || cell.type === 'right-half-rect'
-    );
-    if (rightHalfCells.length > 0) {
-      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
-      const rightHalfCell = rightHalfCells[0];
-      rightHalfCell.content = { 
-        isLayoutToggle: true, 
-        icon: '', 
-        showShape: layoutType === '6-6-6' ? 'rect' : 'hex'
-      };
     }
 
     // Find bottom row full buttons and assign payment functions from right to left
@@ -656,6 +675,23 @@
         status = 'Error: Not connected to backend.';
       }
     }, 500);
+  });
+
+  // Handle auto-collapse completion event
+  onMount(() => {
+    const handleAutoCollapseComplete = () => {
+      addLog('INFO', 'Auto-collapse completed, returning to categories');
+      currentView = 'categories';
+      selectedCategory = null;
+      consoleView.set('order'); // Switch back to order view
+    };
+
+    window.addEventListener('autoCollapseComplete', handleAutoCollapseComplete);
+
+    // Cleanup on component destroy
+    return () => {
+      window.removeEventListener('autoCollapseComplete', handleAutoCollapseComplete);
+    };
   });
 
   let gridRows = [];
@@ -789,9 +825,9 @@
         addLog('INFO', 'Returned to start position');
       } catch (error) {
         if (error.message === 'FORCE_TABLE_ASSIGNMENT') {
-          // Заказ с товарами но без стола - принудительно открываем пинпад
-          addLog('INFO', 'Forcing table assignment for order with items');
-          pinpadStore.activateTableEntry();
+          // Заказ с товарами но без стола - принудительно открываем пинпад с автосворачиванием
+          addLog('INFO', 'Forcing table assignment for order with items (will auto-collapse)');
+          pinpadStore.activateTableEntryWithAutoCollapse();
           return; // Не возвращаемся к стартовому состоянию, ждем присвоения стола
         } else {
           addLog('ERROR', `Failed to handle table click: ${error.message}`);
@@ -871,6 +907,12 @@
     if (!cell.content) return { disabled: true };
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
     if (cell.content.isLayoutToggle) return { icon: cell.content.icon || '', onClick: toggleLayoutType, active: true, showShape: cell.content.showShape };
+    if (cell.content.isSmartNavigation) return { 
+      icon: '', 
+      onClick: handleSmartAction, 
+      active: true, 
+      showShape: 'double-arrow-down' 
+    };
     if (cell.content.isPaymentButton) {
       const hasOrder = $orderStore.total > 0 && $orderStore.status === 'active';
       const buttonProps = { 

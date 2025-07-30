@@ -1,5 +1,5 @@
 <script>
-  import { afterUpdate } from 'svelte';
+  import { afterUpdate, onMount } from 'svelte';
   import { logEntries, addLog } from './lib/logStore.js';
   import { orderStore } from './lib/orderStore.js';
   import { receiptsStore } from './lib/receiptsStore.js';
@@ -16,9 +16,19 @@
   ];
 
   let agentScrollElement;
+  let ordersScrollElement;
+  let receiptsScrollElement;
+  let isAtBottom = false; // Track if current panel is scrolled to bottom - start as false until we verify
+  let isAutoScrolling = false; // Flag to prevent infinite scroll loops
+  let hasInitializedScroll = false; // Flag to track if initial scroll was done
 
   // Track previous order status to detect transitions
   let previousOrderStatus = $orderStore.status;
+  
+  // Track order changes for scroll behavior
+  let previousItemsCount = $orderStore.items.length;
+  let previousTransactionId = $orderStore.transactionId;
+  let previousTable = $orderStore.metadata?.table;
   
   // Auto-switch to receipts after transaction is finished and then reset
   $: {
@@ -30,12 +40,78 @@
     previousOrderStatus = $orderStore.status;
   }
 
-  // Auto-scroll agent messages to bottom
+  // Initialize scroll position on mount
+  onMount(() => {
+    // Wait for DOM to be ready and then initialize scroll
+    setTimeout(() => {
+      if (!hasInitializedScroll) {
+        scrollToBottom();
+        checkScrollPosition();
+        hasInitializedScroll = true;
+      }
+    }, 200); // Longer timeout to ensure content is loaded
+  });
+
+  // Check and fix scroll position when switching panels (only if not already scrolling)
   afterUpdate(() => {
-    if ($currentView === 'agent' && agentScrollElement) {
-      agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+    if (!isAutoScrolling) {
+      let currentScrollElement = null;
+      if ($currentView === 'order') currentScrollElement = ordersScrollElement;
+      else if ($currentView === 'agent') currentScrollElement = agentScrollElement;
+      
+      if (currentScrollElement) {
+        setTimeout(() => {
+          if (currentScrollElement && !isAutoScrolling) {
+            checkScrollPosition(); // First check actual position
+            
+            // Only scroll if we're actually not at bottom
+            if (!isAtBottom) {
+                isAutoScrolling = true;
+              currentScrollElement.scrollTop = currentScrollElement.scrollHeight;
+              
+              // Reset flag after scroll completes
+              setTimeout(() => {
+                isAutoScrolling = false;
+                checkScrollPosition(); // Final check
+                }, 100);
+            } else {
+              }
+          }
+        }, 50);
+      }
     }
   });
+  
+  // Auto-scroll orders to bottom only on meaningful changes
+  $: {
+    if ($currentView === 'order' && ordersScrollElement) {
+      const currentItemsCount = $orderStore.items.length;
+      const currentTransactionId = $orderStore.transactionId;
+      const currentTable = $orderStore.metadata?.table;
+      
+      // Scroll only on specific changes:
+      // 1. Items added/removed
+      // 2. Order switched (transaction ID changed)
+      // 3. Table assigned/changed
+      const shouldScroll = 
+        currentItemsCount !== previousItemsCount ||
+        currentTransactionId !== previousTransactionId ||
+        currentTable !== previousTable;
+      
+      if (shouldScroll) {
+        setTimeout(() => {
+          if (ordersScrollElement) {
+            ordersScrollElement.scrollTop = ordersScrollElement.scrollHeight;
+          }
+        }, 100);
+      }
+      
+      // Update tracking variables
+      previousItemsCount = currentItemsCount;
+      previousTransactionId = currentTransactionId;
+      previousTable = currentTable;
+    }
+  }
 
   const agentMessages = [
     { timestamp: '10:30', type: 'user', message: 'Найди товар Кофе' },
@@ -49,6 +125,62 @@
   function selectView(viewId) {
     currentView.set(viewId);
   }
+  
+  // Function to check if current panel is at bottom
+  function checkScrollPosition() {
+    if (!isAutoScrolling) {
+      let currentScrollElement = null;
+      if ($currentView === 'order') currentScrollElement = ordersScrollElement;
+      else if ($currentView === 'agent') currentScrollElement = agentScrollElement;
+      else if ($currentView === 'receipts') currentScrollElement = receiptsScrollElement;
+      
+      // Debug info removed
+      
+      if (currentScrollElement) {
+        const threshold = 1; // 1px threshold for "at bottom" - more precise
+        const scrollTop = currentScrollElement.scrollTop;
+        const clientHeight = currentScrollElement.clientHeight;
+        const scrollHeight = currentScrollElement.scrollHeight;
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold;
+        
+        // Position calculation removed
+        
+        isAtBottom = isNearBottom;
+      } else {
+        // No scroll element
+        // For panels without scrolling (like receipts), consider them always "at bottom"
+        isAtBottom = true;
+      }
+    }
+  }
+  
+  // Function to scroll current panel to bottom
+  function scrollToBottom() {
+    let currentScrollElement = null;
+    if ($currentView === 'order') currentScrollElement = ordersScrollElement;
+    else if ($currentView === 'agent') currentScrollElement = agentScrollElement;
+    else if ($currentView === 'receipts') currentScrollElement = receiptsScrollElement;
+    
+    if (currentScrollElement) {
+      currentScrollElement.scrollTop = currentScrollElement.scrollHeight;
+      isAtBottom = true;
+    }
+  }
+  
+  // Function to cycle through views
+  function cycleViews() {
+    const currentIndex = views.findIndex(view => view.id === $currentView);
+    const nextIndex = (currentIndex + 1) % views.length;
+    currentView.set(views[nextIndex].id);
+  }
+  
+  // Getter functions for external access
+  function getIsAtBottom() {
+    return isAtBottom;
+  }
+  
+  // Export functions for use by SelectionArea
+  export { scrollToBottom, cycleViews, getIsAtBottom };
 </script>
 
 <div class="console-view">
@@ -70,7 +202,7 @@
     {#if $currentView === 'order'}
       <div class="view-content order-view">
         <!-- Combined orders container -->
-        <div class="orders-stack">
+        <div class="orders-stack" bind:this={ordersScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <!-- Parked Orders Section (stacked above active order) -->
           <div class="parked-orders-section">
             <ParkedOrdersDisplay />
@@ -112,13 +244,15 @@
         </div>
       </div>
     {:else if $currentView === 'receipts'}
-      <div class="view-content">
-        <ReceiptFeed />
+      <div class="view-content receipts-view">
+        <div class="receipts-stack" bind:this={receiptsScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
+          <ReceiptFeed />
+        </div>
       </div>
     {:else if $currentView === 'agent'}
       <div class="view-content">
         <h2>Agent Console</h2>
-        <div class="scroll-content" bind:this={agentScrollElement}>
+        <div class="scroll-content" bind:this={agentScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <div class="agent-messages">
             {#each agentMessages as message}
               <div class="agent-message" class:user={message.type === 'user'} class:agent={message.type === 'agent'}>
@@ -189,11 +323,42 @@
     padding: 8px;
   }
 
+  .view-content.receipts-view {
+    padding: 8px;
+  }
+
   .orders-stack {
     height: 100%;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow-y: auto;
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .receipts-stack {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   .parked-orders-section {
@@ -205,10 +370,10 @@
   }
 
   .active-order-section {
-    flex-grow: 1;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 300px;
     /* Active order always at bottom */
   }
 
@@ -245,7 +410,7 @@
   .scroll-content {
     flex-grow: 1;
     overflow-y: auto;
-    margin-bottom: 16px;
+    min-height: 0;
     
     /* Hide scrollbar for Chrome, Safari and Opera */
     &::-webkit-scrollbar {

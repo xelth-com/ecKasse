@@ -183,6 +183,64 @@ function createPinpadStore() {
                     // Cancel callback - nothing special needed
                 }
             );
+        },
+
+        // New method for table entry with auto-collapse
+        activateTableEntryWithAutoCollapse() {
+            this.activate(
+                'table',
+                async (tableNumber) => {
+                    if (tableNumber && tableNumber.trim()) {
+                        try {
+                            const result = await orderStore.assignTableNumber(tableNumber.trim());
+                            // Check if table was in use
+                            if (result && result.tableInUse) {
+                                // Just clear the input and keep pinpad open - no error message needed
+                                update(state => ({
+                                    ...state,
+                                    liveValue: '' // Clear the input
+                                }));
+                                // Return nothing - this will NOT close the pinpad but also won't break flow
+                                return;
+                            }
+                            
+                            // Table assigned successfully - now auto-collapse the order
+                            // Get current order state after assignment attempt
+                            let currentOrderState;
+                            orderStore.subscribe(state => currentOrderState = state)();
+                            
+                            const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
+                            const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
+                            
+                            if (hasItems && hasTable) {
+                                // Park the order and return to start position
+                                await orderStore.parkCurrentOrder(hasTable, 1, false); // updateTimestamp = false
+                                
+                                // Import parkedOrdersStore to refresh
+                                const { parkedOrdersStore } = await import('./parkedOrdersStore.js');
+                                await parkedOrdersStore.refresh();
+                                
+                                // Reset order and return to categories
+                                orderStore.resetOrder();
+                                
+                                // Emit a custom event to signal that we should return to categories
+                                window.dispatchEvent(new CustomEvent('autoCollapseComplete'));
+                                
+                                // Signal that we should return to categories
+                                return { autoCollapsed: true };
+                            }
+                            
+                            return result;
+                        } catch (error) {
+                            // For other errors, still throw to close pinpad
+                            throw error;
+                        }
+                    }
+                },
+                () => {
+                    // Cancel callback - nothing special needed
+                }
+            );
         }
     };
 }

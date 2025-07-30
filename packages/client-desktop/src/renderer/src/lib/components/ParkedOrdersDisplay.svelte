@@ -84,7 +84,7 @@
 
   function getTableName(order) {
     const metadata = order.metadata || {};
-    return metadata.table ? `Стол ${metadata.table}` : `Заказ ${order.id}`;
+    return metadata.table ? `${metadata.table}` : `#${order.id}`;
   }
 
   function formatTimeElapsed(dateString) {
@@ -92,28 +92,20 @@
     const date = new Date(dateString);
     const diffMs = now - date;
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMinutes / 60);
     
-    if (diffHours > 0) {
-      const remainingMinutes = diffMinutes % 60;
-      return remainingMinutes > 0 ? `${diffHours}ч ${remainingMinutes}м` : `${diffHours}ч`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes}м`;
-    } else {
-      return 'только что';
-    }
+    return diffMinutes > 0 ? diffMinutes : 0;
   }
 
-  function getOrderTiming(order) {
-    const guestTime = formatTimeElapsed(order.created_at);
-    const lastActivity = formatTimeElapsed(order.updated_at);
+  function getOrderStats(order) {
+    const openMinutes = formatTimeElapsed(order.created_at);
+    const activityMinutes = formatTimeElapsed(order.updated_at);
+    const price = formatCurrency(order.total_amount);
     
-    // If times are the same, show only one
-    if (guestTime === lastActivity) {
-      return `За столом: ${guestTime}`;
-    } else {
-      return `За столом: ${guestTime} • Активность: ${lastActivity}`;
-    }
+    return {
+      price,
+      openMinutes,
+      activityMinutes
+    };
   }
 </script>
 
@@ -126,12 +118,13 @@
     <div class="orders-list">
       {#each parkedOrders as order (order.id)}
         <div class="order-item" on:click={() => handleOrderClick(order)}>
-          <div class="order-header">
-            <span class="table-name">{getTableName(order)}</span>
-            <span class="order-total">{formatCurrency(order.total_amount)}</span>
+          <div class="table-number">
+            {getTableName(order)}
           </div>
-          <div class="order-time">
-            {getOrderTiming(order)}
+          <div class="order-stats">
+            <div class="stat-price">{getOrderStats(order).price}</div>
+            <div class="stat-open">{getOrderStats(order).openMinutes}min</div>
+            <div class="stat-activity">{getOrderStats(order).activityMinutes}min</div>
           </div>
         </div>
       {/each}
@@ -158,50 +151,70 @@
   }
 
   .orders-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
   .order-item {
     background: #2c2c2e;
     border: 1px solid #444;
-    border-radius: 4px;
-    padding: 6px 10px;
+    border-radius: 8px;
+    padding: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
-    /* Card-like shadow to emphasize stacking */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    aspect-ratio: 2/1;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 0;
   }
 
   .order-item:hover {
     background: #3a3a3c;
     border-color: #666;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
   }
 
-  .order-header {
+  .table-number {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 2px;
-  }
-
-  .table-name {
-    font-weight: 600;
+    justify-content: center;
+    background: #1a1a1c;
+    border-radius: 4px;
+    margin-right: 8px;
+    min-width: 40px;
+    font-weight: 900;
+    font-size: 24px;
     color: #e0e0e0;
-    font-size: 13px;
   }
 
-  .order-total {
+  .order-stats {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .stat-price {
     font-weight: 700;
     color: #5fb85f;
-    font-size: 13px;
+    font-size: 14px;
   }
 
-  .order-time {
-    font-size: 11px;
-    color: #999;
+  .stat-open {
+    font-weight: 600;
+    color: #e0e0e0;
+    font-size: 12px;
+  }
+
+  .stat-activity {
+    font-weight: 500;
+    color: #aaa;
+    font-size: 12px;
   }
 </style>

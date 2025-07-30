@@ -11,12 +11,6 @@
     receiptsStore.loadReceipts();
   });
 
-  // Auto-scroll to bottom when receipts update
-  afterUpdate(() => {
-    if (receiptListElement) {
-      receiptListElement.scrollTop = receiptListElement.scrollHeight;
-    }
-  });
 
   function toggleReceipt(receiptId) {
     expandedReceipt = expandedReceipt === receiptId ? null : receiptId;
@@ -150,16 +144,6 @@
 
   .receipt-list {
     flex: 1;
-    overflow-y: auto;
-    
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    &::-webkit-scrollbar {
-      display: none;
-    }
-    
-    /* Hide scrollbar for IE, Edge and Firefox */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
   }
 
   .receipt-item {
