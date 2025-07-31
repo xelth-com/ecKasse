@@ -251,11 +251,7 @@
           <div class="active-order-section">
             <div class="order-content">
               <!-- Fixed header at top -->
-              <h2>Order #{$orderStore.transactionId || '...'} {$orderStore.status !== 'idle' ? `(${$orderStore.status})` : ''} 
-                {#if $orderStore.metadata?.table || ($pinpadStore.isActive && $pinpadStore.mode === 'table')}
-                  - Table: <span class="table-number">{$pinpadStore.isActive && $pinpadStore.mode === 'table' ? $pinpadStore.liveValue : $orderStore.metadata?.table}</span>
-                {/if}
-              </h2>
+              <h2><span class="order-number">Order №{$orderStore.transactionId || '...'}</span>{#if $orderStore.metadata?.table || ($pinpadStore.isActive && $pinpadStore.mode === 'table')} <span class="table-number">#{$pinpadStore.isActive && $pinpadStore.mode === 'table' ? $pinpadStore.liveValue : $orderStore.metadata?.table}</span>{/if}</h2>
               {#if $pinpadStore.errorMessage}
                 <div class="pinpad-error-message">
                   {$pinpadStore.errorMessage}
@@ -459,6 +455,7 @@
   .qty {
     font-weight: bold;
     margin-right: 10px;
+    color: #d32f2f; /* Red color matching receipts */
   }
 
   .name {
@@ -467,6 +464,11 @@
 
   .price {
     font-weight: bold;
+    color: #4CAF50; /* Green color for all prices */
+  }
+
+  .order-number {
+    color: #4a69bd; /* Purple color matching receipts */
   }
 
   .total {

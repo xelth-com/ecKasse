@@ -120,7 +120,7 @@ class TransactionManagementService {
         updatedTransaction = (await trx('active_transactions').where({ id: transactionId }).update({
             total_amount: newTotalAmount,
             tax_amount: newTaxAmount,
-            updated_at: new Date().toISOString()
+            updated_at: new Date()
         }).returning('*'))[0];
 
         const updatedItems = await trx('active_transaction_items').where({ active_transaction_id: transactionId });
@@ -232,7 +232,8 @@ class TransactionManagementService {
       processType: 'Kassenbeleg-V1',
       processData: processData,
       payment_type: paymentData.type,
-      final_amount: updateResult.totalAmount
+      final_amount: updateResult.totalAmount,
+      metadata: transaction.metadata ? JSON.parse(transaction.metadata) : {}
     });
 
     if (!fiscalLogResult.success) {
@@ -346,7 +347,7 @@ class TransactionManagementService {
             .where({ id: transactionId })
             .update({ 
               resolution_status: 'postponed',
-              updated_at: new Date().toISOString()
+              updated_at: new Date()
             });
 
           // Log the fiscal event for postponement
@@ -441,7 +442,7 @@ class TransactionManagementService {
         metadata: JSON.stringify(metadata)
       };
       if (updateTimestamp) {
-        updateData.updated_at = new Date().toISOString();
+        updateData.updated_at = new Date();
       }
       
       const [parkedTransaction] = await db('active_transactions')
@@ -512,7 +513,7 @@ class TransactionManagementService {
       // Prepare update data
       const updateData = { status: 'active' };
       if (updateTimestamp) {
-        updateData.updated_at = new Date().toISOString();
+        updateData.updated_at = new Date();
       }
 
       // Update transaction status to 'active'
@@ -581,12 +582,15 @@ class TransactionManagementService {
       const parkedTransactions = await db('active_transactions')
         .where('status', 'parked')
         .select('*')
-        .orderBy('updated_at', 'desc');
+        .orderBy('updated_at', 'asc');
 
-      // Parse metadata for each transaction
+      // Parse metadata for each transaction and normalize timestamps
       const transactionsWithParsedMetadata = parkedTransactions.map(transaction => ({
         ...transaction,
-        metadata: transaction.metadata ? JSON.parse(transaction.metadata) : {}
+        metadata: transaction.metadata ? JSON.parse(transaction.metadata) : {},
+        // Normalize timestamps to ISO format for consistent parsing on frontend
+        created_at: new Date(transaction.created_at).toISOString(),
+        updated_at: new Date(transaction.updated_at).toISOString()
       }));
 
       logger.info({ 
@@ -609,15 +613,17 @@ class TransactionManagementService {
    * @param {number} transactionId - The ID of the transaction to update.
    * @param {object} metadata - The new metadata object.
    * @param {number} userId - The ID of the user performing the update.
+   * @param {boolean} updateTimestamp - Whether to update the updated_at timestamp (default: false).
    * @returns {Promise<object>} The updated transaction object.
    */
-  async updateTransactionMetadata(transactionId, metadata, userId) {
+  async updateTransactionMetadata(transactionId, metadata, userId, updateTimestamp = false) {
     logger.info({ 
       service: 'TransactionManagementService', 
       function: 'updateTransactionMetadata', 
       transactionId, 
       metadata, 
-      userId 
+      userId,
+      updateTimestamp
     });
 
     try {
@@ -632,12 +638,14 @@ class TransactionManagementService {
 
       // Update the transaction metadata
       // Note: Table availability is already checked in assignTableNumber before calling this function
+      const updateData = { metadata: JSON.stringify(metadata) };
+      if (updateTimestamp) {
+        updateData.updated_at = new Date();
+      }
+      
       const [updatedTransaction] = await db('active_transactions')
         .where({ id: transactionId })
-        .update({ 
-          metadata: JSON.stringify(metadata),
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .returning('*');
 
       // Log the fiscal event for metadata update

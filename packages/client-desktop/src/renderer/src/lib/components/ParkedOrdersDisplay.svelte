@@ -3,6 +3,7 @@
   import { parkedOrdersStore } from '../parkedOrdersStore.js';
   import { orderStore } from '../orderStore.js';
   import { wsStore } from '../wsStore.js';
+  import { timeStore } from '../timeStore.js';
 
   let parkedOrders = [];
   let unsubscribe;
@@ -84,16 +85,12 @@
 
   function getTableName(order) {
     const metadata = order.metadata || {};
-    return metadata.table ? `${metadata.table}` : `#${order.id}`;
+    return metadata.table ? `#${metadata.table}` : `№${order.id}`;
   }
 
   function formatTimeElapsed(dateString) {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now - date;
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
-    return diffMinutes > 0 ? diffMinutes : 0;
+    // Use server time instead of client time
+    return timeStore.formatTimeElapsed(dateString);
   }
 
   function getOrderStats(order) {
@@ -154,6 +151,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+    padding: 2px; /* Add padding to prevent hover scale overflow */
   }
 
   .order-item {

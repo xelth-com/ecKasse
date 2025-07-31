@@ -93,7 +93,6 @@
     {backgroundStyle ? `--button-background-style: ${backgroundStyle};` : ''}
     --clip-path: {clipPath};
   " 
-  title={label || icon} 
   on:click={handleClick}
   on:contextmenu={handleContextMenu}
   on:mousedown={handleMouseDown}

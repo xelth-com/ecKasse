@@ -299,12 +299,12 @@ async function handleWebSocketMessage(ws, rawMessage) {
       const transactionManagementService = require('./services/transaction_management.service');
       responsePayload = await transactionManagementService.getParkedTransactions();
     } else if (command === 'updateTransactionMetadata') {
-      const { transactionId, metadata, userId } = payload;
+      const { transactionId, metadata, userId, updateTimestamp = false } = payload;
       if (!transactionId || !metadata || !userId) {
         throw new Error('TransactionId, metadata, and userId are required');
       }
       const transactionManagementService = require('./services/transaction_management.service');
-      responsePayload = await transactionManagementService.updateTransactionMetadata(transactionId, metadata, userId);
+      responsePayload = await transactionManagementService.updateTransactionMetadata(transactionId, metadata, userId, updateTimestamp);
     } else if (command === 'checkTableAvailability') {
       const { tableNumber, excludeTransactionId } = payload;
       if (!tableNumber) {
@@ -332,7 +332,8 @@ async function handleWebSocketMessage(ws, rawMessage) {
     command: responseCommand, 
     status, 
     payload: responsePayload, 
-    channel: 'websocket' 
+    channel: 'websocket',
+    serverTime: new Date().toISOString()
   };
   ws.send(JSON.stringify(response));
   logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });

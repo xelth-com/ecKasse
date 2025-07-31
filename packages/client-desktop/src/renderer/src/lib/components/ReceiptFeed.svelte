@@ -6,6 +6,7 @@
   export let autoExpandLatest = false; // Prop to auto-expand latest receipt
   
   let expandedReceipt = null;
+  let userHasInteracted = false; // Track if user has manually clicked any receipt
   let receiptListElement;
 
   onMount(() => {
@@ -15,8 +16,8 @@
 
   // Auto-scroll removed - handled by parent ConsoleView
 
-  // Auto-expand latest receipt when requested
-  $: if (autoExpandLatest && $receiptsStore.receipts.length > 0) {
+  // Auto-expand latest receipt when requested (only if user hasn't interacted yet)
+  $: if (autoExpandLatest && !userHasInteracted && $receiptsStore.receipts.length > 0) {
     // Find the latest receipt (newest by fiscal_timestamp or updated_at)
     const sortedReceipts = $receiptsStore.receipts.sort((a, b) => 
       new Date(b.fiscal_timestamp || b.updated_at) - new Date(a.fiscal_timestamp || a.updated_at)
@@ -28,7 +29,13 @@
     }
   }
 
+  // Reset user interaction when autoExpandLatest changes from false to true
+  $: if (autoExpandLatest) {
+    userHasInteracted = false;
+  }
+
   function toggleReceipt(receiptId) {
+    userHasInteracted = true; // Mark that user has manually interacted
     expandedReceipt = expandedReceipt === receiptId ? null : receiptId;
   }
 
@@ -55,7 +62,7 @@
   }
 
   function handleReprintReceipt(receipt) {
-    addLog('INFO', `Reprint requested for receipt #${receipt.id}`);
+    addLog('INFO', `Reprint requested for receipt №${receipt.id}`);
     // TODO: Implement reprint functionality
     console.log('Reprint receipt:', receipt);
   }
@@ -76,15 +83,21 @@
       {#each $receiptsStore.receipts.sort((a, b) => new Date(a.fiscal_timestamp || a.updated_at) - new Date(b.fiscal_timestamp || b.updated_at)) as receipt (receipt.id)}
         <div class="receipt-item" class:expanded={expandedReceipt === receipt.id}>
           <div class="receipt-summary" on:click={() => toggleReceipt(receipt.id)}>
-            <div class="receipt-info">
-              <div class="receipt-id">#{receipt.id}</div>
-              <div class="receipt-date">{formatDate(receipt.fiscal_timestamp || receipt.updated_at)}</div>
-              <div class="receipt-payment">
-                {receipt.payment_type || 'Unknown'} - {formatCurrency(receipt.total_amount)}
+            <div class="receipt-left">
+              <div class="receipt-main-line">
+                <span class="receipt-id-large">№{receipt.id}</span>
+                {#if receipt.metadata?.table}
+                  <span class="receipt-table-large">#{receipt.metadata.table}</span>
+                {/if}
               </div>
+              <div class="receipt-date">{formatDate(receipt.fiscal_timestamp || receipt.updated_at)}</div>
+              <div class="receipt-payment">{receipt.payment_type || 'Unknown'}</div>
             </div>
-            <div class="receipt-items-count">
-              {receipt.items?.length || 0} items
+            <div class="receipt-right">
+              <div class="receipt-price"><span class="price">{formatCurrency(receipt.total_amount)}</span></div>
+              <div class="receipt-meta">
+                <div class="receipt-items-count">{receipt.items?.length || 0} items</div>
+              </div>
             </div>
             <div class="expand-icon">
               {expandedReceipt === receipt.id ? '▼' : '▶'}
@@ -105,11 +118,11 @@
               <div class="receipt-totals">
                 <div class="total-row">
                   <span>Tax:</span>
-                  <span>{formatCurrency(receipt.tax_amount)}</span>
+                  <span class="price">{formatCurrency(receipt.tax_amount)}</span>
                 </div>
                 <div class="total-row total">
                   <span>Total:</span>
-                  <span>{formatCurrency(receipt.total_amount)}</span>
+                  <span class="price">{formatCurrency(receipt.total_amount)}</span>
                 </div>
               </div>
               <div class="receipt-actions">
@@ -185,32 +198,78 @@
     user-select: none;
   }
 
-  .receipt-info {
+  .receipt-left {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .receipt-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-right: 12px;
   }
 
   .receipt-id {
     font-weight: bold;
     color: #4a69bd;
-    font-size: 14px;
+    font-size: 18px; /* Made bigger */
+    margin-bottom: 4px;
   }
 
   .receipt-date {
     font-size: 12px;
     color: #aaa;
-    margin-top: 2px;
+    margin-bottom: 2px;
   }
 
   .receipt-payment {
-    font-size: 13px;
+    font-size: 12px;
     color: #e0e0e0;
-    margin-top: 4px;
+  }
+
+  .receipt-price {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .receipt-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .receipt-table {
+    font-size: 12px;
+    color: #4a69bd;
+    font-weight: bold;
+  }
+
+  .receipt-main-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .receipt-id-large {
+    font-size: 18px;
+    color: #4a69bd; /* Purple like receipt numbers */
+    font-weight: bold;
+  }
+
+  .receipt-table-large {
+    font-size: 18px;
+    color: #CD853F; /* Wood color like in active orders */
+    font-weight: bold;
   }
 
   .receipt-items-count {
-    font-size: 12px;
+    font-size: 11px;
     color: #888;
-    margin-right: 12px;
   }
 
   .expand-icon {
@@ -247,7 +306,7 @@
 
   .item-qty {
     font-weight: bold;
-    color: #4a69bd;
+    color: #d32f2f; /* Reddish color instead of purple */
     min-width: 40px;
   }
 
@@ -258,7 +317,7 @@
 
   .item-price {
     font-weight: bold;
-    color: #e0e0e0;
+    color: #4CAF50; /* Green color for all prices */
   }
 
   .receipt-totals {
@@ -300,5 +359,9 @@
 
   .action-button:hover {
     background: #6a8a6a;
+  }
+
+  .price {
+    color: #4CAF50; /* Green color for all prices */
   }
 </style>

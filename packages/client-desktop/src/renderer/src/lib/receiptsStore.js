@@ -16,9 +16,15 @@ function createReceiptsStore() {
 			if (state.lastMessage.status === 'success') {
 				const payload = state.lastMessage.payload;
 				if (payload.success && payload.transactions) {
+					// Parse metadata for each transaction
+					const transactionsWithParsedMetadata = payload.transactions.map(transaction => ({
+						...transaction,
+						metadata: transaction.metadata ? JSON.parse(transaction.metadata) : {}
+					}));
+					
 					update(store => ({
 						...store,
-						receipts: payload.transactions,
+						receipts: transactionsWithParsedMetadata,
 						loading: false,
 						error: null,
 						lastUpdated: new Date()

@@ -27,6 +27,13 @@ function createWebSocketStore() {
           const message = JSON.parse(event.data);
           console.log('WebSocket message received:', message);
           
+          // Update server time if provided
+          if (message.serverTime) {
+            import('./timeStore.js').then(({ timeStore }) => {
+              timeStore.updateServerTime(message.serverTime);
+            });
+          }
+          
           // Update store with the last message
           update(state => ({ ...state, lastMessage: message }));
           
