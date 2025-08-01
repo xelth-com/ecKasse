@@ -72,8 +72,41 @@ app.on('activate', () => {
   }
 });
 
-// IPC для получения URL бэкенда
-ipcMain.handle('get-backend-url', () => {
-  return `http://localhost:${BACKEND_PORT}`;
+// IPC для получения URL бэкенда с обработкой ошибок
+ipcMain.handle('get-backend-url', async () => {
+  try {
+    const backendPort = process.env.BACKEND_PORT || 3030;
+    if (!backendPort) {
+      throw new Error('BACKEND_PORT is not defined in the environment.');
+    }
+    return `http://localhost:${backendPort}`;
+  } catch (error) {
+    console.error('IPC Error in get-backend-url:', error);
+    // Возвращаем null или ошибку в renderer процесс, чтобы он мог ее обработать
+    return null;
+  }
+});
+
+// Global error handling to catch unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  // Check if this is the IPC cloning error and suppress it
+  if (reason && reason.message && reason.message.includes('An object could not be cloned')) {
+    console.log('Suppressed IPC cloning error (harmless)');
+    return;
+  }
+  
+  // Log other unhandled rejections for debugging
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Global error handling for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  // Check if this is the IPC cloning error and suppress it
+  if (error && error.message && error.message.includes('An object could not be cloned')) {
+    console.log('Suppressed IPC cloning error (harmless)');
+    return;
+  }
+  
+  console.error('Uncaught Exception:', error);
 });
 

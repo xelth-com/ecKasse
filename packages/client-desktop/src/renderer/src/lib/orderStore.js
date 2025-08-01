@@ -210,14 +210,6 @@ function createOrderStore() {
 					resetOrder();
 					addLog('SUCCESS', `Order parked to table ${tableIdentifier}`);
 					
-					// Refresh parked orders list immediately
-					try {
-						const { parkedOrdersStore } = await import('./parkedOrdersStore.js');
-						await parkedOrdersStore.refresh();
-						addLog('INFO', 'Parked orders list refreshed');
-					} catch (error) {
-						addLog('WARNING', 'Could not refresh parked orders list after parking');
-					}
 					
 					resolve(state.lastMessage.payload);
 				} else if (state.lastMessage?.command === 'parkTransactionResponse' && state.lastMessage.status === 'error') {
@@ -336,13 +328,6 @@ function createOrderStore() {
 	async function clearActiveOrderView() {
 		addLog('INFO', 'Clearing active order view');
 		resetOrder();
-		// Import parkedOrdersStore dynamically to avoid circular dependencies
-		try {
-			const { parkedOrdersStore } = await import('./parkedOrdersStore.js');
-			await parkedOrdersStore.refreshParkedOrders();
-		} catch (error) {
-			addLog('WARNING', 'Could not refresh parked orders after clearing view');
-		}
 	}
 
 	return {

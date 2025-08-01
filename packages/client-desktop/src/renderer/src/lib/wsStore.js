@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { timeStore } from './timeStore.js';
 
 // Create a writable store for WebSocket state
 function createWebSocketStore() {
@@ -29,9 +30,7 @@ function createWebSocketStore() {
           
           // Update server time if provided
           if (message.serverTime) {
-            import('./timeStore.js').then(({ timeStore }) => {
-              timeStore.updateServerTime(message.serverTime);
-            });
+            timeStore.updateServerTime(message.serverTime);
           }
           
           // Update store with the last message

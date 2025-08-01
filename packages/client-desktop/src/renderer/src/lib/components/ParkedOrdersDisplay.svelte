@@ -4,6 +4,8 @@
   import { orderStore } from '../orderStore.js';
   import { wsStore } from '../wsStore.js';
   import { timeStore } from '../timeStore.js';
+  import { pinpadStore } from '../pinpadStore.js';
+  import { currentView as consoleView } from '../viewStore.js';
 
   let parkedOrders = [];
   let unsubscribe;
@@ -37,40 +39,34 @@
 
   async function handleOrderClick(order) {
     try {
-      // Импортируем функцию сворачивания из SelectionArea
-      const { orderStore } = await import('../orderStore.js');
-      
-      // Проверяем, есть ли активный заказ
+      // Check if there's an active order
       let currentOrderState;
       orderStore.subscribe(state => currentOrderState = state)();
       
       if (currentOrderState.transactionId && currentOrderState.status === 'active') {
-        // Есть активный заказ - сворачиваем его сначала
+        // There's an active order - park it first
         const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
         const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
         
         if (hasItems && hasTable) {
-          // Паркуем текущий заказ БЕЗ обновления времени
+          // Park current order WITHOUT updating time
           await orderStore.parkCurrentOrder(hasTable, 1, false);
           await parkedOrdersStore.refreshParkedOrders();
         } else if (hasItems && !hasTable) {
-          // Заказ с товарами но без стола - принудительно открываем пинпад для присвоения стола
-          const { pinpadStore } = await import('../pinpadStore.js');
-          const { consoleView } = await import('../viewStore.js');
-          
-          // Переключаемся на view заказов и открываем пинпад
+          // Order with items but no table - force table assignment
+          // Switch to order view and open pinpad
           consoleView.set('order');
           pinpadStore.activateTableEntry();
           
-          // Не продолжаем выполнение - ждем присвоения стола
+          // Don't continue - wait for table assignment
           return;
         } else {
-          // Просто сбрасываем незавершенный заказ без товаров
+          // Just reset incomplete order without items
           orderStore.resetOrder();
         }
       }
       
-      // Теперь активируем выбранный заказ без обновления времени
+      // Now activate selected order without updating time
       const activatedOrder = await parkedOrdersStore.activateOrder(order.id, false);
       orderStore.loadOrder(activatedOrder);
     } catch (error) {

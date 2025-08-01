@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { orderStore } from './orderStore.js';
+import { parkedOrdersStore } from './parkedOrdersStore.js';
 
 function createPinpadStore() {
     const { subscribe, set, update } = writable({
@@ -219,8 +220,7 @@ function createPinpadStore() {
                                 // Park the order and return to start position
                                 await orderStore.parkCurrentOrder(hasTable, 1, false); // updateTimestamp = false
                                 
-                                // Import parkedOrdersStore to refresh
-                                const { parkedOrdersStore } = await import('./parkedOrdersStore.js');
+                                // Refresh parked orders
                                 await parkedOrdersStore.refresh();
                                 
                                 // Reset order and return to categories
