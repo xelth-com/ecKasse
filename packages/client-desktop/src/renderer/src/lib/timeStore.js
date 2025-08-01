@@ -42,11 +42,15 @@ class TimeStore {
     return new Date(now.getTime() + currentState.timeOffset);
   }
 
-  // Форматирует разницу времени используя серверное время как базу
+  // Форматирует разницу времени используя синхронизированное время
   formatTimeElapsed(dateString) {
-    const serverNow = this.getServerTime();
-    const date = new Date(dateString);
-    const diffMs = serverNow - date;
+    // For calculating elapsed time, we should use direct UTC comparison
+    // to avoid double-applying timezone offsets
+    const now = new Date(); // Current client time in UTC
+    const date = new Date(dateString); // Parse the timestamp (should be UTC)
+    
+    // Calculate the difference directly in UTC
+    const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     
     return diffMinutes > 0 ? diffMinutes : 0;

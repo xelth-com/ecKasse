@@ -4,7 +4,8 @@ import { orderStore } from './orderStore.js';
 function createPinpadStore() {
     const { subscribe, set, update } = writable({
         isActive: false,
-        mode: null, // 'table', 'quantity', etc.
+        mode: null, // 'table', 'quantity', 'agent'
+        layout: 'numeric', // 'numeric' or 'alpha'
         liveValue: '',
         confirmCallback: null,
         cancelCallback: null,
@@ -15,10 +16,11 @@ function createPinpadStore() {
     return {
         subscribe,
         
-        activate(mode, confirmCallback, cancelCallback) {
+        activate(mode, confirmCallback, cancelCallback, layout = 'numeric') {
             set({
                 isActive: true,
                 mode,
+                layout,
                 liveValue: '',
                 confirmCallback,
                 cancelCallback,
@@ -31,6 +33,7 @@ function createPinpadStore() {
             set({
                 isActive: false,
                 mode: null,
+                layout: 'numeric',
                 liveValue: '',
                 confirmCallback: null,
                 cancelCallback: null,
@@ -39,13 +42,13 @@ function createPinpadStore() {
             });
         },
 
-        append(digit) {
+        append(char) {
             update(state => {
                 if (!state.isActive) return state;
                 return {
                     ...state,
-                    liveValue: state.liveValue + digit,
-                    errorMessage: null // Clear error when user starts typing
+                    liveValue: state.liveValue + char,
+                    errorMessage: null
                 };
             });
         },
@@ -67,7 +70,7 @@ function createPinpadStore() {
                 return {
                     ...state,
                     liveValue: '',
-                    errorMessage: null // Clear error when clearing
+                    errorMessage: null
                 };
             });
         },
@@ -241,6 +244,10 @@ function createPinpadStore() {
                     // Cancel callback - nothing special needed
                 }
             );
+        },
+
+        activateAlphaInput(confirmCallback, cancelCallback) {
+            this.activate('agent', confirmCallback, cancelCallback, 'alpha');
         }
     };
 }

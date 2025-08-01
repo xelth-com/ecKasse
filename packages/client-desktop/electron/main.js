@@ -23,7 +23,7 @@ function createWindow() {
   const startUrl =
     process.env.ELECTRON_START_URL ||
     (!app.isPackaged
-      ? 'http://localhost:3001' // Vite dev server
+      ? `http://localhost:${BACKEND_PORT}` // Backend serving built files
       : url.format({
           pathname: path.join(__dirname, '../src/renderer/dist/index.html'), // Production build
           protocol: 'file:',

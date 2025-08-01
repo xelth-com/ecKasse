@@ -11,6 +11,7 @@
   import PinpadPreview from './lib/components/PinpadPreview.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
   import { pinpadStore } from './lib/pinpadStore.js';
+  import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
 
   let categories = [];
   let products = [];
@@ -508,7 +509,11 @@
   }
   
   function updateGridContent() {
-    if (gridCells.length === 0) return;
+    addLog('DEBUG', `updateGridContent called with ${gridCells.length} grid cells`);
+    if (gridCells.length === 0) {
+      addLog('DEBUG', 'No grid cells, skipping updateGridContent');
+      return;
+    }
     clearGridContent();
     
     // Always initialize system buttons first
@@ -523,6 +528,8 @@
   }
   
   function initializeSystemButtons(grid) {
+    addLog('DEBUG', `initializeSystemButtons called with ${grid.length} cells`);
+    
     // Add smart navigation to bottommost left half button (always visible)
     const leftHalfCells = grid.filter(cell => 
       cell.type === 'left-half' || cell.type === 'left-half-rect'
@@ -552,6 +559,52 @@
         const bottomRightHalfCell = rightHalfCells[0];
         bottomRightHalfCell.content = { isTimeButton: true };
       }
+    }
+
+    // Designate the Betruger Cap button - rightmost full button in second-to-last row
+    const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
+    addLog('DEBUG', `Max row index: ${maxRowIndex}`);
+    
+    if (maxRowIndex > 1) {
+        const targetRowIndex = maxRowIndex - 1;
+        const targetRowCells = grid.filter(cell => 
+            cell.rowIndex === targetRowIndex && 
+            (cell.type === 'full' || cell.type === 'rect-grid') &&
+            !cell.content // Only assign to empty cells
+        );
+        
+        addLog('DEBUG', `Found ${targetRowCells.length} cells for Betruger Cap in row ${targetRowIndex}`);
+        
+        if (targetRowCells.length > 0) {
+            targetRowCells.sort((a, b) => b.columnIndex - a.columnIndex); // Sort right-to-left
+            targetRowCells[0].content = { 
+              isBetrugerCap: true,
+              label: 'AI',
+              color: '#8A2BE2',
+              icon: '🤖'
+            };
+            addLog('DEBUG', `Assigned Betruger Cap to row ${targetRowCells[0].rowIndex}, col ${targetRowCells[0].columnIndex}`);
+        }
+    }
+
+    // Add keyboard toggle button - second from left in last row
+    const lastRowCells = grid.filter(cell => 
+        cell.rowIndex === maxRowIndex && 
+        (cell.type === 'full' || cell.type === 'rect-grid') &&
+        !cell.content // Only assign to empty cells
+    );
+    
+    addLog('DEBUG', `Found ${lastRowCells.length} cells for keyboard button in row ${maxRowIndex}`);
+    
+    if (lastRowCells.length > 1) {
+        lastRowCells.sort((a, b) => a.columnIndex - b.columnIndex); // Sort left-to-right
+        lastRowCells[1].content = { 
+          isKeyboardToggle: true,
+          label: 'KB',
+          color: '#FF6347',
+          icon: '⌨️'
+        };
+        addLog('DEBUG', `Assigned keyboard toggle to row ${lastRowCells[1].rowIndex}, col ${lastRowCells[1].columnIndex}`);
     }
   }
   
@@ -600,7 +653,8 @@
       cell.rowIndex === maxRowIndex && 
       (cell.type === 'full' || cell.type === 'rect-grid') && 
       !cell.isPinpadTrigger &&
-      !cell.isTableButton
+      !cell.isTableButton &&
+      !cell.content // Don't overwrite already assigned buttons
     );
     
     addLog('DEBUG', `Found ${bottomRowFullButtons.length} bottom row buttons for payment assignment`);
@@ -879,6 +933,35 @@
     }
   }
 
+  function handleGeminiClick() {
+    consoleView.set('agent');
+    pinpadStore.activateAlphaInput(
+      (inputValue) => {
+        // TODO: Send inputValue to the Gemini agent
+        addLog('INFO', `User input for Gemini: ${inputValue}`);
+      },
+      () => {
+        addLog('INFO', 'Gemini input cancelled.');
+      }
+    );
+  }
+
+  function handleKeyboardToggle() {
+    if ($pinpadStore.isActive) {
+      pinpadStore.deactivate();
+      addLog('INFO', 'Keyboard closed');
+    } else {
+      pinpadStore.activateAlphaInput(
+        (inputValue) => {
+          addLog('INFO', `Keyboard input: ${inputValue}`);
+        },
+        () => {
+          addLog('INFO', 'Keyboard input cancelled.');
+        }
+      );
+      addLog('INFO', 'Keyboard opened');
+    }
+  }
 
   function handleSecondaryAction(event) {
     const { data, mouseX, mouseY } = event.detail;
@@ -951,6 +1034,22 @@
       color: '#2c2c2e',
       textColor: '#666',
       customStyle: 'font-size: 12px; font-weight: 600; line-height: 1.2; white-space: pre-line; text-align: center;'
+    };
+    if (cell.content.isBetrugerCap) return {
+      isBetrugerCap: true,
+      label: cell.content.label,
+      icon: cell.content.icon,
+      color: cell.content.color,
+      onClick: handleGeminiClick,
+      active: true
+    };
+    if (cell.content.isKeyboardToggle) return {
+      isKeyboardToggle: true,
+      label: cell.content.label,
+      icon: cell.content.icon, 
+      color: cell.content.color,
+      onClick: handleKeyboardToggle,
+      active: $pinpadStore.isActive
     };
     if (cell.content.isPaymentButton) {
       const hasOrder = $orderStore.total > 0 && $orderStore.status === 'active';
@@ -1032,6 +1131,10 @@
                   </UniversalButton>
                 {:else if content.paymentButton}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                {:else if content.isBetrugerCap}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} active={content.active} on:click={content.onClick} />
+                {:else if content.isKeyboardToggle}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} active={content.active} on:click={content.onClick} />
                 {:else if content.label && !content.data}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.disabled}

@@ -357,7 +357,11 @@ wss.on('connection', (ws, req) => {
     logger.error({ msg: 'WebSocket client error', clientId: ws.id, err: error });
   });
 
-  ws.send(JSON.stringify({ message: 'Welcome to ecKasse WebSocket API!', clientId: ws.id }));
+  ws.send(JSON.stringify({ 
+    message: 'Welcome to ecKasse WebSocket API!', 
+    clientId: ws.id,
+    serverTime: new Date().toISOString()
+  }));
 
   // Send pending recovery transactions to the newly connected client
   (async () => {
@@ -387,6 +391,32 @@ wss.on('connection', (ws, req) => {
           msg: 'No pending recovery transactions to send to client', 
           clientId: ws.id 
         });
+        
+        // Send company/branch info since no pending transactions exist
+        try {
+          const companyInfo = await getCompanyAndBranchInfo();
+          const initialAppDataMessage = {
+            command: 'initialAppData',
+            payload: {
+              companyInfo
+            },
+            serverTime: new Date().toISOString(),
+            clientId: ws.id
+          };
+          
+          ws.send(JSON.stringify(initialAppDataMessage));
+          logger.info({ 
+            msg: 'Sent initial app data (company info) to client', 
+            clientId: ws.id,
+            companyInfo
+          });
+        } catch (error) {
+          logger.error({ 
+            msg: 'Failed to send initial app data to client', 
+            clientId: ws.id, 
+            error: error.message 
+          });
+        }
       }
     } catch (error) {
       logger.error({ 
@@ -397,6 +427,37 @@ wss.on('connection', (ws, req) => {
     }
   })();
 });
+
+/**
+ * Gets company and branch information from the database
+ */
+async function getCompanyAndBranchInfo() {
+  try {
+    // Get company information - assuming there's a company/settings table
+    // This is a placeholder - adjust according to your actual database schema
+    const companyData = await db('companies').first() || {};
+    const branchData = await db('branches').first() || {};
+    
+    return {
+      companyName: companyData.name || 'ecKasse Demo',
+      branchName: branchData.name || 'Hauptfiliale',
+      branchAddress: branchData.address || 'Musterstraße 1, 12345 Berlin'
+    };
+    
+  } catch (error) {
+    logger.warn({ 
+      msg: 'Could not fetch company/branch info from database, using defaults', 
+      error: error.message 
+    });
+    
+    // Return default values if database tables don't exist yet
+    return {
+      companyName: 'ecKasse Demo',
+      branchName: 'Hauptfiliale',
+      branchAddress: 'Musterstraße 1, 12345 Berlin'
+    };
+  }
+}
 
 /**
  * Runs recovery process to identify stale active transactions and mark them as pending for manual resolution.

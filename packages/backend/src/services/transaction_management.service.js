@@ -39,12 +39,15 @@ class TransactionManagementService {
     const newTransactionUUID = crypto.randomUUID();
 
     // Create the transaction record first
+    const nowUTC = new Date().toISOString();
     const [newTransaction] = await db('active_transactions').insert({
       uuid: newTransactionUUID,
       status: 'active',
       user_id: userId,
-      business_date: new Date().toISOString().split('T')[0],
-      metadata: JSON.stringify(criteria.metadata || {})
+      business_date: nowUTC.split('T')[0],
+      metadata: JSON.stringify(criteria.metadata || {}),
+      created_at: nowUTC,
+      updated_at: nowUTC
     }).returning('*');
 
     // *** FISCAL LOG INTEGRATION ***
@@ -120,7 +123,7 @@ class TransactionManagementService {
         updatedTransaction = (await trx('active_transactions').where({ id: transactionId }).update({
             total_amount: newTotalAmount,
             tax_amount: newTaxAmount,
-            updated_at: new Date()
+            updated_at: new Date().toISOString()
         }).returning('*'))[0];
 
         const updatedItems = await trx('active_transaction_items').where({ active_transaction_id: transactionId });
@@ -347,7 +350,7 @@ class TransactionManagementService {
             .where({ id: transactionId })
             .update({ 
               resolution_status: 'postponed',
-              updated_at: new Date()
+              updated_at: new Date().toISOString()
             });
 
           // Log the fiscal event for postponement
@@ -442,7 +445,7 @@ class TransactionManagementService {
         metadata: JSON.stringify(metadata)
       };
       if (updateTimestamp) {
-        updateData.updated_at = new Date();
+        updateData.updated_at = new Date().toISOString();
       }
       
       const [parkedTransaction] = await db('active_transactions')
@@ -513,7 +516,7 @@ class TransactionManagementService {
       // Prepare update data
       const updateData = { status: 'active' };
       if (updateTimestamp) {
-        updateData.updated_at = new Date();
+        updateData.updated_at = new Date().toISOString();
       }
 
       // Update transaction status to 'active'
@@ -640,7 +643,7 @@ class TransactionManagementService {
       // Note: Table availability is already checked in assignTableNumber before calling this function
       const updateData = { metadata: JSON.stringify(metadata) };
       if (updateTimestamp) {
-        updateData.updated_at = new Date();
+        updateData.updated_at = new Date().toISOString();
       }
       
       const [updatedTransaction] = await db('active_transactions')

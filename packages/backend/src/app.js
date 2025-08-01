@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 });
 
 // Раздача статических файлов для фронтенда
-const staticPath = path.join(__dirname, '../../client-desktop/src/renderer/public');
+const staticPath = path.join(__dirname, '../../client-desktop/src/renderer/dist');
 app.use(express.static(staticPath));
 logger.info(`Serving static files from: ${staticPath}`);
 
@@ -103,7 +103,8 @@ app.post('/api/websocket-fallback', async (req, res) => {
     command: responseCommand,
     status,
     payload: responsePayload,
-    channel: 'http'
+    channel: 'http',
+    serverTime: new Date().toISOString()
   };
 
   logger.info({ type: 'http_response', direction: 'out', data: response });
@@ -136,7 +137,13 @@ app.get('/api/ping', (req, res) => {
   }, HTTP_OPERATION_ID_TTL);
 
   const responsePayload = { message: 'pong from ecKasse backend!', timestamp: new Date().toISOString() };
-  const response = { operationId, status: 'success', payload: responsePayload, channel: 'http' };
+  const response = { 
+    operationId, 
+    status: 'success', 
+    payload: responsePayload, 
+    channel: 'http',
+    serverTime: new Date().toISOString()
+  };
 
   logger.info({ type: 'http_response', direction: 'out', operationId, data: response });
   res.json(response);

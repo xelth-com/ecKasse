@@ -85,7 +85,14 @@
 
   function getTableName(order) {
     const metadata = order.metadata || {};
-    return metadata.table ? `#${metadata.table}` : `№${order.id}`;
+    const tableNumber = metadata.table || order.id.toString();
+    
+    // Limit to 3 characters max for clean design
+    if (tableNumber.length > 3) {
+      return `#${tableNumber.substring(0, 3)}`;
+    }
+    
+    return `#${tableNumber}`;
   }
 
   function formatTimeElapsed(dateString) {
@@ -184,8 +191,9 @@
     border-radius: 4px;
     margin-right: 8px;
     min-width: 40px;
+    width: 50px; /* Fixed width for 3-character limit */
     font-weight: 900;
-    font-size: 24px;
+    font-size: 18px; /* Slightly smaller for better fit */
     color: #CD853F;
   }
 

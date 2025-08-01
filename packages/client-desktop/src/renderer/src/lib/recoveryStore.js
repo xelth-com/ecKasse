@@ -4,12 +4,13 @@ import { addLog } from './logStore.js';
 
 function createRecoveryStore() {
   const { subscribe, set, update } = writable({
-    status: 'idle', // idle, awaiting_resolution, resolving
+    status: 'idle', // idle, awaiting_resolution, resolving, awaiting_confirmation
     pendingTransactions: [],
+    companyInfo: null,
     error: null,
   });
 
-  // Listen for pending transactions from the backend upon connection
+  // Listen for pending transactions and company info from the backend upon connection
   wsStore.subscribe(state => {
     if (state.lastMessage?.command === 'pendingTransactions' && state.lastMessage.payload?.transactions) {
       const txs = state.lastMessage.payload.transactions;
@@ -18,9 +19,22 @@ function createRecoveryStore() {
         set({
           status: 'awaiting_resolution',
           pendingTransactions: txs,
+          companyInfo: null,
           error: null
         });
       }
+    }
+
+    // Listen for initial app data (company info when no pending transactions)
+    if (state.lastMessage?.command === 'initialAppData' && state.lastMessage.payload?.companyInfo) {
+      const companyInfo = state.lastMessage.payload.companyInfo;
+      addLog('INFO', 'Received company information for startup confirmation.');
+      update(s => ({
+        ...s,
+        status: 'awaiting_confirmation',
+        companyInfo,
+        error: null
+      }));
     }
 
     // Listen for resolution responses
@@ -45,6 +59,11 @@ function createRecoveryStore() {
       }
     }
   });
+
+  async function confirmNoPending() {
+    addLog('INFO', 'User confirmed company information - proceeding to main application.');
+    update(s => ({ ...s, status: 'idle', companyInfo: null }));
+  }
 
   async function resolveTransaction(transactionId, resolution, userId = 1) {
     addLog('INFO', `Attempting to resolve transaction ${transactionId} with action: ${resolution}`);
@@ -78,7 +97,8 @@ function createRecoveryStore() {
 
   return {
     subscribe,
-    resolveTransaction
+    resolveTransaction,
+    confirmNoPending
   };
 }
 
