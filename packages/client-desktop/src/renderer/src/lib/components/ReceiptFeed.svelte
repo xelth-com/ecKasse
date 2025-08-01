@@ -82,7 +82,7 @@
     <div class="receipt-list" bind:this={receiptListElement}>
       {#each $receiptsStore.receipts.sort((a, b) => new Date(a.fiscal_timestamp || a.updated_at) - new Date(b.fiscal_timestamp || b.updated_at)) as receipt (receipt.id)}
         <div class="receipt-item" class:expanded={expandedReceipt === receipt.id}>
-          <div class="receipt-summary" on:click={() => toggleReceipt(receipt.id)}>
+          <button class="receipt-summary" on:click={() => toggleReceipt(receipt.id)}>
             <div class="receipt-left">
               <div class="receipt-main-line">
                 <span class="receipt-id-large">№{receipt.id}</span>
@@ -102,7 +102,7 @@
             <div class="expand-icon">
               {expandedReceipt === receipt.id ? '▼' : '▶'}
             </div>
-          </div>
+          </button>
           
           {#if expandedReceipt === receipt.id}
             <div class="receipt-details">
@@ -145,17 +145,6 @@
     flex-direction: column;
   }
 
-  .feed-header {
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #444;
-  }
-
-  .feed-header h3 {
-    margin: 0;
-    color: #e0e0e0;
-    font-size: 18px;
-  }
 
   .loading, .error, .empty {
     text-align: center;
@@ -196,6 +185,12 @@
     padding: 12px;
     cursor: pointer;
     user-select: none;
+    /* Reset button styles */
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    width: 100%;
   }
 
   .receipt-left {
@@ -211,12 +206,6 @@
     margin-right: 12px;
   }
 
-  .receipt-id {
-    font-weight: bold;
-    color: #4a69bd;
-    font-size: 18px; /* Made bigger */
-    margin-bottom: 4px;
-  }
 
   .receipt-date {
     font-size: 12px;
@@ -242,11 +231,6 @@
     gap: 2px;
   }
 
-  .receipt-table {
-    font-size: 12px;
-    color: #4a69bd;
-    font-weight: bold;
-  }
 
   .receipt-main-line {
     display: flex;

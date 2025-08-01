@@ -1216,9 +1216,9 @@
   .pinpad-overlay {
     position: absolute;
     bottom: 8px;
-    left: 8px;
+    right: 8px;
     z-index: 100;
-    transform-origin: bottom left;
+    transform-origin: bottom right;
     animation: expand 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   }
 

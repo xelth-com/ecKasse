@@ -480,53 +480,6 @@
     justify-content: space-between;
   }
 
-  .receipt-footer {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #666;
-    text-align: center;
-    color: #aaa;
-  }
-
-  /* Logs styles */
-  .log-entries {
-    font-family: monospace;
-    font-size: 14px;
-  }
-
-  .log-entry {
-    display: flex;
-    margin-bottom: 8px;
-    padding: 4px;
-    border-radius: 4px;
-    background-color: #333;
-  }
-
-  .log-entry.error {
-    background-color: #4a1a1a;
-    border-left: 3px solid #d32f2f;
-  }
-
-  .log-entry.debug {
-    background-color: #1a1a4a;
-    border-left: 3px solid #2196f3;
-  }
-
-  .log-timestamp {
-    color: #888;
-    margin-right: 8px;
-    min-width: 128px;
-  }
-
-  .log-level {
-    font-weight: bold;
-    margin-right: 8px;
-    min-width: 48px;
-  }
-
-  .log-message {
-    flex-grow: 1;
-  }
 
   /* Agent styles */
   .agent-messages {

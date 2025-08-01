@@ -121,7 +121,7 @@
   {:else}
     <div class="orders-list">
       {#each parkedOrders as order (order.id)}
-        <div class="order-item" on:click={() => handleOrderClick(order)}>
+        <button class="order-item" on:click={() => handleOrderClick(order)}>
           <div class="table-number">
             {getTableName(order)}
           </div>
@@ -130,7 +130,7 @@
             <div class="stat-open">{getOrderStats(order).openMinutes}min</div>
             <div class="stat-activity">{getOrderStats(order).activityMinutes}min</div>
           </div>
-        </div>
+        </button>
       {/each}
     </div>
   {/if}
@@ -174,6 +174,10 @@
     flex-direction: row;
     align-items: stretch;
     min-height: 0;
+    /* Reset button styles */
+    font: inherit;
+    text-align: left;
+    width: 100%;
   }
 
   .order-item:hover {

@@ -1,0 +1,301 @@
+` headers.
+
+**Snapshot Stats:**
+- **Files Included:** 155
+- **Total Files in Repo:** 162
+
+---
+
+## 2. Your Core Operational Workflow
+
+You are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for a code-execution AI agent.
+
+### PROJECT OVERVIEW
+- **Project:** ecKasse
+- **Description:** A CLI tool to create and restore single-file text snapshots of a Git repository, optimized for providing context to Large Language Models (LLMs).
+
+### CORE WORKFLOW: The Interactive Command Cycle
+1.  **Analyze User Request:** Understand the user's goal in their native language.
+2.  **Formulate a Plan:** Create a high-level technical plan to solve the user's request.
+3.  **Propose & Await Confirmation:** Present the plan to the user in their language and ask for approval to generate the command. **CRITICAL: Stop and wait for the user's response. Do NOT generate the command block at this stage.**
+4.  **Generate Command on Demand:** This is the execution step, triggered ONLY by a positive user response.
+    -   **On Approval:** If the user confirms the plan (e.g., "yes", "proceed") or provides a minor correction, your *next response* must be **only the command block**. Do not include any conversational text.
+    -   **On Direct Order:** If the user explicitly asks for the command (e.g., "make the command for Claude now") and you have all the necessary information, you may skip step 3 and directly generate the command block.
+5.  **Review & Report:** After the command is executed, analyze the results and report back to the user in their language.
+6.  **Iterate:** Continue the cycle based on user feedback.
+
+### COMMUNICATION PROTOCOL
+-   **User Interaction:** ALWAYS communicate with the user in the language they use.
+-   **Agent Commands:** ALWAYS formulate the JSON payload and technical instructions for the execution agent in **ENGLISH** to ensure technical accuracy.
+
+### COMMAND BLOCK FORMAT
+To ensure error-free execution, all tasks for the agent must be presented in a special block with a "Copy" button. Use this enhanced format for maximum clarity and execution accuracy:
+
+```json
+{
+  "command_for_agent": "apply_code_changes",
+  "task_id": "unique-task-id",
+  "payload": {
+    "objective": "Brief, clear task description",
+    "context": "Why this change is needed",
+    "files_to_modify": [
+      {
+        "path": "exact/file/path.js",
+        "action": "specific action (add, modify, replace, delete)",
+        "location": "line numbers, function name, or search pattern",
+        "details": "precise description of the change"
+      }
+    ],
+    "new_files": [
+      {
+        "path": "path/to/new/file.js",
+        "content_type": "javascript/json/markdown/config",
+        "purpose": "why this file is needed"
+      }
+    ],
+    "dependencies": {
+      "install": ["package-name@version"],
+      "remove": ["old-package-name"]
+    },
+    "validation_steps": [
+      "npm run test",
+      "node index.js --help",
+      "specific command to verify functionality"
+    ],
+    "expected_outcome": "what should work after changes"
+  }
+}
+```
+
+### PROJECT CONTEXT (`eck-snapshot`)
+-   **Type:** Node.js CLI Application, executed directly.
+-   **Module System:** ES Modules (`"type": "module"` in package.json).
+-   **Main File:** `index.js` contains all primary logic (837 lines).
+-   **Configuration:** `.ecksnapshot.config.js` is used for custom filtering and settings.
+-   **Key Dependencies:** `commander`, `execa`, `inquirer`, `ignore`, `p-limit`, `cli-progress`.
+
+### ARCHITECTURE DETAILS FOR CLAUDE CODE
+**Core Functions Location:**
+- `createRepoSnapshot()` - Line 333: Main snapshot creation
+- `restoreSnapshot()` - Line 579: Snapshot restoration  
+- `processFile()` - Line 265: Individual file processing
+- `generateDirectoryTree()` - Line 224: Tree generation
+- `generateSnapshotHeader()` - Line 42: AI instruction header
+- CLI setup - Lines 800-837: Commander.js configuration
+
+**Common Modification Patterns:**
+- CLI options: Modify commander setup (lines 808-822, 824-835)
+- Configuration: Update DEFAULT_CONFIG object (lines 23-31)
+- File processing: Enhance processFile() function
+- Output formats: Modify generateSnapshotHeader() or output logic
+- Dependencies: Update package.json and import statements
+
+**Testing Status:**
+- No test framework currently configured
+- package.json test script returns error
+- Manual testing via `node index.js` commands
+- Consider adding vitest or jest for future testing
+
+**Development Workflow:**
+- Direct execution: `node index.js [command] [options]`
+- Package creation: `npm pack`
+- Local testing: `node index.js --help`
+- Configuration testing: modify `.ecksnapshot.config.js`
+
+**Critical Implementation Notes:**
+- All file paths normalized to forward slashes
+- ES module imports only (no CommonJS)
+- Error handling with detailed user messages
+- Progress tracking for long operations
+- Security: Path validation prevents directory traversal
+- Cross-platform compatibility maintained
+
+---
+Directory Structure:
+
+├── .claude/
+│   └── settings.local.json
+├── docs_forLMM/
+│   ├── ecKasse_Complete_Concept_v2.json
+│   ├── for_Gemini_LLM.md
+│   └── icon_generation_guide.md
+├── menu_inputs/
+├── menu_outputs/
+├── packages/
+│   ├── backend/
+│   │   ├── src/
+│   │   │   ├── config/
+│   │   │   │   └── logger.js
+│   │   │   ├── controllers/
+│   │   │   │   └── llm.controller.js
+│   │   │   ├── db/
+│   │   │   │   ├── migrations/
+│   │   │   │   │   ├── 20250706120000_create_oop_pos_mdf_tables.js
+│   │   │   │   │   ├── 20250706150000_create_fts_table.js
+│   │   │   │   │   ├── 20250706160000_create_vec_items_table.js
+│   │   │   │   │   ├── 20250709100000_add_menu_item_number_to_items.js
+│   │   │   │   │   ├── 20250713120000_create_search_cache_table.js
+│   │   │   │   │   ├── 20250713210000_create_menu_layouts_table.js
+│   │   │   │   │   ├── 20250722000500_create_user_management_tables.js
+│   │   │   │   │   ├── 20250726203101_create_fiscal_log_table.js
+│   │   │   │   │   ├── 20250726203102_create_operational_log_table.js
+│   │   │   │   │   ├── 20250726203103_create_system_log_table.js
+│   │   │   │   │   ├── 20250726205444_create_pending_fiscal_operations_table.js
+│   │   │   │   │   ├── 20250726215719_add_current_log_hash_to_operational_log.js
+│   │   │   │   │   ├── 20250726222000_add_hash_columns_to_fiscal_log.js
+│   │   │   │   │   ├── 20250727092501_create_active_transactions_table.js
+│   │   │   │   │   ├── 20250727092502_create_active_transaction_items_table.js
+│   │   │   │   │   ├── 20250727173908_add_resolution_status_to_transactions.js
+│   │   │   │   │   └── 20250727174500_add_payment_fields_to_active_transactions.js
+│   │   │   │   ├── seeds/
+│   │   │   │   │   ├── 01_initial_oop_pos_mdf_data.js
+│   │   │   │   │   └── 02_user_management_seed.js
+│   │   │   │   ├── eckasse_dev.sqlite3
+│   │   │   │   ├── knex.js
+│   │   │   │   └── knexfile.js
+│   │   │   ├── lib/
+│   │   │   │   ├── converters/
+│   │   │   │   │   ├── vectron/
+│   │   │   │   │   │   ├── utils/
+│   │   │   │   │   │   │   ├── encoding.js
+│   │   │   │   │   │   │   ├── formatter.js
+│   │   │   │   │   │   │   ├── multilingual.js
+│   │   │   │   │   │   │   └── numbering.js
+│   │   │   │   │   │   ├── auswahlfenster.js
+│   │   │   │   │   │   ├── config.js
+│   │   │   │   │   │   ├── header.js
+│   │   │   │   │   │   ├── index.js
+│   │   │   │   │   │   ├── mapping.js
+│   │   │   │   │   │   ├── plu.js
+│   │   │   │   │   │   ├── validation.js
+│   │   │   │   │   │   └── warengruppen.js
+│   │   │   │   │   ├── vectron-legacy.js
+│   │   │   │   │   └── vectron.js
+│   │   │   │   ├── CLI_README.md
+│   │   │   │   ├── cli.js
+│   │   │   │   └── menu_parser_llm.js
+│   │   │   ├── routes/
+│   │   │   │   └── llm.routes.js
+│   │   │   ├── schemas/
+│   │   │   │   └── v2.0.0/
+│   │   │   │       └── schema.json
+│   │   │   ├── scripts/
+│   │   │   │   ├── backfillEmbeddings.js
+│   │   │   │   ├── migrate.js
+│   │   │   │   ├── parse_and_init.js
+│   │   │   │   ├── recover_pending_operations.js
+│   │   │   │   └── testHybridSearch.js
+│   │   │   ├── services/
+│   │   │   │   ├── auth.service.js
+│   │   │   │   ├── category.service.js
+│   │   │   │   ├── embedding.service.js
+│   │   │   │   ├── enrichment.service.js
+│   │   │   │   ├── export.service.js
+│   │   │   │   ├── import.service.js
+│   │   │   │   ├── layout.service.js
+│   │   │   │   ├── llm.provider.js
+│   │   │   │   ├── llm.service.js
+│   │   │   │   ├── logging.service.js
+│   │   │   │   ├── manager.service.js
+│   │   │   │   ├── product.service.js
+│   │   │   │   ├── reporting.service.js
+│   │   │   │   ├── search.service.js
+│   │   │   │   ├── system.service.js
+│   │   │   │   ├── transaction_management.service.js
+│   │   │   │   └── transaction.service.js
+│   │   │   ├── utils/
+│   │   │   │   ├── FileCallbackHandler.js
+│   │   │   │   ├── geminiErrorHandler.js
+│   │   │   │   └── levenshtein.js
+│   │   │   ├── app.js
+│   │   │   └── server.js
+│   │   ├── check_categories.js
+│   │   ├── create_test_category.js
+│   │   ├── debug_category_lookup.js
+│   │   ├── eckasse_dev.sqlite3
+│   │   ├── exported_data.json
+│   │   ├── GOOGLE_SEARCH_SETUP.md
+│   │   ├── NEXT_GEN_SEARCH_STATUS.md
+│   │   ├── package.json
+│   │   ├── quick_test.js
+│   │   ├── test_agent_search_e2e.js
+│   │   ├── test_all_tools_stub.js
+│   │   ├── test_context_dialog.js
+│   │   ├── test_create_product.js
+│   │   ├── test_enrichment_optimization.js
+│   │   ├── test_enrichment.js
+│   │   ├── test_gemini_limits.js
+│   │   ├── test_google_env.js
+│   │   ├── test_google_research.js
+│   │   ├── test_google_setup.js
+│   │   ├── test_import_service_phase2.js
+│   │   ├── test_llm_create_product.js
+│   │   ├── test_menu_parser_detailed.js
+│   │   ├── test_next_gen_search.js
+│   │   ├── test_phase3_structure.js
+│   │   ├── test_real_search.js
+│   │   ├── test_reporting_direct.js
+│   │   ├── test_research_agent.js
+│   │   ├── test_research_basic.js
+│   │   ├── test_research_structure.js
+│   │   ├── test_sales_report_only.js
+│   │   ├── test_sample_mdf.json
+│   │   ├── test_search.js
+│   │   ├── test_user_management_flow.js
+│   │   ├── test-sample-enhanced-mdf.json
+│   │   ├── test-sample-mdf.json
+│   │   └── verify_enrichment.js
+│   └── client-desktop/
+│       ├── electron/
+│       │   ├── main.js
+│       │   └── preload.js
+│       ├── src/
+│       │   └── renderer/
+│       │       ├── src/
+│       │       │   ├── lib/
+│       │       │   │   ├── components/
+│       │       │   │   │   ├── BetrugerCapIcon.svelte
+│       │       │   │   │   ├── ContextMenu.svelte
+│       │       │   │   │   ├── FunctionButtons.svelte
+│       │       │   │   │   ├── HalfHexButton.svelte
+│       │       │   │   │   ├── HalfRectButton.svelte
+│       │       │   │   │   ├── HexButton.svelte
+│       │       │   │   │   ├── OctagonButton.svelte
+│       │       │   │   │   ├── ParkedOrdersDisplay.svelte
+│       │       │   │   │   ├── Pinpad.svelte
+│       │       │   │   │   ├── PinpadPreview.svelte
+│       │       │   │   │   ├── ReceiptFeed.svelte
+│       │       │   │   │   ├── RecoveryModal.svelte
+│       │       │   │   │   ├── RectButton.svelte
+│       │       │   │   │   ├── SquareButton.svelte
+│       │       │   │   │   ├── TimeButton.svelte
+│       │       │   │   │   └── UniversalButton.svelte
+│       │       │   │   ├── LayoutManager.svelte
+│       │       │   │   ├── logStore.js
+│       │       │   │   ├── orderStore.js
+│       │       │   │   ├── parkedOrdersStore.js
+│       │       │   │   ├── pinpadStore.js
+│       │       │   │   ├── receiptsStore.js
+│       │       │   │   ├── recoveryStore.js
+│       │       │   │   ├── timeStore.js
+│       │       │   │   ├── viewStore.js
+│       │       │   │   └── wsStore.js
+│       │       │   ├── app.css
+│       │       │   ├── App.svelte
+│       │       │   ├── ConsoleView.svelte
+│       │       │   ├── main.js
+│       │       │   └── SelectionArea.svelte
+│       │       ├── index.html
+│       │       ├── package.json
+│       │       └── vite.config.js
+│       └── package.json
+├── public/
+│   └── index.html
+├── .env.example
+├── CLAUDE.md
+├── HYBRID_SEARCH.md
+├── LICENSE
+├── orders.bat
+├── package-lock.json
+├── package.json
+└── README.md

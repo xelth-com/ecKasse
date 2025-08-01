@@ -50,15 +50,15 @@
       <button class="numpad-key" on:click={() => handleKeyClick('1')}>1</button>
       <button class="numpad-key" on:click={() => handleKeyClick('2')}>2</button>
       <button class="numpad-key" on:click={() => handleKeyClick('3')}>3</button>
-      <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick}>X</button>
+      <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick} aria-label="Cancel">X</button>
       <button class="numpad-key" on:click={() => handleKeyClick('4')}>4</button>
       <button class="numpad-key" on:click={() => handleKeyClick('5')}>5</button>
       <button class="numpad-key" on:click={() => handleKeyClick('6')}>6</button>
-      <button class="function-key key-correct" on:click={handleBackspace}>←</button>
+      <button class="function-key key-correct" on:click={handleBackspace} aria-label="Correct">←</button>
       <button class="numpad-key" on:click={() => handleKeyClick('7')}>7</button>
       <button class="numpad-key" on:click={() => handleKeyClick('8')}>8</button>
       <button class="numpad-key" on:click={() => handleKeyClick('9')}>9</button>
-      <button class="function-key key-enter" on:click={handleConfirm}>↵</button>
+      <button class="function-key key-enter" on:click={handleConfirm} aria-label="Enter">↵</button>
       <button class="numpad-key function-key key-plus" on:click={() => handleKeyClick('+')}>+</button>
       <button class="numpad-key" on:click={() => handleKeyClick('0')}>0</button>
       <button class="numpad-key function-key key-minus" on:click={() => handleKeyClick('-')}>-</button>
@@ -69,7 +69,7 @@
         <div class="alpha-row" style="margin-left: {rowIndex * 20}px;">
           {#each row as key}
             {#if key === ' '}
-               <button class="alpha-key space" on:click={() => handleKeyClick(' ')}></button>
+               <button class="alpha-key space" on:click={() => handleKeyClick(' ')} aria-label="Space"></button>
             {:else}
                <button class="alpha-key" on:click={() => handleKeyClick(key)}>{key}</button>
             {/if}
@@ -77,9 +77,9 @@
         </div>
       {/each}
        <div class="alpha-controls">
-         <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick}>X</button>
-         <button class="function-key key-correct" on:click={handleBackspace}>←</button>
-         <button class="function-key key-enter" on:click={handleConfirm}>↵</button>
+         <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick} aria-label="Cancel">X</button>
+         <button class="function-key key-correct" on:click={handleBackspace} aria-label="Correct">←</button>
+         <button class="function-key key-enter" on:click={handleConfirm} aria-label="Enter">↵</button>
       </div>
     </div>
   {/if}
