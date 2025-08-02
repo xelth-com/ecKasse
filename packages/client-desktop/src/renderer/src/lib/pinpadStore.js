@@ -2,16 +2,37 @@ import { writable } from 'svelte/store';
 import { orderStore } from './orderStore.js';
 import { parkedOrdersStore } from './parkedOrdersStore.js';
 
+// Keyboard layouts for different languages
+const layouts = {
+    'DE': [
+        ['q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'ü', 'ß'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ö', 'ä'],
+        ['y', 'x', 'c', 'v', 'b', 'n', 'm']
+    ],
+    'EN': [
+        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+        ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+    ],
+    'RU': [
+        ['й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з', 'х', 'ъ'],
+        ['ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л', 'д', 'ж', 'э'],
+        ['я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю']
+    ]
+};
+
 function createPinpadStore() {
     const { subscribe, set, update } = writable({
         isActive: false,
         mode: null, // 'table', 'quantity', 'agent'
         layout: 'numeric', // 'numeric' or 'alpha'
-        liveValue: '',
+        liveValue: { text: '', cursor: 0 }, // For alpha mode: object with text and cursor position
         confirmCallback: null,
         cancelCallback: null,
         lastRedClickTime: 0,
-        errorMessage: null
+        errorMessage: null,
+        currentLanguage: 'DE', // Current keyboard language
+        layouts: layouts
     });
 
     return {
@@ -22,11 +43,13 @@ function createPinpadStore() {
                 isActive: true,
                 mode,
                 layout,
-                liveValue: '',
+                liveValue: layout === 'alpha' ? { text: '', cursor: 0 } : '',
                 confirmCallback,
                 cancelCallback,
                 lastRedClickTime: 0,
-                errorMessage: null
+                errorMessage: null,
+                currentLanguage: 'DE',
+                layouts: layouts
             });
         },
 
@@ -35,33 +58,64 @@ function createPinpadStore() {
                 isActive: false,
                 mode: null,
                 layout: 'numeric',
-                liveValue: '',
+                liveValue: { text: '', cursor: 0 },
                 confirmCallback: null,
                 cancelCallback: null,
                 lastRedClickTime: 0,
-                errorMessage: null
+                errorMessage: null,
+                currentLanguage: 'DE',
+                layouts: layouts
             });
         },
 
         append(char) {
             update(state => {
                 if (!state.isActive) return state;
-                return {
-                    ...state,
-                    liveValue: state.liveValue + char,
-                    errorMessage: null
-                };
+                
+                if (state.layout === 'alpha') {
+                    const text = state.liveValue.text;
+                    const cursor = state.liveValue.cursor;
+                    const newText = text.slice(0, cursor) + char + text.slice(cursor);
+                    return {
+                        ...state,
+                        liveValue: { text: newText, cursor: cursor + 1 },
+                        errorMessage: null
+                    };
+                } else {
+                    // Numeric mode - keep existing behavior
+                    return {
+                        ...state,
+                        liveValue: state.liveValue + char,
+                        errorMessage: null
+                    };
+                }
             });
         },
 
         backspace() {
             update(state => {
                 if (!state.isActive) return state;
-                return {
-                    ...state,
-                    liveValue: state.liveValue.slice(0, -1),
-                    errorMessage: null // Clear error when user starts typing
-                };
+                
+                if (state.layout === 'alpha') {
+                    const text = state.liveValue.text;
+                    const cursor = state.liveValue.cursor;
+                    if (cursor > 0) {
+                        const newText = text.slice(0, cursor - 1) + text.slice(cursor);
+                        return {
+                            ...state,
+                            liveValue: { text: newText, cursor: cursor - 1 },
+                            errorMessage: null
+                        };
+                    }
+                    return { ...state, errorMessage: null };
+                } else {
+                    // Numeric mode - keep existing behavior
+                    return {
+                        ...state,
+                        liveValue: state.liveValue.slice(0, -1),
+                        errorMessage: null
+                    };
+                }
             });
         },
 
@@ -70,7 +124,7 @@ function createPinpadStore() {
                 if (!state.isActive) return state;
                 return {
                     ...state,
-                    liveValue: '',
+                    liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
                     errorMessage: null
                 };
             });
@@ -90,7 +144,7 @@ function createPinpadStore() {
             if (!state.isActive || !state.confirmCallback) return;
             
             callback = state.confirmCallback;
-            value = state.liveValue;
+            value = state.layout === 'alpha' ? state.liveValue.text : state.liveValue;
             
             try {
                 // Execute callback and wait for it to complete
@@ -100,11 +154,14 @@ function createPinpadStore() {
                 update(() => ({
                     isActive: false,
                     mode: null,
-                    liveValue: '',
+                    layout: 'numeric',
+                    liveValue: { text: '', cursor: 0 },
                     confirmCallback: null,
                     cancelCallback: null,
                     lastRedClickTime: 0,
-                    errorMessage: null
+                    errorMessage: null,
+                    currentLanguage: 'DE',
+                    layouts: layouts
                 }));
             } catch (error) {
                 console.error('Pinpad confirm callback failed:', error);
@@ -113,11 +170,14 @@ function createPinpadStore() {
                 update(() => ({
                     isActive: false,
                     mode: null,
-                    liveValue: '',
+                    layout: 'numeric',
+                    liveValue: { text: '', cursor: 0 },
                     confirmCallback: null,
                     cancelCallback: null,
                     lastRedClickTime: 0,
-                    errorMessage: null
+                    errorMessage: null,
+                    currentLanguage: 'DE',
+                    layouts: layouts
                 }));
             }
         },
@@ -134,11 +194,14 @@ function createPinpadStore() {
                     const newState = {
                         isActive: false,
                         mode: null,
-                        liveValue: '',
+                        layout: 'numeric',
+                        liveValue: { text: '', cursor: 0 },
                         confirmCallback: null,
                         cancelCallback: null,
                         lastRedClickTime: 0,
-                        errorMessage: null
+                        errorMessage: null,
+                        currentLanguage: 'DE',
+                        layouts: layouts
                     };
                     
                     if (callback) {
@@ -150,7 +213,7 @@ function createPinpadStore() {
                     // Single click - just clear
                     return {
                         ...state,
-                        liveValue: '',
+                        liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
                         lastRedClickTime: now,
                         errorMessage: null // Clear error on single click
                     };
@@ -171,7 +234,7 @@ function createPinpadStore() {
                                 // Just clear the input and keep pinpad open - no error message needed
                                 update(state => ({
                                     ...state,
-                                    liveValue: '' // Clear the input
+                                    liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '' // Clear the input
                                 }));
                                 // Return nothing - this will NOT close the pinpad but also won't break flow
                                 return;
@@ -202,7 +265,7 @@ function createPinpadStore() {
                                 // Just clear the input and keep pinpad open - no error message needed
                                 update(state => ({
                                     ...state,
-                                    liveValue: '' // Clear the input
+                                    liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '' // Clear the input
                                 }));
                                 // Return nothing - this will NOT close the pinpad but also won't break flow
                                 return;
@@ -248,6 +311,42 @@ function createPinpadStore() {
 
         activateAlphaInput(confirmCallback, cancelCallback) {
             this.activate('agent', confirmCallback, cancelCallback, 'alpha');
+        },
+
+        // New methods for alpha keyboard functionality
+        moveCursorLeft() {
+            update(state => {
+                if (!state.isActive || state.layout !== 'alpha') return state;
+                const cursor = Math.max(0, state.liveValue.cursor - 1);
+                return {
+                    ...state,
+                    liveValue: { ...state.liveValue, cursor }
+                };
+            });
+        },
+
+        moveCursorRight() {
+            update(state => {
+                if (!state.isActive || state.layout !== 'alpha') return state;
+                const cursor = Math.min(state.liveValue.text.length, state.liveValue.cursor + 1);
+                return {
+                    ...state,
+                    liveValue: { ...state.liveValue, cursor }
+                };
+            });
+        },
+
+        switchLanguage() {
+            update(state => {
+                if (!state.isActive || state.layout !== 'alpha') return state;
+                const languages = Object.keys(state.layouts);
+                const currentIndex = languages.indexOf(state.currentLanguage);
+                const nextIndex = (currentIndex + 1) % languages.length;
+                return {
+                    ...state,
+                    currentLanguage: languages[nextIndex]
+                };
+            });
         }
     };
 }
