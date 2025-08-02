@@ -227,7 +227,7 @@
   }
 
   .universal-button.hex.half .button-icon {
-    font-size: 32px;
+    font-size: 48px;
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
   }
@@ -241,7 +241,7 @@
   }
 
   .universal-button.rect.half .button-icon {
-    font-size: 32px;
+    font-size: 48px;
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
   }

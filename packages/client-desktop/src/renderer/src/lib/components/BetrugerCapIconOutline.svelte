@@ -4,9 +4,9 @@
       <feOffset dx="0" dy="0" in="SourceAlpha"></feOffset>
       <feGaussianBlur stdDeviation="1.2"></feGaussianBlur>
       <feColorMatrix result="out" type="matrix" values=" 
-               0 0 0 0 0.4         
-               0 0 0 0 0.4                    
-               0 0 0 0 0.4                
+               0 0 0 0 0.2         
+               0 0 0 0 0.2                    
+               0 0 0 0 0.2                
                0 0 0 10 0 "></feColorMatrix>
       <feMerge>
         <feMergeNode in="out"></feMergeNode>

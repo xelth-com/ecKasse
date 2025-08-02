@@ -562,7 +562,7 @@
 
       // Slot 3: Keyboard Toggle
       if (rightHalfCells[2]) {
-        rightHalfCells[2].content = { isKeyboardToggle: true, icon: '⌨️' };
+        rightHalfCells[2].content = { isKeyboardToggle: true, icon: '⌨️', color: '#404040', textColor: '#404040' };
       }
 
       // Last Slot (Bottommost): Time Button
@@ -1029,6 +1029,7 @@
       label: cell.content.label,
       icon: cell.content.icon, 
       color: cell.content.color,
+      textColor: cell.content.textColor,
       onClick: handleKeyboardToggle,
       active: true
     };
@@ -1123,7 +1124,7 @@
                       <BetrugerCapIconOutline />
                   </UniversalButton>
                 {:else if content.isKeyboardToggle}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} active={content.active} on:click={content.onClick} />
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
                 {:else if content.label && !content.data}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.disabled}
