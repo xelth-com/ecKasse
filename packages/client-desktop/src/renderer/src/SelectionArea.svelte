@@ -530,7 +530,7 @@
   function initializeSystemButtons(grid) {
     addLog('DEBUG', `initializeSystemButtons called with ${grid.length} cells`);
     
-    // Add smart navigation to bottommost left half button (always visible)
+    // --- Left Half-Buttons --- //
     const leftHalfCells = grid.filter(cell => 
       cell.type === 'left-half' || cell.type === 'left-half-rect'
     );
@@ -540,71 +540,53 @@
       bottomLeftHalfCell.content = { isSmartNavigation: true };
     }
 
-    // Add layout toggle to topmost right half button (always visible)
+    // --- Right Half-Buttons --- //
     const rightHalfCells = grid.filter(cell => 
       cell.type === 'right-half' || cell.type === 'right-half-rect'
     );
     if (rightHalfCells.length > 0) {
-      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
-      const topRightHalfCell = rightHalfCells[0];
-      topRightHalfCell.content = { 
-        isLayoutToggle: true, 
-        icon: '', 
-        showShape: layoutType === '6-6-6' ? 'rect' : 'hex'
-      };
+      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort top-to-bottom
+
+      // Slot 1 (Topmost): Layout Toggle
+      if (rightHalfCells[0]) {
+        rightHalfCells[0].content = { 
+          isLayoutToggle: true, 
+          showShape: layoutType === '6-6-6' ? 'rect' : 'hex'
+        };
+      }
       
-      // Add time display to bottommost right half button (always visible)
+      // Slot 2: AI Button (Betruger Cap)
+      if (rightHalfCells[1]) {
+        rightHalfCells[1].content = { isBetrugerCap: true };
+      }
+
+      // Slot 3: Keyboard Toggle
+      if (rightHalfCells[2]) {
+        rightHalfCells[2].content = { isKeyboardToggle: true, icon: '⌨️' };
+      }
+
+      // Last Slot (Bottommost): Time Button
       if (rightHalfCells.length > 1) {
-        rightHalfCells.sort((a, b) => b.rowIndex - a.rowIndex); // Sort descending to get bottom first
-        const bottomRightHalfCell = rightHalfCells[0];
-        bottomRightHalfCell.content = { isTimeButton: true };
+        rightHalfCells[rightHalfCells.length - 1].content = { isTimeButton: true };
       }
     }
 
-    // Designate the Betruger Cap button - rightmost full button in second-to-last row
+    // --- Main Grid System Buttons --- //
     const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
-    addLog('DEBUG', `Max row index: ${maxRowIndex}`);
-    
-    if (maxRowIndex > 1) {
-        const targetRowIndex = maxRowIndex - 1;
-        const targetRowCells = grid.filter(cell => 
-            cell.rowIndex === targetRowIndex && 
-            (cell.type === 'full' || cell.type === 'rect-grid') &&
-            !cell.content // Only assign to empty cells
+
+    // Designate the Table button - leftmost full button in second-to-last row
+    if (maxRowIndex > 0) {
+        const secondToLastRowIndex = maxRowIndex - 1;
+        let potentialTableButtons = grid.filter(c => 
+            (c.type === 'full' || c.type === 'rect-grid') && 
+            c.rowIndex === secondToLastRowIndex &&
+            !c.content
         );
         
-        addLog('DEBUG', `Found ${targetRowCells.length} cells for Betruger Cap in row ${targetRowIndex}`);
-        
-        if (targetRowCells.length > 0) {
-            targetRowCells.sort((a, b) => b.columnIndex - a.columnIndex); // Sort right-to-left
-            targetRowCells[0].content = { 
-              isBetrugerCap: true,
-              label: 'AI',
-              color: '#2c2c2e',
-              icon: '🤖'
-            };
-            addLog('DEBUG', `Assigned Betruger Cap to row ${targetRowCells[0].rowIndex}, col ${targetRowCells[0].columnIndex}`);
+        if (potentialTableButtons.length > 0) {
+            potentialTableButtons.sort((a,b) => a.columnIndex - b.columnIndex);
+            potentialTableButtons[0].isTableButton = true;
         }
-    }
-
-    // Add keyboard toggle button - second from left in last row
-    const lastRowCells = grid.filter(cell => 
-        cell.rowIndex === maxRowIndex && 
-        (cell.type === 'full' || cell.type === 'rect-grid') &&
-        !cell.content // Only assign to empty cells
-    );
-    
-    addLog('DEBUG', `Found ${lastRowCells.length} cells for keyboard button in row ${maxRowIndex}`);
-    
-    if (lastRowCells.length > 1) {
-        lastRowCells.sort((a, b) => a.columnIndex - b.columnIndex); // Sort left-to-right
-        lastRowCells[1].content = { 
-          isKeyboardToggle: true,
-          label: 'KB',
-          color: '#FF6347',
-          icon: '⌨️'
-        };
-        addLog('DEBUG', `Assigned keyboard toggle to row ${lastRowCells[1].rowIndex}, col ${lastRowCells[1].columnIndex}`);
     }
   }
   
@@ -1048,7 +1030,7 @@
       icon: cell.content.icon, 
       color: cell.content.color,
       onClick: handleKeyboardToggle,
-      active: $pinpadStore.isActive
+      active: true
     };
     if (cell.content.isPaymentButton) {
       const hasOrder = $orderStore.total > 0 && $orderStore.status === 'active';
