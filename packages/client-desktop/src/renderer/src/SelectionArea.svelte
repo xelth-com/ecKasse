@@ -580,7 +580,7 @@
             targetRowCells[0].content = { 
               isBetrugerCap: true,
               label: 'AI',
-              color: '#8A2BE2',
+              color: '#2c2c2e',
               icon: '🤖'
             };
             addLog('DEBUG', `Assigned Betruger Cap to row ${targetRowCells[0].rowIndex}, col ${targetRowCells[0].columnIndex}`);
@@ -1038,7 +1038,6 @@
     if (cell.content.isBetrugerCap) return {
       isBetrugerCap: true,
       label: cell.content.label,
-      icon: cell.content.icon,
       color: cell.content.color,
       onClick: handleGeminiClick,
       active: true
@@ -1132,7 +1131,15 @@
                 {:else if content.paymentButton}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.isBetrugerCap}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} active={content.active} on:click={content.onClick} />
+                  <UniversalButton 
+                      {...getButtonProps(cell)} 
+                      label={content.label} 
+                      color={content.color} 
+                      active={content.active} 
+                      on:click={content.onClick}
+                  >
+                      <BetrugerCapIcon />
+                  </UniversalButton>
                 {:else if content.isKeyboardToggle}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} active={content.active} on:click={content.onClick} />
                 {:else if content.label && !content.data}
