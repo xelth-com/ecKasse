@@ -106,9 +106,7 @@
       </div>
     {:else if icon || showShape}
       {#if icon}
-        <div class="button-icon-wrapper">
-          <span class="button-icon">{@html icon}</span>
-        </div>
+        <span class="button-icon">{@html icon}</span>
       {/if}
       {#if showShape}
         <div class="shape-overlay {showShape}"></div>
@@ -213,22 +211,11 @@
     font-size: 22px;
   }
 
-  .button-icon-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .button-icon {
     font-size: 24px;
     font-weight: bold;
     text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
     color: var(--button-text-color, inherit);
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   /* Special styling for half hex button text and icons */
@@ -239,21 +226,10 @@
     padding: 5px;
   }
 
-  .universal-button.hex.half .button-icon-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .universal-button.hex.half .button-icon {
     font-size: 48px;
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   /* Special styling for half rect button text and icons - same as hex halves */
@@ -264,21 +240,10 @@
     padding: 5px;
   }
 
-  .universal-button.rect.half .button-icon-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .universal-button.rect.half .button-icon {
     font-size: 48px;
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .universal-button.disabled {

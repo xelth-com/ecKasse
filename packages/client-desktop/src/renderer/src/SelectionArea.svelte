@@ -37,7 +37,8 @@
   export let handleSmartAction = () => {};
 
   // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
-  const MIN_BUTTON_SIZE = parseInt(process.env.MIN_BUTTON_WIDTH) || 160; // minimum button size for touch
+  const MIN_HEX_WIDTH = 160; // minimum button size for touch
+  const MIN_RECT_SIZE = 160; // Minimum size for rectangles
   
   // Separate gap constants for different purposes
   const HEX_BUTTON_GAP = 6; // 6px - gap between hex buttons (was 0.4rem = 6.4px)
@@ -227,14 +228,14 @@
   }
 
   // Dynamic width and height calculated based on container size
-  let optimalHexWidth = MIN_BUTTON_SIZE;
+  let optimalHexWidth = MIN_HEX_WIDTH;
   let optimalHexHeight = 7.5625 * 16; // Default height
   let itemsPerRow = 1;
   let totalRows = 1;
   
   // Variables for 4-4-4 rectangular grid layout
-  let rectButtonWidth = MIN_BUTTON_SIZE; // calculated rectangular button width
-  let rectButtonHeight = MIN_BUTTON_SIZE; // calculated rectangular button height
+  let rectButtonWidth = MIN_RECT_SIZE; // calculated rectangular button width
+  let rectButtonHeight = MIN_RECT_SIZE; // calculated rectangular button height
   let rectItemsPerRow = 1; // Dynamic: calculated columns
   let rectTotalRows = 1; // Dynamic: calculated rows
 
@@ -249,7 +250,7 @@
       const hexGrid = calculateOptimalGrid(
         containerWidth, 
         containerHeight, 
-        MIN_BUTTON_SIZE, 
+        MIN_HEX_WIDTH, 
         3/4, // hex aspect ratio
         HEX_EDGE_GAP, 
         HEX_VERTICAL_PADDING, 
@@ -269,7 +270,7 @@
       const rectGrid = calculateOptimalGrid(
         containerWidth, 
         containerHeight, 
-        MIN_BUTTON_SIZE, 
+        MIN_RECT_SIZE, 
         3/4, // start with same target ratio as hex
         RECT_GAP, 
         RECT_VERTICAL_PADDING, 
@@ -285,10 +286,10 @@
       addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
     } else {
       itemsPerRow = 1;
-      optimalHexWidth = MIN_BUTTON_SIZE;
+      optimalHexWidth = MIN_HEX_WIDTH;
       rectItemsPerRow = 1;
-      rectButtonWidth = MIN_BUTTON_SIZE;
-      rectButtonHeight = MIN_BUTTON_SIZE;
+      rectButtonWidth = MIN_RECT_SIZE;
+      rectButtonHeight = MIN_RECT_SIZE;
     }
   }
   
@@ -1002,26 +1003,26 @@
     </style>
   </defs>
   
-  <rect class="key-bg key-bg-dark" x="6" y="5" width="36" height="26"/><text x="24" y="18" class="key-text">1</text>
-  <rect class="key-bg key-bg-dark" x="46" y="5" width="36" height="26"/><text x="64" y="18" class="key-text">2</text>
-  <rect class="key-bg key-bg-dark" x="86" y="5" width="36" height="26"/><text x="104" y="18" class="key-text">3</text>
-  <rect class="key-bg key-bg-cancel" x="126" y="5" width="36" height="26"/><text x="144" y="18" class="key-text">X</text>
+  <rect class="key-bg key-bg-dark" x="4" y="4" width="36" height="26"/><text x="22" y="17" class="key-text">1</text>
+  <rect class="key-bg key-bg-dark" x="44" y="4" width="36" height="26"/><text x="62" y="17" class="key-text">2</text>
+  <rect class="key-bg key-bg-dark" x="84" y="4" width="36" height="26"/><text x="102" y="17" class="key-text">3</text>
+  <rect class="key-bg key-bg-cancel" x="124" y="4" width="36" height="26"/><text x="142" y="17" class="key-text">X</text>
   
-  <rect class="key-bg key-bg-dark" x="6" y="35" width="36" height="26"/><text x="24" y="48" class="key-text">4</text>
-  <rect class="key-bg key-bg-dark" x="46" y="35" width="36" height="26"/><text x="64" y="48" class="key-text">5</text>
-  <rect class="key-bg key-bg-dark" x="86" y="35" width="36" height="26"/><text x="104" y="48" class="key-text">6</text>
-  <rect class="key-bg key-bg-correct" x="126" y="35" width="36" height="26"/><text x="144" y="48" class="key-text">←</text>
+  <rect class="key-bg key-bg-dark" x="4" y="34" width="36" height="26"/><text x="22" y="47" class="key-text">4</text>
+  <rect class="key-bg key-bg-dark" x="44" y="34" width="36" height="26"/><text x="62" y="47" class="key-text">5</text>
+  <rect class="key-bg key-bg-dark" x="84" y="34" width="36" height="26"/><text x="102" y="47" class="key-text">6</text>
+  <rect class="key-bg key-bg-correct" x="124" y="34" width="36" height="26"/><text x="142" y="47" class="key-text">←</text>
   
-  <rect class="key-bg key-bg-dark" x="6" y="65" width="36" height="26"/><text x="24" y="78" class="key-text">7</text>
-  <rect class="key-bg key-bg-dark" x="46" y="65" width="36" height="26"/><text x="64" y="78" class="key-text">8</text>
-  <rect class="key-bg key-bg-dark" x="86" y="65" width="36" height="26"/><text x="104" y="78" class="key-text">9</text>
+  <rect class="key-bg key-bg-dark" x="4" y="64" width="36" height="26"/><text x="22" y="77" class="key-text">7</text>
+  <rect class="key-bg key-bg-dark" x="44" y="64" width="36" height="26"/><text x="62" y="77" class="key-text">8</text>
+  <rect class="key-bg key-bg-dark" x="84" y="64" width="36" height="26"/><text x="102" y="77" class="key-text">9</text>
   
-  <rect class="key-bg key-bg-dark" x="6" y="95" width="36" height="26"/><text x="24" y="108" class="key-text">+</text>
-  <rect class="key-bg key-bg-dark" x="46" y="95" width="36" height="26"/><text x="64" y="108" class="key-text">0</text>
-  <rect class="key-bg key-bg-dark" x="86" y="95" width="36" height="26"/><text x="104" y="108" class="key-text">-</text>
+  <rect class="key-bg key-bg-dark" x="4" y="94" width="36" height="26"/><text x="22" y="107" class="key-text">+</text>
+  <rect class="key-bg key-bg-dark" x="44" y="94" width="36" height="26"/><text x="62" y="107" class="key-text">0</text>
+  <rect class="key-bg key-bg-dark" x="84" y="94" width="36" height="26"/><text x="102" y="107" class="key-text">-</text>
 
-  <rect class="key-bg key-bg-enter" x="126" y="65" width="36" height="56"/>
-  <text x="144" y="93" class="key-text">↵</text>
+  <rect class="key-bg key-bg-enter" x="124" y="64" width="36" height="56"/>
+  <text x="142" y="92" class="key-text">↵</text>
 </svg>`,
       onClick: () => pinpadStore.activate('general', null, null),
       active: true
@@ -1124,9 +1125,9 @@
 <div class="selection-area" bind:this={containerElement}>
   
   {#if $pinpadStore.isActive}
-    <div class="pinpad-overlay" class:numeric={$pinpadStore.layout === 'numeric'} class:alpha={$pinpadStore.layout === 'alpha'}>
-      <div class="pinpad-container" class:numeric={$pinpadStore.layout === 'numeric'} class:alpha={$pinpadStore.layout === 'alpha'}>
-          <Pinpad onClose={() => pinpadStore.deactivate()} minButtonSize={MIN_BUTTON_SIZE / 2} />
+    <div class="pinpad-overlay">
+      <div class="pinpad-container">
+          <Pinpad onClose={() => pinpadStore.deactivate()} />
       </div>
     </div>
   {/if}
@@ -1251,22 +1252,11 @@
   
   .pinpad-overlay {
     position: absolute;
-    z-index: 100;
-    animation: expand 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  }
-
-  /* Alpha keyboard - full width at bottom */
-  .pinpad-overlay.alpha {
-    left: 0;
-    right: 0;
-    bottom: 0;
-  }
-
-  /* Numeric pinpad - compact in bottom left */
-  .pinpad-overlay.numeric {
     bottom: 8px;
-    left: 8px;
-    transform-origin: bottom left;
+    right: 8px;
+    z-index: 100;
+    transform-origin: bottom right;
+    animation: expand 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   }
 
   .pinpad-container {
@@ -1274,17 +1264,7 @@
     border-radius: 8px;
     padding: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    box-sizing: border-box;
-  }
-
-  /* Alpha keyboard container - auto width */
-  .pinpad-container.alpha {
-    width: auto;
-  }
-
-  /* Numeric pinpad container - compact size */
-  .pinpad-container.numeric {
-    width: auto;
+    position: relative;
   }
   
 
