@@ -11,7 +11,7 @@
   import PinpadPreview from './lib/components/PinpadPreview.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
   import { pinpadStore } from './lib/pinpadStore.js';
-  import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
+  import BetrugerCapIconOutline from './lib/components/BetrugerCapIconOutline.svelte';
 
   let categories = [];
   let products = [];
@@ -1120,7 +1120,7 @@
                       active={content.active} 
                       on:click={content.onClick}
                   >
-                      <BetrugerCapIcon />
+                      <BetrugerCapIconOutline />
                   </UniversalButton>
                 {:else if content.isKeyboardToggle}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} active={content.active} on:click={content.onClick} />

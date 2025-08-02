@@ -1,4 +1,4 @@
-<svg viewBox="-10 -10 120 120" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%;">
+<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%;">
   <defs>
     
     

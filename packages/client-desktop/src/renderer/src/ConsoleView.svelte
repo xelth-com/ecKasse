@@ -7,6 +7,7 @@
   import { pinpadStore } from './lib/pinpadStore.js';
   import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
+  import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
   
 
   let agentScrollElement;
@@ -287,7 +288,10 @@
         </div>
       </div>
     {:else if $currentView === 'agent'}
-      <div class="view-content">
+      <div class="view-content agent-view">
+        <div class="agent-header-icon">
+          <BetrugerCapIcon />
+        </div>
         <div class="scroll-content" bind:this={agentScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <div class="agent-messages">
             {#each agentMessages as message}
@@ -547,6 +551,21 @@
     font-size: 14px;
     font-weight: 500;
     text-align: center;
+  }
+
+  /* Agent view watermark styles */
+  .view-content.agent-view {
+    position: relative;
+  }
+
+  .agent-header-icon {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 120px;
+    height: 120px;
+    z-index: 1;
+    pointer-events: none;
   }
 
 </style>
