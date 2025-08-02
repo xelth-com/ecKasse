@@ -39,7 +39,8 @@
       "Bash(npx knex raw:*)",
       "Bash(fuser:*)",
       "Bash(ss:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }

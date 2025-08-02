@@ -1,5 +1,5 @@
 <script>
-  import { afterUpdate, onMount } from 'svelte';
+  import { afterUpdate, onMount, createEventDispatcher } from 'svelte';
   import { logEntries, addLog } from './lib/logStore.js';
   import { orderStore } from './lib/orderStore.js';
   import { receiptsStore } from './lib/receiptsStore.js';
@@ -9,6 +9,7 @@
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
   
+  const dispatch = createEventDispatcher();
 
   let agentScrollElement;
   let ordersScrollElement;
@@ -177,6 +178,9 @@
         // For panels without scrolling (like receipts), consider them always "at bottom"
         isAtBottom = true;
       }
+      
+      // Dispatch scroll state change event
+      dispatch('scrollstate', isAtBottom);
     }
   }
   

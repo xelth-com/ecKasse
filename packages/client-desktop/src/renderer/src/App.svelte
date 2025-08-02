@@ -5,6 +5,12 @@
   import { currentView } from './lib/viewStore.js';
   
   let consoleViewComponent;
+  let isAtBottom = false;
+  
+  // Handle scroll state changes from ConsoleView
+  function handleScrollState(event) {
+    isAtBottom = event.detail;
+  }
   
   // Smart button handler - scroll down or cycle views (universal logic for all panels)
   function handleSmartAction() {
@@ -23,10 +29,10 @@
 <main class="pos-grid">
   <RecoveryModal />
   <div class="grid-item-display">
-    <ConsoleView bind:this={consoleViewComponent} />
+    <ConsoleView bind:this={consoleViewComponent} on:scrollstate={handleScrollState} />
   </div>
   <div class="grid-selection-area">
-    <SelectionArea {handleSmartAction} />
+    <SelectionArea {handleSmartAction} {isAtBottom} />
   </div>
 </main>
 
