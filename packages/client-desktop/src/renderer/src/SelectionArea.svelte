@@ -562,7 +562,7 @@
 
       // Slot 3: Keyboard Toggle
       if (rightHalfCells[2]) {
-        rightHalfCells[2].content = { isKeyboardToggle: true, icon: '⌨️', color: '#404040', textColor: '#404040' };
+        rightHalfCells[2].content = { isKeyboardToggle: true, icon: '⌨️', color: '#404040', textColor: '#666' };
       }
 
       // Last Slot (Bottommost): Time Button
