@@ -1,9 +1,9 @@
 // File: /packages/backend/src/services/llm.service.js
 
-const { Type } = require("@google/genai");
+const { GoogleGenAI } = require("@google/genai");
 const { getGeminiModel, geminiClient } = require('./llm.provider');
 
-// For direct API calls
+// For direct API calls - Updated for new SDK
 const genAI = geminiClient;
 
 const logger = require('../config/logger');
@@ -115,26 +115,26 @@ function updateLanguageState(chatHistory, newLanguage) {
     return updatedHistory;
 }
 
-// Tool function declarations for native SDK
+// Tool function declarations for new SDK - Updated syntax
 const findProductDeclaration = {
     name: "findProduct",
     description: "Searches for products in the database. Can filter results by dietary needs (vegetarian/vegan) and exclude specific allergens.",
-    parameters: {
-        type: Type.OBJECT,
+    parametersJsonSchema: {
+        type: "object",
         properties: {
             query: {
-                type: Type.STRING,
+                type: "string",
                 description: "The product name or general category to search for (e.g., 'pasta', 'salad', 'Tiramisu')."
             },
             excludeAllergens: {
-                type: Type.ARRAY,
+                type: "array",
                 description: "A list of allergens to exclude from the results, e.g., ['nuts', 'dairy'].",
                 items: {
-                    type: Type.STRING
+                    type: "string"
                 }
             },
             dietaryFilter: {
-                type: Type.STRING,
+                type: "string",
                 description: "Filter for specific dietary needs.",
                 enum: ["vegetarian", "vegan"]
             }
@@ -146,23 +146,23 @@ const findProductDeclaration = {
 const createProductDeclaration = {
     name: "createProduct",
     description: "Use this tool to create a new product in the database. It requires a name, a price, and a category name. For example: 'Create a product named Latte for 3.50 in the Drinks category'.",
-    parameters: {
-        type: Type.OBJECT,
+    parametersJsonSchema: {
+        type: "object",
         properties: {
             name: {
-                type: Type.STRING,
+                type: "string",
                 description: "The name of the product"
             },
             price: {
-                type: Type.NUMBER,
+                type: "number",
                 description: "The price of the product"
             },
             category: {
-                type: Type.STRING,
+                type: "string",
                 description: "The category name for the product"
             },
             description: {
-                type: Type.STRING,
+                type: "string",
                 description: "Optional description of the product"
             }
         },
@@ -173,16 +173,16 @@ const createProductDeclaration = {
 const getSalesReportDeclaration = {
     name: "getSalesReport",
     description: "Use this tool to get a sales report for a specific period. Supported periods are 'today', 'week', and 'month'. The data can also be grouped by 'category' or 'hour'. For example: 'show me the sales report for this week grouped by category'.",
-    parameters: {
-        type: Type.OBJECT,
+    parametersJsonSchema: {
+        type: "object",
         properties: {
             period: {
-                type: Type.STRING,
+                type: "string",
                 description: "Time period for the report",
                 enum: ["today", "week", "month"]
             },
             groupBy: {
-                type: Type.STRING,
+                type: "string",
                 description: "How to group the report data",
                 enum: ["category", "hour", "none"]
             }
@@ -191,11 +191,12 @@ const getSalesReportDeclaration = {
     }
 };
 
+// Updated tools configuration for new SDK
 const toolsConfig = {
     functionDeclarations: [findProductDeclaration, createProductDeclaration, getSalesReportDeclaration]
 };
 
-// Tool function implementations
+// Tool function implementations (unchanged logic)
 const toolFunctions = {
     findProduct: async (args) => {
         const productName = args.query;
@@ -229,7 +230,7 @@ const toolFunctions = {
                 description: args.description || `A new ${args.name}`
             };
             
-            const result = await createProduct(productData, { type: 'ai_agent', id: 1, model: 'gemini-1.5-flash' });
+            const result = await createProduct(productData, { type: 'ai_agent', id: 1, model: 'gemini-2.5-flash' });
             return result;
         } catch (error) {
             logger.error({ tool: 'createProduct', error: error.message }, 'Error in createProduct tool');
@@ -337,7 +338,7 @@ function getPrioritizedModels() {
 async function sendMessage(userMessage, chatHistory = []) {
     console.log(`[AGENT_INPUT] User Message: "${userMessage}"`);
     console.log(`[AGENT_INPUT] Chat History Length: ${chatHistory.length}`);
-    logger.info({ msg: 'Message received by native Gemini service', message: userMessage });
+    logger.info({ msg: 'Message received by new Gemini service', message: userMessage });
 
     const languageState = getLanguageState(chatHistory);
     let currentLanguage = languageState.current_language;
@@ -369,12 +370,12 @@ async function sendMessage(userMessage, chatHistory = []) {
         console.log(`[GEMINI_CALL] System Prompt: "${systemPrompt}"`);
         console.log(`[GEMINI_CALL] Sending request to model...`);
         
-        // Get model with configuration
-        const model = getGeminiModel({
+        // Get model with configuration - Updated for new SDK
+        const ai = getGeminiModel({
             modelName: modelName
         });
         
-        // Convert chat history to startChat format
+        // Convert chat history to new SDK format
         const history = updatedChatHistory.filter(msg => !msg._languageState).map(msg => {
             const content = Array.isArray(msg.parts) ? msg.parts.map(p => p.text).join('') : msg.parts;
             return {
@@ -383,42 +384,44 @@ async function sendMessage(userMessage, chatHistory = []) {
             };
         });
         
-        // Start chat with proper configuration
-        console.log(`[DEBUG] Starting chat with model ${modelName}`);
+        // Prepare the conversation contents for new SDK
+        const contents = [
+            ...history.map(msg => ({
+                role: msg.role,
+                parts: msg.parts
+            })),
+            {
+                role: 'user',
+                parts: [{ text: userMessage }]
+            }
+        ];
+        
+        console.log(`[DEBUG] Starting generation with new SDK`);
         console.log(`[DEBUG] History length: ${history.length}`);
         console.log(`[DEBUG] Tools config:`, JSON.stringify(toolsConfig, null, 2));
         
-        const chat = model.startChat({
-            history: history,
-            tools: [toolsConfig],
-            systemInstruction: createSystemPrompt(currentLanguage),
-            generationConfig: {
-                temperature: modelConfig.temperature
-            }
-        });
+        // Use new SDK generateContent method
+ let result = await ai.generateContent({
+    contents: contents,
+    tools: [toolsConfig],
+    systemInstruction: systemPrompt,
+    generationConfig: {
+        temperature: modelConfig.temperature
+    }
+});
         
-        console.log(`[DEBUG] Chat started successfully`);
+        console.log(`[DEBUG] Generation completed successfully`);
         
-        let result = await chat.sendMessage(userMessage);
-        
-        // For @google/genai SDK, result has candidates structure
-        if (!result.candidates || result.candidates.length === 0) {
-            throw new Error('No candidates in response');
-        }
-        
-        const candidate = result.candidates[0];
-        const content = candidate.content;
-        const functionCalls = content.parts && content.parts.some(part => part.functionCall) 
-            ? content.parts.filter(part => part.functionCall)
-            : [];
+        // Check for function calls in new SDK format
+        const functionCalls = result.functionCalls || [];
         
         let responseText;
         
         if (functionCalls && functionCalls.length > 0) {
-            logger.info({ msg: 'Function calls detected', count: functionCalls.length, functions: functionCalls.map(fc => fc.functionCall.name) });
+            logger.info({ msg: 'Function calls detected', count: functionCalls.length, functions: functionCalls.map(fc => fc.name) });
             
-            const toolResponses = await Promise.all(functionCalls.map(async (part) => {
-                const functionCall = part.functionCall;
+            // Execute tool functions
+            const toolResponses = await Promise.all(functionCalls.map(async (functionCall) => {
                 const functionName = functionCall.name;
                 const functionArgs = functionCall.args;
                 
@@ -429,37 +432,42 @@ async function sendMessage(userMessage, chatHistory = []) {
                 if (toolFunctions[functionName]) {
                     const functionResult = await toolFunctions[functionName](functionArgs);
                     return {
-                        functionResponse: {
-                            name: functionName,
-                            response: functionResult,
-                        },
+                        name: functionName,
+                        response: functionResult,
                     };
                 } else {
                     return {
-                        functionResponse: {
-                            name: functionName,
-                            response: { error: `Unknown function: ${functionName}` },
-                        },
+                        name: functionName,
+                        response: { error: `Unknown function: ${functionName}` },
                     };
                 }
             }));
             
-            // Send function responses back to the chat
-            const finalResult = await chat.sendMessage(toolResponses);
+            // Send function responses back - Updated for new SDK
+            const finalContents = [
+                ...contents,
+                {
+                    role: 'model',
+                    parts: functionCalls.map(fc => ({ functionCall: fc }))
+                },
+                {
+                    role: 'user',
+                    parts: toolResponses.map(response => ({ functionResponse: response }))
+                }
+            ];
             
-            if (!finalResult.candidates || finalResult.candidates.length === 0) {
-                throw new Error('No candidates in function response');
-            }
+          const finalResult = await ai.generateContent({
+    contents: finalContents,
+    tools: [toolsConfig],
+    systemInstruction: systemPrompt,
+    generationConfig: {
+        temperature: modelConfig.temperature
+    }
+});
             
-            responseText = finalResult.candidates[0].content.parts
-                .filter(part => part.text)
-                .map(part => part.text)
-                .join('');
+            responseText = finalResult.text || '';
         } else {
-            responseText = content.parts
-                .filter(part => part.text)
-                .map(part => part.text)
-                .join('');
+            responseText = result.text || '';
         }
         
         // Enhanced logging for final output
@@ -516,28 +524,23 @@ async function sendMessage(userMessage, chatHistory = []) {
 
 /**
  * Simple query function for programmatic LLM calls (like enrichment)
- * Uses lightweight prompt to reduce token usage
+ * Updated for new SDK
  */
 async function invokeSimpleQuery(promptText) {
     try {
-        const model = getGeminiModel({ 
-            modelName: 'gemini-2.5-flash',
-            systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
-            generationConfig: {
-                temperature: 0.1
-            }
+        const ai = getGeminiModel({ 
+            modelName: 'gemini-2.5-flash'
         });
-        const result = await model.generateContent(promptText);
         
-        if (!result.candidates || result.candidates.length === 0) {
-            throw new Error('No candidates in response');
-        }
+   const result = await ai.generateContent({
+    contents: [{ role: 'user', parts: [{ text: promptText }] }],
+    systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
+    generationConfig: {
+        temperature: 0.1
+    }
+});
         
-        const content = result.candidates[0].content;
-        return content.parts
-            .filter(part => part.text)
-            .map(part => part.text)
-            .join('');
+        return result.text || '';
     } catch (error) {
         console.error('Error in invokeSimpleQuery:', error);
         return JSON.stringify({ error: `Failed to process simple query: ${error.message}` });
