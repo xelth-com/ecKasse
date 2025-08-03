@@ -1,9 +1,9 @@
 // File: /packages/backend/src/services/llm.service.js
 
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenAI, Type } = require("@google/genai");
 const { getGeminiModel, geminiClient } = require('./llm.provider');
 
-// For direct API calls - Updated for new SDK
+// For direct API calls - Use the native client exactly like in working version
 const genAI = geminiClient;
 
 const logger = require('../config/logger');
@@ -12,7 +12,6 @@ const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErro
 const { searchProducts } = require('./search.service');
 const { generateSalesReport } = require('./reporting.service');
 const { createProduct } = require('./product.service');
-
 
 // Language detection utilities
 const LANGUAGE_PATTERNS = {
@@ -115,26 +114,26 @@ function updateLanguageState(chatHistory, newLanguage) {
     return updatedHistory;
 }
 
-// Tool function declarations for new SDK - Updated syntax
+// Tool function declarations for native SDK - EXACTLY like working version
 const findProductDeclaration = {
     name: "findProduct",
     description: "Searches for products in the database. Can filter results by dietary needs (vegetarian/vegan) and exclude specific allergens.",
-    parametersJsonSchema: {
-        type: "object",
+    parameters: {
+        type: Type.OBJECT,
         properties: {
             query: {
-                type: "string",
+                type: Type.STRING,
                 description: "The product name or general category to search for (e.g., 'pasta', 'salad', 'Tiramisu')."
             },
             excludeAllergens: {
-                type: "array",
+                type: Type.ARRAY,
                 description: "A list of allergens to exclude from the results, e.g., ['nuts', 'dairy'].",
                 items: {
-                    type: "string"
+                    type: Type.STRING
                 }
             },
             dietaryFilter: {
-                type: "string",
+                type: Type.STRING,
                 description: "Filter for specific dietary needs.",
                 enum: ["vegetarian", "vegan"]
             }
@@ -146,23 +145,23 @@ const findProductDeclaration = {
 const createProductDeclaration = {
     name: "createProduct",
     description: "Use this tool to create a new product in the database. It requires a name, a price, and a category name. For example: 'Create a product named Latte for 3.50 in the Drinks category'.",
-    parametersJsonSchema: {
-        type: "object",
+    parameters: {
+        type: Type.OBJECT,
         properties: {
             name: {
-                type: "string",
+                type: Type.STRING,
                 description: "The name of the product"
             },
             price: {
-                type: "number",
+                type: Type.NUMBER,
                 description: "The price of the product"
             },
             category: {
-                type: "string",
+                type: Type.STRING,
                 description: "The category name for the product"
             },
             description: {
-                type: "string",
+                type: Type.STRING,
                 description: "Optional description of the product"
             }
         },
@@ -173,16 +172,16 @@ const createProductDeclaration = {
 const getSalesReportDeclaration = {
     name: "getSalesReport",
     description: "Use this tool to get a sales report for a specific period. Supported periods are 'today', 'week', and 'month'. The data can also be grouped by 'category' or 'hour'. For example: 'show me the sales report for this week grouped by category'.",
-    parametersJsonSchema: {
-        type: "object",
+    parameters: {
+        type: Type.OBJECT,
         properties: {
             period: {
-                type: "string",
+                type: Type.STRING,
                 description: "Time period for the report",
                 enum: ["today", "week", "month"]
             },
             groupBy: {
-                type: "string",
+                type: Type.STRING,
                 description: "How to group the report data",
                 enum: ["category", "hour", "none"]
             }
@@ -191,12 +190,12 @@ const getSalesReportDeclaration = {
     }
 };
 
-// Updated tools configuration for new SDK
+// Tools configuration EXACTLY like working version
 const toolsConfig = {
     functionDeclarations: [findProductDeclaration, createProductDeclaration, getSalesReportDeclaration]
 };
 
-// Tool function implementations (unchanged logic)
+// Tool function implementations
 const toolFunctions = {
     findProduct: async (args) => {
         const productName = args.query;
@@ -230,7 +229,7 @@ const toolFunctions = {
                 description: args.description || `A new ${args.name}`
             };
             
-            const result = await createProduct(productData, { type: 'ai_agent', id: 1, model: 'gemini-2.5-flash' });
+            const result = await createProduct(productData);
             return result;
         } catch (error) {
             logger.error({ tool: 'createProduct', error: error.message }, 'Error in createProduct tool');
@@ -261,10 +260,13 @@ const toolFunctions = {
 };
 
 /**
- * Get the default Gemini model configuration
+ * Get prioritized models for fallback usage
  */
-function getDefaultModelConfig() {
-    return { name: "gemini-2.5-flash", temperature: 0.1 };
+function getPrioritizedModels() {
+    return [
+        { name: "gemini-2.5-flash", temperature: 0.1 },
+        { name: "gemini-2.0-flash", temperature: 0.1 }
+    ];
 }
 
 /**
@@ -328,219 +330,268 @@ When using the findProduct tool, interpret the response according to these rules
 5. **Response Language:** Always formulate your response in your current primary language (${conversationLanguage}), unless the language handling rules above indicate a switch.`;
 }
 
-function getPrioritizedModels() {
-    return [
-        { name: "gemini-2.5-flash", temperature: 0.1 },
-        { name: "gemini-2.0-flash", temperature: 0.1 }
-    ];
-}
-
 async function sendMessage(userMessage, chatHistory = []) {
+    // Enhanced logging for debugging
     console.log(`[AGENT_INPUT] User Message: "${userMessage}"`);
     console.log(`[AGENT_INPUT] Chat History Length: ${chatHistory.length}`);
-    logger.info({ msg: 'Message received by new Gemini service', message: userMessage });
-
+    
+    logger.info({ msg: 'Message received by native Gemini service', message: userMessage });
+    
+    // Get current language state from conversation
     const languageState = getLanguageState(chatHistory);
     let currentLanguage = languageState.current_language;
+    
+    // Detect language of the current user message
     const detectedLanguage = detectLanguage(userMessage);
     logger.info({ msg: 'Language analysis', currentLanguage, detectedLanguage, isShortPhrase: isShortPhrase(userMessage) });
-
+    
+    // Check for explicit language switch command
     const explicitLanguageCommand = detectExplicitLanguageCommand(userMessage);
+    
+    // Determine if we should switch conversation language
+    let shouldSwitchLanguage = false;
     let newLanguage = currentLanguage;
+    
     if (explicitLanguageCommand) {
+        // User explicitly requested a language switch
+        shouldSwitchLanguage = true;
         newLanguage = explicitLanguageCommand;
-    } else if (detectedLanguage !== currentLanguage && !isShortPhrase(userMessage)) {
-        newLanguage = detectedLanguage;
+        logger.info({ msg: 'Explicit language command detected', newLanguage });
+    } else if (detectedLanguage !== currentLanguage) {
+        // User message is in a different language
+        if (isShortPhrase(userMessage)) {
+            // Short phrase - likely a product name, keep current language
+            logger.info({ msg: 'Short phrase detected, keeping current language', currentLanguage });
+        } else {
+            // Full sentence - switch conversation language
+            shouldSwitchLanguage = true;
+            newLanguage = detectedLanguage;
+            logger.info({ msg: 'Full sentence in new language detected, switching', newLanguage });
+        }
     }
-
+    
+    // Update chat history with new language state if needed
     let updatedChatHistory = chatHistory;
-    if (newLanguage !== currentLanguage) {
+    if (shouldSwitchLanguage) {
         updatedChatHistory = updateLanguageState(chatHistory, newLanguage);
         currentLanguage = newLanguage;
-        logger.info({ msg: 'Language switched', newLanguage });
     }
     
-    const modelConfig = getDefaultModelConfig();
-    const modelName = modelConfig.name;
-    logger.info({ msg: `Using model ${modelName}`, conversationLanguage: currentLanguage });
+    // Convert chat history to native SDK format
+    const history = updatedChatHistory.filter(msg => !msg._languageState).map(msg => {
+        const content = Array.isArray(msg.parts) ? msg.parts.map(p => p.text).join('') : msg.parts;
+        return {
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: content }]
+        };
+    });
     
-    try {
-        // Enhanced logging for Gemini call
-        const systemPrompt = createSystemPrompt(currentLanguage);
-        console.log(`[GEMINI_CALL] System Prompt: "${systemPrompt}"`);
-        console.log(`[GEMINI_CALL] Sending request to model...`);
+    const models = getPrioritizedModels();
+    
+    for (const [index, modelConfig] of models.entries()) {
+        const modelName = modelConfig.name;
+        logger.info({ msg: `Attempting model ${modelName}`, attempt: index + 1, totalModels: models.length, conversationLanguage: currentLanguage });
         
-        // Get model with configuration - Updated for new SDK
-        const ai = getGeminiModel({
-            modelName: modelName
-        });
-        
-        // Convert chat history to new SDK format
-        const history = updatedChatHistory.filter(msg => !msg._languageState).map(msg => {
-            const content = Array.isArray(msg.parts) ? msg.parts.map(p => p.text).join('') : msg.parts;
-            return {
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: content }]
-            };
-        });
-        
-        // Prepare the conversation contents for new SDK
-        const contents = [
-            ...history.map(msg => ({
-                role: msg.role,
-                parts: msg.parts
-            })),
-            {
-                role: 'user',
-                parts: [{ text: userMessage }]
+        try {
+            // Enhanced logging for first Gemini call
+            const systemPrompt = createSystemPrompt(currentLanguage);
+            console.log(`[GEMINI_CALL_1] System Prompt: "${systemPrompt}"`);
+            console.log(`[GEMINI_CALL_1] Sending request to model...`);
+            
+            // Use the native SDK generateContent API EXACTLY like working version
+            let result = await genAI.models.generateContent({
+                model: modelName,
+                systemInstruction: createSystemPrompt(currentLanguage),
+                contents: [
+                    ...history,
+                    { role: 'user', parts: [{ text: userMessage }] }
+                ],
+                config: {
+                    tools: [toolsConfig],
+                    generationConfig: {
+                        temperature: modelConfig.temperature
+                    }
+                }
+            });
+            
+            // The result structure has candidates array, not a response property
+            if (!result.candidates || result.candidates.length === 0) {
+                throw new Error('No candidates in response');
             }
-        ];
-        
-        console.log(`[DEBUG] Starting generation with new SDK`);
-        console.log(`[DEBUG] History length: ${history.length}`);
-        console.log(`[DEBUG] Tools config:`, JSON.stringify(toolsConfig, null, 2));
-        
-        // Use new SDK generateContent method
- let result = await ai.generateContent({
-    contents: contents,
-    tools: [toolsConfig],
-    systemInstruction: systemPrompt,
-    generationConfig: {
-        temperature: modelConfig.temperature
-    }
-});
-        
-        console.log(`[DEBUG] Generation completed successfully`);
-        
-        // Check for function calls in new SDK format
-        const functionCalls = result.functionCalls || [];
-        
-        let responseText;
-        
-        if (functionCalls && functionCalls.length > 0) {
-            logger.info({ msg: 'Function calls detected', count: functionCalls.length, functions: functionCalls.map(fc => fc.name) });
             
-            // Execute tool functions
-            const toolResponses = await Promise.all(functionCalls.map(async (functionCall) => {
-                const functionName = functionCall.name;
-                const functionArgs = functionCall.args;
-                
-                // Enhanced logging for tool execution
-                console.log(`[TOOL_EXEC] Attempting to execute tool: "${functionName}"`);
-                console.log(`[TOOL_EXEC] Arguments: ${JSON.stringify(functionArgs, null, 2)}`);
-                
-                if (toolFunctions[functionName]) {
-                    const functionResult = await toolFunctions[functionName](functionArgs);
-                    return {
-                        name: functionName,
-                        response: functionResult,
-                    };
-                } else {
-                    return {
-                        name: functionName,
-                        response: { error: `Unknown function: ${functionName}` },
-                    };
-                }
-            }));
+            const candidate = result.candidates[0];
+            let content = candidate.content;
             
-            // Send function responses back - Updated for new SDK
-            const finalContents = [
-                ...contents,
-                {
-                    role: 'model',
-                    parts: functionCalls.map(fc => ({ functionCall: fc }))
-                },
-                {
-                    role: 'user',
-                    parts: toolResponses.map(response => ({ functionResponse: response }))
+            // Enhanced logging for response analysis
+            const functionCalls = content.parts && content.parts.some(part => part.functionCall) 
+                ? content.parts.filter(part => part.functionCall).map(part => part.functionCall)
+                : [];
+            console.log('[GEMINI_RESPONSE_1] Raw model response received.');
+            console.log(`[GEMINI_RESPONSE_1] Parsed Function Calls: ${JSON.stringify(functionCalls, null, 2)}`);
+            
+            // Check for function calls and handle tool execution loop
+            if (content.parts && content.parts.some(part => part.functionCall)) {
+                const functionCallParts = content.parts.filter(part => part.functionCall);
+                logger.info({ msg: 'Function calls detected', count: functionCallParts.length, functions: functionCallParts.map(fc => fc.functionCall.name) });
+                
+                const functionResponseParts = [];
+                
+                // Execute all function calls
+                for (const part of functionCallParts) {
+                    const functionCall = part.functionCall;
+                    const functionName = functionCall.name;
+                    const functionArgs = functionCall.args;
+                    
+                    // Enhanced logging for tool execution
+                    console.log(`[TOOL_EXEC] Attempting to execute tool: "${functionName}"`);
+                    console.log(`[TOOL_EXEC] Arguments: ${JSON.stringify(functionArgs, null, 2)}`);
+                    
+                    logger.info({ msg: `Executing function: ${functionName}`, args: functionArgs });
+                    
+                    if (toolFunctions[functionName]) {
+                        try {
+                            const functionResult = await toolFunctions[functionName](functionArgs);
+                            
+                            // Enhanced logging for tool result
+                            console.log(`[TOOL_RESULT] Raw result from tool "${functionName}": ${JSON.stringify(functionResult, null, 2)}`);
+                            
+                            functionResponseParts.push({
+                                functionResponse: {
+                                    name: functionName,
+                                    response: functionResult
+                                }
+                            });
+                        } catch (error) {
+                            logger.error({ msg: `Error executing function ${functionName}`, error: error.message });
+                            functionResponseParts.push({
+                                functionResponse: {
+                                    name: functionName,
+                                    response: { error: `Error executing ${functionName}: ${error.message}` }
+                                }
+                            });
+                        }
+                    } else {
+                        logger.error({ msg: `Unknown function: ${functionName}` });
+                        functionResponseParts.push({
+                            functionResponse: {
+                                name: functionName,
+                                response: { error: `Unknown function: ${functionName}` }
+                            }
+                        });
+                    }
                 }
+                
+                // Enhanced logging for second Gemini call
+                console.log('[GEMINI_CALL_2] Sending tool results back to model for final response.');
+                
+                // Send function responses back to the model
+                result = await genAI.models.generateContent({
+                    model: modelName,
+                    systemInstruction: createSystemPrompt(currentLanguage),
+                    contents: [
+                        ...history,
+                        { role: 'user', parts: [{ text: userMessage }] },
+                        { role: 'model', parts: content.parts },
+                        { role: 'user', parts: functionResponseParts }
+                    ],
+                    config: {
+                        tools: [toolsConfig],
+                        generationConfig: {
+                            temperature: modelConfig.temperature
+                        }
+                    }
+                });
+                
+                if (!result.candidates || result.candidates.length === 0) {
+                    throw new Error('No candidates in function response');
+                }
+                content = result.candidates[0].content;
+            }
+            
+            // Extract text from content parts
+            const responseText = content.parts
+                .filter(part => part.text)
+                .map(part => part.text)
+                .join('');
+            
+            // Enhanced logging for final output
+            console.log(`[AGENT_OUTPUT] "${responseText}"`);
+            
+            logger.info({ msg: `Model ${modelName} succeeded`, response_length: responseText.length });
+            
+            // Create new history with language state preserved
+            const newHistory = [
+                ...updatedChatHistory,
+                { role: 'user', parts: [{ text: userMessage }] },
+                { role: 'model', parts: [{ text: responseText }] },
             ];
             
-          const finalResult = await ai.generateContent({
-    contents: finalContents,
-    tools: [toolsConfig],
-    systemInstruction: systemPrompt,
-    generationConfig: {
-        temperature: modelConfig.temperature
-    }
-});
+            // Ensure language state is preserved in the new history
+            if (newHistory.length > 0 && shouldSwitchLanguage) {
+                newHistory[0]._languageState = { current_language: currentLanguage };
+            }
             
-            responseText = finalResult.text || '';
-        } else {
-            responseText = result.text || '';
-        }
-        
-        // Enhanced logging for final output
-        console.log(`[AGENT_OUTPUT] "${responseText}"`);
-        
-        logger.info({ msg: `Model ${modelName} succeeded`, response_length: responseText.length });
-        
-        // Create new history with language state preserved
-        const newHistory = [
-            ...updatedChatHistory,
-            { role: 'user', parts: [{ text: userMessage }] },
-            { role: 'model', parts: [{ text: responseText }] },
-        ];
-        
-        // Ensure language state is preserved in the new history
-        if (newHistory.length > 0 && newLanguage !== languageState.current_language) {
-            newHistory[0]._languageState = { current_language: currentLanguage };
-        }
-        
-        return { text: responseText, history: newHistory };
-        
-    } catch (error) {
-        console.error(`[ERROR] LLM Service failed:`, error);
-        console.error(`[ERROR] Stack trace:`, error.stack);
-        logger.error({ msg: `Model ${modelName} failed`, error: error.message, stack: error.stack });
-        
-        const geminiErrorInfo = handleGeminiError(error, { language: currentLanguage, includeRetryInfo: true });
-        const errorLog = createGeminiErrorLog(error, {
-            operation: 'llm_chat',
-            userMessage: userMessage.substring(0, 100),
-            chatHistoryLength: updatedChatHistory.length,
-            lastModelAttempted: modelName
-        });
+            return { text: responseText, history: newHistory };
+            
+        } catch (error) {
+            logger.warn({ msg: `Model ${modelName} failed, trying next model`, error: error.message });
+            
+            // If this is the last model, handle the error
+            if (index === models.length - 1) {
+                const geminiErrorInfo = handleGeminiError(error, { language: currentLanguage, includeRetryInfo: true });
+                const errorLog = createGeminiErrorLog(error, {
+                    operation: 'llm_chat',
+                    userMessage: userMessage.substring(0, 100),
+                    chatHistoryLength: updatedChatHistory.length,
+                    lastModelAttempted: modelName
+                });
 
-        if (errorLog.level === 'warn') {
-            logger.warn(errorLog);
-        } else {
-            logger.error(errorLog);
+                if (errorLog.level === 'warn') {
+                    logger.warn(errorLog);
+                } else {
+                    logger.error(errorLog);
+                }
+                
+                let responseText = geminiErrorInfo.userMessage;
+                if (geminiErrorInfo.isTemporary && geminiErrorInfo.retryMessage) {
+                    responseText += ' ' + geminiErrorInfo.retryMessage;
+                }
+                
+                return {
+                    text: responseText,
+                    history: updatedChatHistory,
+                    isTemporary: geminiErrorInfo.isTemporary,
+                    errorType: geminiErrorInfo.errorType
+                };
+            }
         }
-        
-        let responseText = geminiErrorInfo.userMessage;
-        if (geminiErrorInfo.isTemporary && geminiErrorInfo.retryMessage) {
-            responseText += ' ' + geminiErrorInfo.retryMessage;
-        }
-        
-        return {
-            text: responseText,
-            history: updatedChatHistory,
-            isTemporary: geminiErrorInfo.isTemporary,
-            errorType: geminiErrorInfo.errorType
-        };
     }
 }
 
 /**
  * Simple query function for programmatic LLM calls (like enrichment)
- * Updated for new SDK
+ * Uses lightweight prompt to reduce token usage
  */
 async function invokeSimpleQuery(promptText) {
     try {
-        const ai = getGeminiModel({ 
-            modelName: 'gemini-2.5-flash'
+        const result = await genAI.models.generateContent({
+            model: 'gemini-2.5-flash',
+            systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
+            generationConfig: {
+                temperature: 0.1
+            },
+            contents: [{ role: 'user', parts: [{ text: promptText }] }]
         });
         
-   const result = await ai.generateContent({
-    contents: [{ role: 'user', parts: [{ text: promptText }] }],
-    systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
-    generationConfig: {
-        temperature: 0.1
-    }
-});
+        if (!result.candidates || result.candidates.length === 0) {
+            throw new Error('No candidates in response');
+        }
         
-        return result.text || '';
+        const content = result.candidates[0].content;
+        return content.parts
+            .filter(part => part.text)
+            .map(part => part.text)
+            .join('');
     } catch (error) {
         console.error('Error in invokeSimpleQuery:', error);
         return JSON.stringify({ error: `Failed to process simple query: ${error.message}` });

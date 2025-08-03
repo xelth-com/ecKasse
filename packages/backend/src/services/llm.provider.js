@@ -20,35 +20,16 @@ const geminiClient = genAI;
  */
 function getGeminiModel(options = {}) {
     const modelName = options.modelName || 'gemini-2.0-flash';
-    // For @google/genai SDK, we return an object with methods that wrap the client
+    
+    // Return the native SDK interface exactly as in the working version
     return {
         modelName: modelName,
+        // Direct access to the native generateContent method
         generateContent: (request) => {
             return genAI.models.generateContent({
                 model: modelName,
                 ...request
             });
-        },
-        startChat: (config) => {
-            // Create a chat interface that uses the new SDK structure
-            return {
-                sendMessage: async (message) => {
-                    const contents = [
-                        ...(config.history || []),
-                        typeof message === 'string' 
-                            ? { role: 'user', parts: [{ text: message }] }
-                            : message
-                    ];
-                    
-                    return genAI.models.generateContent({
-                        model: modelName,
-                        contents: contents,
-                        tools: config.tools,
-                        systemInstruction: config.systemInstruction,
-                        generationConfig: config.generationConfig
-                    });
-                }
-            };
         }
     };
 }
