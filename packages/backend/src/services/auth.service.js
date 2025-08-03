@@ -409,6 +409,39 @@ class AuthService {
             can_manage_users: user.can_manage_users
         };
     }
+
+    /**
+     * Get available users for login screen
+     * @returns {Array} List of users with basic information for login selection
+     */
+    async getLoginUsers() {
+        try {
+            const users = await db('users')
+                .select([
+                    'users.id',
+                    'users.username',
+                    'users.full_name'
+                ])
+                .where('users.is_active', true)
+                .orderBy('users.full_name', 'asc');
+
+            logger.info({ 
+                service: 'AuthService', 
+                function: 'getLoginUsers', 
+                count: users.length 
+            }, 'Retrieved login users');
+
+            return users;
+        } catch (error) {
+            logger.error({ 
+                service: 'AuthService', 
+                function: 'getLoginUsers', 
+                error: error.message 
+            }, 'Error retrieving login users');
+            
+            throw new Error('Failed to retrieve users for login');
+        }
+    }
 }
 
 // Create singleton instance

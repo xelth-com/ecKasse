@@ -114,7 +114,7 @@ exports.seed = async function (knex) {
   ]).returning('id');
 
   // Generate password hashes
-  const defaultPassword = 'eckasse123'; // TODO: This should be configurable in production
+  const defaultPassword = '1234'; // Numeric PIN for touch-friendly login
   const saltRounds = 12;
   const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
 
@@ -196,8 +196,8 @@ exports.seed = async function (knex) {
 
   console.log('✅ User management seed data created successfully');
   console.log('📝 Default credentials:');
-  console.log('   Username: admin    | Password: eckasse123 | Role: Manager');
-  console.log('   Username: cashier1 | Password: eckasse123 | Role: Cashier');
-  console.log('   Username: supervisor1 | Password: eckasse123 | Role: Supervisor');
-  console.log('⚠️  Remember to change passwords on first login!');
+  console.log('   Username: admin    | PIN: 1234 | Role: Manager');
+  console.log('   Username: cashier1 | PIN: 1234 | Role: Cashier');
+  console.log('   Username: supervisor1 | PIN: 1234 | Role: Supervisor');
+  console.log('⚠️  Remember to change PINs on first login!');
 };

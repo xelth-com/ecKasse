@@ -14,6 +14,7 @@
   import { agentStore } from './lib/agentStore.js';
   import { uiConstantsStore } from './lib/uiConstantsStore.js';
   import BetrugerCapIconOutline from './lib/components/BetrugerCapIconOutline.svelte';
+  import { authStore } from './lib/authStore.js';
 
   let categories = [];
   let products = [];
@@ -560,6 +561,15 @@
       cell.type === 'left-half' || cell.type === 'left-half-rect'
     );
     if (leftHalfCells.length > 0) {
+      leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort ascending to get top first
+      
+      // Second from top: User Button
+      if (leftHalfCells.length > 1) {
+        const userButtonCell = leftHalfCells[1];
+        userButtonCell.content = { isUserButton: true };
+      }
+      
+      // Bottom: Smart Navigation Button
       leftHalfCells.sort((a, b) => b.rowIndex - a.rowIndex); // Sort descending to get bottom first
       const bottomLeftHalfCell = leftHalfCells[0];
       bottomLeftHalfCell.content = { isSmartNavigation: true };
@@ -839,6 +849,16 @@
     addLog('INFO', 'Time settings accessed');
     timeStore.resetTimeOffset();
     addLog('INFO', 'Time offset reset - using client time');
+  }
+
+  function handleUserButtonClick() {
+    if ($authStore.isAuthenticated) {
+      addLog('INFO', 'User logout requested');
+      authStore.logout();
+    } else {
+      addLog('INFO', 'Login requested');
+      // The login view should already be visible since user is not authenticated
+    }
   }
 
   function formatTime(date) {
@@ -1192,6 +1212,18 @@
       active: true, 
       showShape: cell.content.showShape 
     };
+    if (cell.content.isUserButton) {
+      const currentUser = $authStore.currentUser;
+      const userLabel = currentUser ? currentUser.full_name : 'Login';
+      return {
+        label: userLabel,
+        onClick: handleUserButtonClick,
+        active: true,
+        color: currentUser ? '#2c3e50' : '#6c757d',
+        textColor: '#fff',
+        customStyle: 'font-size: 11px; font-weight: 600; line-height: 1.2; white-space: pre-line; text-align: center;'
+      };
+    }
     if (cell.content.isSmartNavigation) {
       if (isAtBottom) {
         // Use overlapping windows icon when at bottom

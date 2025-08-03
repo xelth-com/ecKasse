@@ -1,7 +1,8 @@
 <script>
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
-  import RecoveryModal from './lib/components/RecoveryModal.svelte';
+  import LoginAndTaskView from './lib/components/LoginAndTaskView.svelte';
+  import { authStore } from './lib/authStore.js';
   import { currentView } from './lib/viewStore.js';
   
   let consoleViewComponent;
@@ -26,15 +27,18 @@
   }
 </script>
 
-<main class="pos-grid">
-  <RecoveryModal />
-  <div class="grid-item-display">
-    <ConsoleView bind:this={consoleViewComponent} on:scrollstate={handleScrollState} />
-  </div>
-  <div class="grid-selection-area">
-    <SelectionArea {handleSmartAction} {isAtBottom} {consoleViewComponent} />
-  </div>
-</main>
+{#if $authStore.isAuthenticated}
+  <main class="pos-grid">
+    <div class="grid-item-display">
+      <ConsoleView bind:this={consoleViewComponent} on:scrollstate={handleScrollState} />
+    </div>
+    <div class="grid-selection-area">
+      <SelectionArea {handleSmartAction} {isAtBottom} {consoleViewComponent} />
+    </div>
+  </main>
+{:else}
+  <LoginAndTaskView />
+{/if}
 
 <style>
   .pos-grid {

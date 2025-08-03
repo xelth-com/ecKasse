@@ -269,6 +269,9 @@ async function handleWebSocketMessage(ws, rawMessage) {
       const authService = require('./services/auth.service');
       const canPerform = await authService.canPerformAction(sessionId, action);
       responsePayload = { canPerform, action };
+    } else if (command === 'getLoginUsers') {
+      const authService = require('./services/auth.service');
+      responsePayload = await authService.getLoginUsers();
     
     // Pending transaction resolution
     } else if (command === 'resolvePendingTransaction') {
