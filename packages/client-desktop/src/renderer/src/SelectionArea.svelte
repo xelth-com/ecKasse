@@ -10,6 +10,7 @@
   import Pinpad from './lib/components/Pinpad.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
   import { pinpadStore } from './lib/pinpadStore.js';
+  import { uiConstantsStore } from './lib/uiConstantsStore.js';
   import BetrugerCapIconOutline from './lib/components/BetrugerCapIconOutline.svelte';
 
   let categories = [];
@@ -30,6 +31,7 @@
   
   // Props from parent
   export let isAtBottom = false;
+  export let consoleViewComponent = null;
   let containerHeight = 0;
   let gridCells = []; // Persistent grid structure
   
@@ -37,7 +39,7 @@
   export let handleSmartAction = () => {};
 
   // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
-  const MIN_BUTTON_SIZE = parseInt(process.env.MIN_BUTTON_WIDTH) || 160; // minimum button size for touch
+  $: MIN_BUTTON_SIZE = $uiConstantsStore.MIN_BUTTON_WIDTH; // minimum button size for touch
   
   // Separate gap constants for different purposes
   const HEX_BUTTON_GAP = 6; // 6px - gap between hex buttons (was 0.4rem = 6.4px)
@@ -548,11 +550,26 @@
     if (rightHalfCells.length > 0) {
       rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort top-to-bottom
 
-      // Slot 1 (Topmost): Layout Toggle
+      // Slot 1 (Topmost): Layout Toggle (with current language display)
       if (rightHalfCells[0]) {
+        const currentLang = $pinpadStore.currentLanguage;
+        const shapeType = layoutType === '6-6-6' ? 'rect' : 'hex';
+        
+        // Create SVG with language text inside the shape
+        const languageIcon = shapeType === 'rect' ? 
+          `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="5" width="46" height="40" rx="2" stroke="#666" stroke-width="1.5" fill="none"/>
+            <text x="25" y="25" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#666">${currentLang}</text>
+          </svg>` :
+          `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="25,2 47.99,12.5 47.99,37.5 25,48 2.01,37.5 2.01,12.5" stroke="#666" stroke-width="1.5" fill="none"/>
+            <text x="25" y="25" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#666">${currentLang}</text>
+          </svg>`;
+        
         rightHalfCells[0].content = { 
           isLayoutToggle: true, 
-          showShape: layoutType === '6-6-6' ? 'rect' : 'hex'
+          icon: languageIcon,
+          showShape: '' // Don't show additional shape since it's included in the SVG
         };
       }
       
@@ -1039,7 +1056,19 @@
     }
     if (!cell.content) return { disabled: true };
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
-    if (cell.content.isLayoutToggle) return { icon: cell.content.icon || '', onClick: toggleLayoutType, active: true, showShape: cell.content.showShape };
+    if (cell.content.isLayoutToggle) return { 
+      icon: cell.content.icon || '', 
+      onClick: toggleLayoutType, 
+      secondaryaction: () => {
+        // Long-press action: switch to agent console and show language selector
+        if (consoleViewComponent && typeof consoleViewComponent.displayLanguageSelector === 'function') {
+          consoleView.set('agent');
+          consoleViewComponent.displayLanguageSelector();
+        }
+      },
+      active: true, 
+      showShape: cell.content.showShape 
+    };
     if (cell.content.isSmartNavigation) {
       if (isAtBottom) {
         // Use overlapping windows icon when at bottom
@@ -1126,7 +1155,7 @@
   {#if $pinpadStore.isActive}
     <div class="pinpad-overlay" class:numeric={$pinpadStore.layout === 'numeric'} class:alpha={$pinpadStore.layout === 'alpha'}>
       <div class="pinpad-container" class:numeric={$pinpadStore.layout === 'numeric'} class:alpha={$pinpadStore.layout === 'alpha'}>
-          <Pinpad onClose={() => pinpadStore.deactivate()} minButtonSize={MIN_BUTTON_SIZE / 2} />
+          <Pinpad onClose={() => pinpadStore.deactivate()} minButtonSize={(MIN_BUTTON_SIZE / 4) * 3} />
       </div>
     </div>
   {/if}

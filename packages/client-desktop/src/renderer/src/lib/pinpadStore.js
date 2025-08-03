@@ -336,10 +336,29 @@ function createPinpadStore() {
             });
         },
 
-        switchLanguage() {
+        switchLanguage(lang = null) {
             update(state => {
-                if (!state.isActive || state.layout !== 'alpha') return state;
                 const languages = Object.keys(state.layouts);
+                
+                // If a specific language is provided and valid, use it directly
+                if (lang && languages.includes(lang)) {
+                    return {
+                        ...state,
+                        currentLanguage: lang
+                    };
+                }
+                
+                // Otherwise, cycle to the next language (original behavior)
+                if (!state.isActive || state.layout !== 'alpha') {
+                    // If not in alpha mode, still allow language switching for the indicator
+                    const currentIndex = languages.indexOf(state.currentLanguage);
+                    const nextIndex = (currentIndex + 1) % languages.length;
+                    return {
+                        ...state,
+                        currentLanguage: languages[nextIndex]
+                    };
+                }
+                
                 const currentIndex = languages.indexOf(state.currentLanguage);
                 const nextIndex = (currentIndex + 1) % languages.length;
                 return {

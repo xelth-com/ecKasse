@@ -14,12 +14,12 @@
   
   // Smart button handler - scroll down or cycle views (universal logic for all panels)
   function handleSmartAction() {
-    if (consoleViewComponent) {
+    if (consoleViewComponent && typeof consoleViewComponent.getIsAtBottom === 'function') {
       const currentIsAtBottom = consoleViewComponent.getIsAtBottom();
       
-      if (currentIsAtBottom) {
+      if (currentIsAtBottom && typeof consoleViewComponent.cycleViews === 'function') {
         consoleViewComponent.cycleViews();
-      } else {
+      } else if (typeof consoleViewComponent.scrollToBottom === 'function') {
         consoleViewComponent.scrollToBottom();
       }
     }
@@ -32,7 +32,7 @@
     <ConsoleView bind:this={consoleViewComponent} on:scrollstate={handleScrollState} />
   </div>
   <div class="grid-selection-area">
-    <SelectionArea {handleSmartAction} {isAtBottom} />
+    <SelectionArea {handleSmartAction} {isAtBottom} {consoleViewComponent} />
   </div>
 </main>
 

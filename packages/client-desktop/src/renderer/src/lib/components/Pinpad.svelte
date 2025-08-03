@@ -17,16 +17,44 @@
 
   const GAP = 6;
 
-  // Unified button sizing logic for both layouts
+  // Debounced container width to prevent excessive recalculations
+  let debouncedContainerWidth = 0;
+  let debounceTimer = null;
+  
+  // Cache previous values to avoid unnecessary recalculations
+  let lastLayout = null;
+  let lastLanguage = null;
+  let lastMinButtonSize = null;
+
+  // Watch for container width changes with debouncing
   $: {
-    if (containerWidth > 0) {
-      if ($pinpadStore.layout === 'alpha' && $pinpadStore.layouts && $pinpadStore.currentLanguage) {
+    if (containerWidth > 0 && Math.abs(containerWidth - debouncedContainerWidth) > 5) {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        debouncedContainerWidth = containerWidth;
+      }, 50); // 50ms debounce
+    }
+  }
+
+  // Unified button sizing logic for both layouts (only recalculate when necessary)
+  $: {
+    const currentLayout = $pinpadStore.layout;
+    const currentLanguage = $pinpadStore.currentLanguage;
+    
+    // Only recalculate if meaningful values have changed
+    if (debouncedContainerWidth > 0 && 
+        (lastLayout !== currentLayout || 
+         lastLanguage !== currentLanguage || 
+         lastMinButtonSize !== minButtonSize || 
+         (lastLayout === null && lastLanguage === null))) {
+      
+      if (currentLayout === 'alpha' && $pinpadStore.layouts && currentLanguage) {
         // Find the longest row in current layout
-        const currentLayout = $pinpadStore.layouts[$pinpadStore.currentLanguage];
-        const longestRowLength = Math.max(...currentLayout.map(row => row.length));
+        const layoutData = $pinpadStore.layouts[currentLanguage];
+        const longestRowLength = Math.max(...layoutData.map(row => row.length));
         
         // Calculate button width to fit all buttons across container width
-        const availableWidth = containerWidth - (GAP * (longestRowLength - 1));
+        const availableWidth = debouncedContainerWidth - (GAP * (longestRowLength - 1));
         let calculatedButtonWidth = Math.floor(availableWidth / longestRowLength);
         
         // Apply max width constraint: if calculated width > minButtonSize, cap it at minButtonSize
@@ -39,10 +67,10 @@
         // Calculate button height using 3:4 ratio (height:width)
         alphaButtonHeight = Math.floor(alphaButtonWidth * (3 / 4));
         
-      } else if ($pinpadStore.layout === 'numeric') {
+      } else if (currentLayout === 'numeric') {
         // Numeric keypad - use same unified logic
         const numericColumns = 4; // Numeric keypad has 4 columns
-        const availableWidth = containerWidth - (GAP * (numericColumns - 1));
+        const availableWidth = debouncedContainerWidth - (GAP * (numericColumns - 1));
         let calculatedButtonWidth = Math.floor(availableWidth / numericColumns);
         
         // Apply max width constraint: if calculated width > minButtonSize, cap it at minButtonSize
@@ -55,6 +83,11 @@
         // Calculate button height using 3:4 ratio (height:width) for consistency
         buttonHeight = Math.floor(buttonWidth * (3 / 4));
       }
+      
+      // Update cache
+      lastLayout = currentLayout;
+      lastLanguage = currentLanguage;
+      lastMinButtonSize = minButtonSize;
     }
   }
 

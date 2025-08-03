@@ -5,9 +5,11 @@
   import { receiptsStore } from './lib/receiptsStore.js';
   import { currentView } from './lib/viewStore.js';
   import { pinpadStore } from './lib/pinpadStore.js';
+  import { uiConstantsStore } from './lib/uiConstantsStore.js';
   import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
+  import UniversalButton from './lib/components/UniversalButton.svelte';
   
   const dispatch = createEventDispatcher();
 
@@ -133,7 +135,7 @@
     }
   }
 
-  const agentMessages = [
+  let agentMessages = [
     { timestamp: '10:30', type: 'user', message: 'Найди товар Кофе' },
     { timestamp: '10:30', type: 'agent', message: 'Поиск товара "Кофе"... Найден товар: Кофе Эспрессо - 2.50€' },
     { timestamp: '10:31', type: 'user', message: 'Создай товар Капучино цена 3.00 категория Напитки' },
@@ -141,6 +143,59 @@
     { timestamp: '10:32', type: 'user', message: 'Покажи все товары в категории Напитки' },
     { timestamp: '10:32', type: 'agent', message: 'Товары в категории "Напитки":\n- Кофе Эспрессо - 2.50€\n- Капучино - 3.00€\n- Американо - 2.00€' },
   ];
+
+  // Language selector functionality
+  function displayLanguageSelector() {
+    const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const languageMessage = {
+      timestamp,
+      type: 'agent',
+      message: 'Select language / Sprache auswählen / Выберите язык:',
+      actions: [
+        { id: 'lang-de', label: 'DE', action: 'selectLanguage', param: 'DE' },
+        { id: 'lang-en', label: 'EN', action: 'selectLanguage', param: 'EN' },
+        { id: 'lang-ru', label: 'RU', action: 'selectLanguage', param: 'RU' }
+      ]
+    };
+    
+    agentMessages = [...agentMessages, languageMessage];
+    
+    // Auto-scroll to bottom after adding the message
+    setTimeout(() => {
+      if (agentScrollElement) {
+        agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+        checkScrollPosition();
+      }
+    }, 100);
+  }
+
+  // Handle action clicks on agent messages
+  function handleAgentAction(action, param) {
+    if (action === 'selectLanguage') {
+      // Update the language in the pinpad store
+      pinpadStore.switchLanguage(param);
+      
+      // Remove the language selector message by filtering it out
+      agentMessages = agentMessages.filter(msg => !msg.actions);
+      
+      // Add confirmation message
+      const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const confirmationMessage = {
+        timestamp,
+        type: 'agent',
+        message: `Language changed to ${param}`
+      };
+      agentMessages = [...agentMessages, confirmationMessage];
+      
+      // Auto-scroll to bottom
+      setTimeout(() => {
+        if (agentScrollElement) {
+          agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+          checkScrollPosition();
+        }
+      }, 100);
+    }
+  }
 
   function selectView(viewId) {
     lastActivatedView = viewId; // Update the last activated view
@@ -236,7 +291,7 @@
   }
   
   // Export functions for use by SelectionArea
-  export { scrollToBottom, cycleViews, getIsAtBottom };
+  export { scrollToBottom, cycleViews, getIsAtBottom, displayLanguageSelector };
 </script>
 
 <div class="console-view">
@@ -303,6 +358,23 @@
                 <span class="message-timestamp">{message.timestamp}</span>
                 <span class="message-type">{message.type === 'user' ? 'User' : 'Agent'}</span>
                 <div class="message-content">{message.message}</div>
+                {#if message.actions}
+                  <div class="message-actions">
+                    {#each message.actions as action}
+                      <UniversalButton
+                        content={{
+                          display: action.label,
+                          action: () => handleAgentAction(action.action, action.param)
+                        }}
+                        size={{
+                          width: $uiConstantsStore.MIN_BUTTON_WIDTH,
+                          height: Math.round($uiConstantsStore.MIN_BUTTON_WIDTH * 0.4)
+                        }}
+                        style="rectangular"
+                      />
+                    {/each}
+                  </div>
+                {/if}
               </div>
             {/each}
           </div>
@@ -532,6 +604,13 @@
   .message-content {
     white-space: pre-wrap;
     line-height: 1.4;
+  }
+
+  .message-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
   }
 
   h2 {
