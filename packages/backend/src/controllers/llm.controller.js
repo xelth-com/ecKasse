@@ -6,7 +6,7 @@ const logger = require('../config/logger');
 let globalChatHistory = []; 
 
 async function handleGeminiPing(req, res, next) {
-  const { message, history } = req.body; // Expect history to be passed if continuing a conversation
+  const { message, history, sessionId } = req.body; // Expect history and sessionId to be passed
 
   if (!message) {
     logger.warn({type: 'http_request', direction: 'in', msg: 'Gemini ping request without message body'});
@@ -17,7 +17,7 @@ async function handleGeminiPing(req, res, next) {
   const currentHistory = history || globalChatHistory;
 
   try {
-    const geminiServiceResponse = await llmService.sendMessage(message, currentHistory);
+    const geminiServiceResponse = await llmService.sendMessage(message, currentHistory, sessionId);
     
     // Update global history (for next turn in this simple demo)
     // In a real app, manage this per session.

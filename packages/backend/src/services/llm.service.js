@@ -11,7 +11,7 @@ const knex = require('../db/knex');
 const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErrorHandler');
 const { searchProducts } = require('./search.service');
 const { generateSalesReport } = require('./reporting.service');
-const { createProduct } = require('./product.service');
+const { createProduct, updateExistingProduct } = require('./product.service');
 
 // Language detection utilities
 const LANGUAGE_PATTERNS = {
@@ -190,20 +190,51 @@ const getSalesReportDeclaration = {
     }
 };
 
+const updateProductDeclaration = {
+    name: "updateProduct",
+    description: "Use this tool to update an existing product in the database. You can modify the name, price, category, or description. For example: 'Change the price of Latte to 4.00' or 'Update Cappuccino category to Hot Drinks'.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            productName: {
+                type: Type.STRING,
+                description: "The current name of the product to update"
+            },
+            newName: {
+                type: Type.STRING,
+                description: "New name for the product (optional)"
+            },
+            newPrice: {
+                type: Type.NUMBER,
+                description: "New price for the product (optional)"
+            },
+            newCategoryName: {
+                type: Type.STRING,
+                description: "New category name for the product (optional)"
+            },
+            newDescription: {
+                type: Type.STRING,
+                description: "New description for the product (optional)"
+            }
+        },
+        required: ["productName"]
+    }
+};
+
 // Tools configuration EXACTLY like working version
 const toolsConfig = {
-    functionDeclarations: [findProductDeclaration, createProductDeclaration, getSalesReportDeclaration]
+    functionDeclarations: [findProductDeclaration, createProductDeclaration, getSalesReportDeclaration, updateProductDeclaration]
 };
 
 // Tool function implementations
 const toolFunctions = {
-    findProduct: async (args) => {
+    findProduct: async (args, sessionId) => {
         const productName = args.query;
         const filters = {
             excludeAllergens: args.excludeAllergens || [],
             dietaryFilter: args.dietaryFilter || null
         };
-        logger.info({ tool: 'findProduct', input: productName, filters }, '🤖 Agent is using hybrid product search with filters...');
+        logger.info({ tool: 'findProduct', input: productName, filters, sessionId }, '🤖 Agent is using hybrid product search with filters...');
         try {
             const searchResult = await searchProducts(productName, filters);
             logger.info({ searchMetadata: searchResult.metadata }, `Search complete: ${searchResult.metadata?.searchMethod}`);
@@ -219,8 +250,8 @@ const toolFunctions = {
         }
     },
     
-    createProduct: async (args) => {
-        logger.info({ tool: 'createProduct', input: args }, '🤖 Agent is calling the real product service...');
+    createProduct: async (args, sessionId) => {
+        logger.info({ tool: 'createProduct', input: args, sessionId }, '🤖 Agent is calling the real product service...');
         try {
             const productData = {
                 name: args.name,
@@ -229,7 +260,10 @@ const toolFunctions = {
                 description: args.description || `A new ${args.name}`
             };
             
-            const result = await createProduct(productData);
+            // Pass sessionId-based initiator context to createProduct
+            const initiator = sessionId ? { type: 'user_via_ai', sessionId } : { type: 'system', id: null };
+            
+            const result = await createProduct(productData, initiator);
             return result;
         } catch (error) {
             logger.error({ tool: 'createProduct', error: error.message }, 'Error in createProduct tool');
@@ -241,8 +275,8 @@ const toolFunctions = {
         }
     },
     
-    getSalesReport: async (args) => {
-        logger.info({ tool: 'getSalesReport', input: args }, '🤖 Agent is calling the real reporting service...');
+    getSalesReport: async (args, sessionId) => {
+        logger.info({ tool: 'getSalesReport', input: args, sessionId }, '🤖 Agent is calling the real reporting service...');
         try {
             const period = args.period || 'today';
             const groupBy = args.groupBy || 'none';
@@ -253,6 +287,50 @@ const toolFunctions = {
             return {
                 success: false,
                 message: 'Error generating sales report: ' + error.message,
+                error: error.message
+            };
+        }
+    },
+    
+    updateProduct: async (args, sessionId) => {
+        logger.info({ tool: 'updateProduct', input: args, sessionId }, '🤖 Agent is calling the real product service to update product...');
+        try {
+            const { productName, newName, newPrice, newCategoryName, newDescription } = args;
+            
+            // First, find the product by name using the search service
+            logger.info({ productName }, 'Finding product by name before update');
+            const searchResult = await searchProducts(productName);
+            
+            if (!searchResult.success || !searchResult.results || searchResult.results.length === 0) {
+                return {
+                    success: false,
+                    message: `Product '${productName}' not found. Please check the product name and try again.`,
+                    error: 'Product not found'
+                };
+            }
+            
+            // Use the first matching product
+            const product = searchResult.results[0];
+            const productId = product.id;
+            
+            logger.info({ productId, productName: product.name }, 'Found product, proceeding with update');
+            
+            // Prepare updates object with only the fields that were provided
+            const updates = {};
+            if (newName) updates.name = newName;
+            if (newPrice !== undefined) updates.price = newPrice;
+            if (newCategoryName) updates.categoryName = newCategoryName;
+            if (newDescription) updates.description = newDescription;
+            
+            logger.info({ productId, updates, sessionId }, 'Calling updateExistingProduct with user session');
+            const result = await updateExistingProduct(productId, updates, sessionId);
+            
+            return result;
+        } catch (error) {
+            logger.error({ tool: 'updateProduct', error: error.message }, 'Error in updateProduct tool');
+            return {
+                success: false,
+                message: 'Error updating product: ' + error.message,
                 error: error.message
             };
         }
@@ -306,7 +384,14 @@ function createSystemPrompt(conversationLanguage = 'ru') {
 - User: "Find coffee" → You MUST call: findProduct({"query": "coffee"})
 - User: "Show me mugs" → You MUST call: findProduct({"query": "mugs"})
 
-Your primary goal is to translate the user's request into the most effective tool call. If the user mentions dietary needs or allergies, you MUST use the corresponding filter parameters in the \`findProduct\` tool.
+**MANDATORY Product Update Examples - You MUST follow these patterns:**
+- User: "измени цену Eco Mug на 15.50" → You MUST call: updateProduct({"productName": "Eco Mug", "newPrice": 15.50})
+- User: "change the price of Latte to 4.00" → You MUST call: updateProduct({"productName": "Latte", "newPrice": 4.00})
+- User: "поменяй категорию Cappuccino на Hot Drinks" → You MUST call: updateProduct({"productName": "Cappuccino", "newCategoryName": "Hot Drinks"})
+- User: "rename Super Widget to Premium Widget" → You MUST call: updateProduct({"productName": "Super Widget", "newName": "Premium Widget"})
+- User: "обнови описание для Coffee на 'Fresh roasted coffee'" → You MUST call: updateProduct({"productName": "Coffee", "newDescription": "Fresh roasted coffee"})
+
+Your primary goal is to translate the user's request into the most effective tool call. If the user mentions dietary needs or allergies, you MUST use the corresponding filter parameters in the \`findProduct\` tool. For product updates, ALWAYS use the updateProduct tool when users want to modify existing products.
 
 **Context Handling Examples:**
 - Previous: "I found Eco Mug for 12.50€" → User: "how much does it cost?" → You: "Eco Mug costs 12.50€" (NO tool call needed)
@@ -330,7 +415,7 @@ When using the findProduct tool, interpret the response according to these rules
 5. **Response Language:** Always formulate your response in your current primary language (${conversationLanguage}), unless the language handling rules above indicate a switch.`;
 }
 
-async function sendMessage(userMessage, chatHistory = []) {
+async function sendMessage(userMessage, chatHistory = [], sessionId = null) {
     // Enhanced logging for debugging
     console.log(`[AGENT_INPUT] User Message: "${userMessage}"`);
     console.log(`[AGENT_INPUT] Chat History Length: ${chatHistory.length}`);
@@ -450,7 +535,7 @@ async function sendMessage(userMessage, chatHistory = []) {
                     
                     if (toolFunctions[functionName]) {
                         try {
-                            const functionResult = await toolFunctions[functionName](functionArgs);
+                            const functionResult = await toolFunctions[functionName](functionArgs, sessionId);
                             
                             // Enhanced logging for tool result
                             console.log(`[TOOL_RESULT] Raw result from tool "${functionName}": ${JSON.stringify(functionResult, null, 2)}`);

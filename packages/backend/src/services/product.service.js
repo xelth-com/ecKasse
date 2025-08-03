@@ -358,6 +358,16 @@ async function createPendingProductUpdate(trx, id, updates, userSession, current
         })
     });
 
+    // Log fiscal event for pending change creation
+    await loggingService.logFiscalEvent('master_data_change_pending', userSession.user_id, {
+        entity: 'product',
+        product_id: id,
+        change_id: changeId,
+        changes: updates,
+        priority: priority,
+        initiator: { type: 'user', id: userSession.user_id, username: userSession.username }
+    });
+
     logger.info({ 
         productId: id,
         changeId,

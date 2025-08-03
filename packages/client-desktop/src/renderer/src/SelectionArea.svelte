@@ -9,6 +9,7 @@
   import UniversalButton from './lib/components/UniversalButton.svelte';
   import Pinpad from './lib/components/Pinpad.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
+  import ProductEditorModal from './lib/components/ProductEditorModal.svelte';
   import { pinpadStore } from './lib/pinpadStore.js';
   import { agentStore } from './lib/agentStore.js';
   import { uiConstantsStore } from './lib/uiConstantsStore.js';
@@ -27,6 +28,10 @@
   let contextMenuItem = null;
   let contextMenuX = 0;
   let contextMenuY = 0;
+  
+  // Editor modal state
+  let isEditorVisible = false;
+  let productToEdit = null;
   
   let containerWidth = 0;
   
@@ -1047,10 +1052,62 @@
   function handleContextMenuEdit(event) {
     const { item } = event.detail;
     console.log('Edit item:', item);
-    // TODO: Implement edit functionality - open edit dialog/modal
-    // For now, just log the item to console
+    
     const itemType = item.category_names ? 'Category' : 'Product';
+    
+    // Only handle product editing for now
+    if (itemType === 'Product') {
+      productToEdit = item;
+      isEditorVisible = true;
+      // Close context menu
+      contextMenuVisible = false;
+    } else {
+      console.log('Category editing not implemented yet');
+    }
     addLog('INFO', `Edit requested for: ${item.id} - ${itemType}`);
+  }
+
+  // Product editor modal handlers
+  async function handleSaveProduct(event) {
+    const { productId, updates } = event.detail;
+    
+    try {
+      addLog('INFO', `Saving product changes for ID: ${productId}`);
+      
+      // Send updateProduct command via WebSocket
+      const response = await $wsStore.sendMessage({
+        command: 'updateProduct',
+        payload: {
+          productId: productId,
+          updates: updates,
+          sessionId: 'admin-session-placeholder' // TODO: Use actual session ID
+        }
+      });
+      
+      if (response && response.success) {
+        addLog('SUCCESS', `Product updated successfully: ${JSON.stringify(response)}`);
+        
+        // Refresh the current view to show updated data
+        if (currentView === 'products' && selectedCategory) {
+          await loadProductsForCategory(selectedCategory.id);
+        }
+      } else {
+        addLog('ERROR', `Failed to update product: ${response?.message || 'Unknown error'}`);
+      }
+      
+    } catch (error) {
+      console.error('Error saving product:', error);
+      addLog('ERROR', `Error saving product: ${error.message}`);
+    }
+    
+    // Close the modal
+    isEditorVisible = false;
+    productToEdit = null;
+  }
+
+  function handleCloseEditor() {
+    isEditorVisible = false;
+    productToEdit = null;
   }
 
   // Universal button rendering function
@@ -1234,6 +1291,13 @@
     visible={contextMenuVisible} 
     on:close={handleContextMenuClose}
     on:edit={handleContextMenuEdit}
+  />
+
+  <ProductEditorModal 
+    visible={isEditorVisible} 
+    product={productToEdit} 
+    on:save={handleSaveProduct}
+    on:close={handleCloseEditor}
   />
 
   
