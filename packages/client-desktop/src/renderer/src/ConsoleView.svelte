@@ -372,6 +372,15 @@
                 {/if}
               </div>
             {/each}
+            
+            <!-- Draft message -->
+            {#if $agentStore.draftMessage}
+              <div class="agent-message user draft">
+                <span class="message-timestamp">{$agentStore.draftMessage.timestamp}</span>
+                <span class="message-type">User</span>
+                <div class="message-content">{$agentStore.draftMessage.message}<span class="cursor">|</span></div>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -645,5 +654,20 @@
     z-index: 1;
     pointer-events: none;
   }
+
+  .agent-message.draft {
+    opacity: 0.8;
+    border: 2px dashed #4a69bd;
+  }
+
+  .cursor {
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
 
 </style>

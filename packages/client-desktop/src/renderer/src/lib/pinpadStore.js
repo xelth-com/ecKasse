@@ -68,7 +68,7 @@ function createPinpadStore() {
             });
         },
 
-        append(char) {
+        append(char, agentStore = null) {
             update(state => {
                 if (!state.isActive) return state;
                 
@@ -76,9 +76,17 @@ function createPinpadStore() {
                     const text = state.liveValue.text;
                     const cursor = state.liveValue.cursor;
                     const newText = text.slice(0, cursor) + char + text.slice(cursor);
+                    const newLiveValue = { text: newText, cursor: cursor + 1 };
+                    console.log('Pinpad append:', char, '-> liveValue:', newLiveValue);
+                    
+                    // Update agent store draft message if in agent mode and agentStore provided
+                    if (state.mode === 'agent' && agentStore) {
+                        agentStore.updateDraftMessage(newText);
+                    }
+                    
                     return {
                         ...state,
-                        liveValue: { text: newText, cursor: cursor + 1 },
+                        liveValue: newLiveValue,
                         errorMessage: null
                     };
                 } else {
@@ -92,7 +100,7 @@ function createPinpadStore() {
             });
         },
 
-        backspace() {
+        backspace(agentStore = null) {
             update(state => {
                 if (!state.isActive) return state;
                 
@@ -101,12 +109,21 @@ function createPinpadStore() {
                     const cursor = state.liveValue.cursor;
                     if (cursor > 0) {
                         const newText = text.slice(0, cursor - 1) + text.slice(cursor);
+                        const newLiveValue = { text: newText, cursor: cursor - 1 };
+                        console.log('Pinpad backspace -> liveValue:', newLiveValue);
+                        
+                        // Update agent store draft message if in agent mode and agentStore provided
+                        if (state.mode === 'agent' && agentStore) {
+                            agentStore.updateDraftMessage(newText);
+                        }
+                        
                         return {
                             ...state,
-                            liveValue: { text: newText, cursor: cursor - 1 },
+                            liveValue: newLiveValue,
                             errorMessage: null
                         };
                     }
+                    console.log('Pinpad backspace (no change) -> liveValue:', state.liveValue);
                     return { ...state, errorMessage: null };
                 } else {
                     // Numeric mode - keep existing behavior
@@ -119,9 +136,15 @@ function createPinpadStore() {
             });
         },
 
-        clear() {
+        clear(agentStore = null) {
             update(state => {
                 if (!state.isActive) return state;
+                
+                // Update agent store draft message if in agent mode and agentStore provided
+                if (state.mode === 'agent' && agentStore) {
+                    agentStore.updateDraftMessage('');
+                }
+                
                 return {
                     ...state,
                     liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
@@ -130,7 +153,7 @@ function createPinpadStore() {
             });
         },
 
-        async confirm() {
+        async confirm(agentStore = null) {
             let state;
             let callback;
             let value;
@@ -145,6 +168,11 @@ function createPinpadStore() {
             
             callback = state.confirmCallback;
             value = state.layout === 'alpha' ? state.liveValue.text : state.liveValue;
+            
+            // Finalize draft message if in agent mode and agentStore provided
+            if (state.mode === 'agent' && agentStore) {
+                agentStore.finalizeDraftMessage();
+            }
             
             try {
                 // Execute callback and wait for it to complete
@@ -182,7 +210,7 @@ function createPinpadStore() {
             }
         },
 
-        cancel() {
+        cancel(agentStore = null) {
             update(state => {
                 const now = Date.now();
                 const timeSinceLastClick = now - state.lastRedClickTime;
@@ -191,6 +219,12 @@ function createPinpadStore() {
                 if (timeSinceLastClick < 300) {
                     // Double click - full cancel
                     const callback = state.cancelCallback;
+                    
+                    // Cancel draft message if in agent mode and agentStore provided
+                    if (state.mode === 'agent' && agentStore) {
+                        agentStore.cancelDraftMessage();
+                    }
+                    
                     const newState = {
                         isActive: false,
                         mode: null,
@@ -211,6 +245,11 @@ function createPinpadStore() {
                     return newState;
                 } else {
                     // Single click - just clear
+                    // Update agent store draft message if in agent mode and agentStore provided
+                    if (state.mode === 'agent' && agentStore) {
+                        agentStore.updateDraftMessage('');
+                    }
+                    
                     return {
                         ...state,
                         liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
@@ -309,7 +348,12 @@ function createPinpadStore() {
             );
         },
 
-        activateAlphaInput(confirmCallback, cancelCallback) {
+        activateAlphaInput(confirmCallback, cancelCallback, agentStore = null) {
+            // Start draft message in agent store if provided
+            if (agentStore) {
+                agentStore.startDraftMessage();
+            }
+            
             this.activate('agent', confirmCallback, cancelCallback, 'alpha');
         },
 

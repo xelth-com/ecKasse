@@ -10,6 +10,7 @@
   import Pinpad from './lib/components/Pinpad.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
   import { pinpadStore } from './lib/pinpadStore.js';
+  import { agentStore } from './lib/agentStore.js';
   import { uiConstantsStore } from './lib/uiConstantsStore.js';
   import BetrugerCapIconOutline from './lib/components/BetrugerCapIconOutline.svelte';
 
@@ -966,7 +967,8 @@
       },
       () => {
         addLog('INFO', 'Gemini input cancelled.');
-      }
+      },
+      agentStore
     );
   }
 
@@ -981,7 +983,8 @@
         },
         () => {
           addLog('INFO', 'Keyboard input cancelled.');
-        }
+        },
+        agentStore
       );
       addLog('INFO', 'Keyboard opened');
     }

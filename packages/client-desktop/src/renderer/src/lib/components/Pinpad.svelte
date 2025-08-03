@@ -1,5 +1,6 @@
 <script>
   import { pinpadStore } from '../pinpadStore.js';
+  import { agentStore } from '../agentStore.js';
   
   export let onClose = () => {};
   export let minButtonSize = 160;
@@ -92,19 +93,19 @@
   }
 
   function handleKeyClick(key) {
-    pinpadStore.append(key);
+    pinpadStore.append(key, agentStore);
   }
 
   function handleBackspace() {
-    pinpadStore.backspace();
+    pinpadStore.backspace(agentStore);
   }
 
   function handleConfirm() {
-    pinpadStore.confirm();
+    pinpadStore.confirm(agentStore);
   }
 
   function handleCancel() {
-    pinpadStore.cancel();
+    pinpadStore.cancel(agentStore);
   }
 
   function handleCloseDoubleClick() {
@@ -117,7 +118,7 @@
     longPressTimer = setTimeout(() => {
       if (pressedKey === key) {
         // Long press detected - input uppercase
-        pinpadStore.append(key.toUpperCase());
+        pinpadStore.append(key.toUpperCase(), agentStore);
         pressedKey = null;
       }
     }, 500); // 500ms for long press
@@ -131,7 +132,7 @@
     
     // If we had a pressed key but timer didn't fire, it's a short press
     if (pressedKey) {
-      pinpadStore.append(pressedKey.toLowerCase());
+      pinpadStore.append(pressedKey.toLowerCase(), agentStore);
       pressedKey = null;
     }
   }
