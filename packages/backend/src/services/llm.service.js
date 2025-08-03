@@ -1,7 +1,10 @@
 // File: /packages/backend/src/services/llm.service.js
 
 const { Type } = require("@google/genai");
-const { getGeminiModel } = require('./llm.provider');
+const { getGeminiModel, geminiClient } = require('./llm.provider');
+
+// For direct API calls
+const genAI = geminiClient;
 
 const logger = require('../config/logger');
 const knex = require('../db/knex');
@@ -324,210 +327,164 @@ When using the findProduct tool, interpret the response according to these rules
 5. **Response Language:** Always formulate your response in your current primary language (${conversationLanguage}), unless the language handling rules above indicate a switch.`;
 }
 
+function getPrioritizedModels() {
+    return [
+        { name: "gemini-2.5-flash", temperature: 0.1 },
+        { name: "gemini-2.0-flash", temperature: 0.1 }
+    ];
+}
+
 async function sendMessage(userMessage, chatHistory = []) {
-    // Enhanced logging for debugging
     console.log(`[AGENT_INPUT] User Message: "${userMessage}"`);
     console.log(`[AGENT_INPUT] Chat History Length: ${chatHistory.length}`);
-    
     logger.info({ msg: 'Message received by native Gemini service', message: userMessage });
-    
-    // Get current language state from conversation
+
     const languageState = getLanguageState(chatHistory);
     let currentLanguage = languageState.current_language;
-    
-    // Detect language of the current user message
     const detectedLanguage = detectLanguage(userMessage);
     logger.info({ msg: 'Language analysis', currentLanguage, detectedLanguage, isShortPhrase: isShortPhrase(userMessage) });
-    
-    // Check for explicit language switch command
+
     const explicitLanguageCommand = detectExplicitLanguageCommand(userMessage);
-    
-    // Determine if we should switch conversation language
-    let shouldSwitchLanguage = false;
     let newLanguage = currentLanguage;
-    
     if (explicitLanguageCommand) {
-        // User explicitly requested a language switch
-        shouldSwitchLanguage = true;
         newLanguage = explicitLanguageCommand;
-        logger.info({ msg: 'Explicit language command detected', newLanguage });
-    } else if (detectedLanguage !== currentLanguage) {
-        // User message is in a different language
-        if (isShortPhrase(userMessage)) {
-            // Short phrase - likely a product name, keep current language
-            logger.info({ msg: 'Short phrase detected, keeping current language', currentLanguage });
-        } else {
-            // Full sentence - switch conversation language
-            shouldSwitchLanguage = true;
-            newLanguage = detectedLanguage;
-            logger.info({ msg: 'Full sentence in new language detected, switching', newLanguage });
-        }
+    } else if (detectedLanguage !== currentLanguage && !isShortPhrase(userMessage)) {
+        newLanguage = detectedLanguage;
     }
-    
-    // Update chat history with new language state if needed
+
     let updatedChatHistory = chatHistory;
-    if (shouldSwitchLanguage) {
+    if (newLanguage !== currentLanguage) {
         updatedChatHistory = updateLanguageState(chatHistory, newLanguage);
         currentLanguage = newLanguage;
+        logger.info({ msg: 'Language switched', newLanguage });
     }
-    
-    // Convert chat history to native SDK format
-    const history = updatedChatHistory.filter(msg => !msg._languageState).map(msg => {
-        const content = Array.isArray(msg.parts) ? msg.parts.map(p => p.text).join('') : msg.parts;
-        return {
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: content }]
-        };
-    });
     
     const modelConfig = getDefaultModelConfig();
     const modelName = modelConfig.name;
     logger.info({ msg: `Using model ${modelName}`, conversationLanguage: currentLanguage });
     
     try {
-            // Enhanced logging for first Gemini call
-            const systemPrompt = createSystemPrompt(currentLanguage);
-            console.log(`[GEMINI_CALL_1] System Prompt: "${systemPrompt}"`);
-            console.log(`[GEMINI_CALL_1] Sending request to model...`);
+        // Enhanced logging for Gemini call
+        const systemPrompt = createSystemPrompt(currentLanguage);
+        console.log(`[GEMINI_CALL] System Prompt: "${systemPrompt}"`);
+        console.log(`[GEMINI_CALL] Sending request to model...`);
+        
+        // Get model with configuration
+        const model = getGeminiModel({
+            modelName: modelName
+        });
+        
+        // Convert chat history to startChat format
+        const history = updatedChatHistory.filter(msg => !msg._languageState).map(msg => {
+            const content = Array.isArray(msg.parts) ? msg.parts.map(p => p.text).join('') : msg.parts;
+            return {
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: content }]
+            };
+        });
+        
+        // Start chat with proper configuration
+        console.log(`[DEBUG] Starting chat with model ${modelName}`);
+        console.log(`[DEBUG] History length: ${history.length}`);
+        console.log(`[DEBUG] Tools config:`, JSON.stringify(toolsConfig, null, 2));
+        
+        const chat = model.startChat({
+            history: history,
+            tools: [toolsConfig],
+            systemInstruction: createSystemPrompt(currentLanguage),
+            generationConfig: {
+                temperature: modelConfig.temperature
+            }
+        });
+        
+        console.log(`[DEBUG] Chat started successfully`);
+        
+        let result = await chat.sendMessage(userMessage);
+        
+        // For @google/genai SDK, result has candidates structure
+        if (!result.candidates || result.candidates.length === 0) {
+            throw new Error('No candidates in response');
+        }
+        
+        const candidate = result.candidates[0];
+        const content = candidate.content;
+        const functionCalls = content.parts && content.parts.some(part => part.functionCall) 
+            ? content.parts.filter(part => part.functionCall)
+            : [];
+        
+        let responseText;
+        
+        if (functionCalls && functionCalls.length > 0) {
+            logger.info({ msg: 'Function calls detected', count: functionCalls.length, functions: functionCalls.map(fc => fc.functionCall.name) });
             
-            // Use the native SDK generateContent API
-            const model = getGeminiModel({ modelName });
-            let result = await model.generateContent({
-                model: modelName,
-                systemInstruction: createSystemPrompt(currentLanguage),
-                contents: [
-                    ...history,
-                    { role: 'user', parts: [{ text: userMessage }] }
-                ],
-                config: {
-                    tools: [toolsConfig],
-                    generationConfig: {
-                        temperature: modelConfig.temperature
-                    }
+            const toolResponses = await Promise.all(functionCalls.map(async (part) => {
+                const functionCall = part.functionCall;
+                const functionName = functionCall.name;
+                const functionArgs = functionCall.args;
+                
+                // Enhanced logging for tool execution
+                console.log(`[TOOL_EXEC] Attempting to execute tool: "${functionName}"`);
+                console.log(`[TOOL_EXEC] Arguments: ${JSON.stringify(functionArgs, null, 2)}`);
+                
+                if (toolFunctions[functionName]) {
+                    const functionResult = await toolFunctions[functionName](functionArgs);
+                    return {
+                        functionResponse: {
+                            name: functionName,
+                            response: functionResult,
+                        },
+                    };
+                } else {
+                    return {
+                        functionResponse: {
+                            name: functionName,
+                            response: { error: `Unknown function: ${functionName}` },
+                        },
+                    };
                 }
-            });
+            }));
             
-            // The result structure has candidates array, not a response property
-            if (!result.candidates || result.candidates.length === 0) {
-                throw new Error('No candidates in response');
+            // Send function responses back to the chat
+            const finalResult = await chat.sendMessage(toolResponses);
+            
+            if (!finalResult.candidates || finalResult.candidates.length === 0) {
+                throw new Error('No candidates in function response');
             }
             
-            const candidate = result.candidates[0];
-            let content = candidate.content;
-            
-            // Enhanced logging for response analysis
-            const functionCalls = content.parts && content.parts.some(part => part.functionCall) 
-                ? content.parts.filter(part => part.functionCall).map(part => part.functionCall)
-                : [];
-            console.log('[GEMINI_RESPONSE_1] Raw model response received.');
-            console.log(`[GEMINI_RESPONSE_1] Parsed Function Calls: ${JSON.stringify(functionCalls, null, 2)}`);
-            
-            // Check for function calls and handle tool execution loop
-            if (content.parts && content.parts.some(part => part.functionCall)) {
-                const functionCallParts = content.parts.filter(part => part.functionCall);
-                logger.info({ msg: 'Function calls detected', count: functionCallParts.length, functions: functionCallParts.map(fc => fc.functionCall.name) });
-                
-                const functionResponseParts = [];
-                
-                // Execute all function calls
-                for (const part of functionCallParts) {
-                    const functionCall = part.functionCall;
-                    const functionName = functionCall.name;
-                    const functionArgs = functionCall.args;
-                    
-                    // Enhanced logging for tool execution
-                    console.log(`[TOOL_EXEC] Attempting to execute tool: "${functionName}"`);
-                    console.log(`[TOOL_EXEC] Arguments: ${JSON.stringify(functionArgs, null, 2)}`);
-                    
-                    logger.info({ msg: `Executing function: ${functionName}`, args: functionArgs });
-                    
-                    if (toolFunctions[functionName]) {
-                        try {
-                            const functionResult = await toolFunctions[functionName](functionArgs);
-                            
-                            // Enhanced logging for tool result
-                            console.log(`[TOOL_RESULT] Raw result from tool "${functionName}": ${JSON.stringify(functionResult, null, 2)}`);
-                            
-                            functionResponseParts.push({
-                                functionResponse: {
-                                    name: functionName,
-                                    response: functionResult
-                                }
-                            });
-                        } catch (error) {
-                            logger.error({ msg: `Error executing function ${functionName}`, error: error.message });
-                            functionResponseParts.push({
-                                functionResponse: {
-                                    name: functionName,
-                                    response: { error: `Error executing ${functionName}: ${error.message}` }
-                                }
-                            });
-                        }
-                    } else {
-                        logger.error({ msg: `Unknown function: ${functionName}` });
-                        functionResponseParts.push({
-                            functionResponse: {
-                                name: functionName,
-                                response: { error: `Unknown function: ${functionName}` }
-                            }
-                        });
-                    }
-                }
-                
-                // Enhanced logging for second Gemini call
-                console.log('[GEMINI_CALL_2] Sending tool results back to model for final response.');
-                
-                // Send function responses back to the model
-                result = await model.generateContent({
-                    model: modelName,
-                    systemInstruction: createSystemPrompt(currentLanguage),
-                    contents: [
-                        ...history,
-                        { role: 'user', parts: [{ text: userMessage }] },
-                        { role: 'model', parts: content.parts },
-                        { role: 'user', parts: functionResponseParts }
-                    ],
-                    config: {
-                        tools: [toolsConfig],
-                        generationConfig: {
-                            temperature: modelConfig.temperature
-                        }
-                    }
-                });
-                
-                if (!result.candidates || result.candidates.length === 0) {
-                    throw new Error('No candidates in function response');
-                }
-                content = result.candidates[0].content;
-            }
-            
-            // Extract text from content parts
-            const responseText = content.parts
+            responseText = finalResult.candidates[0].content.parts
                 .filter(part => part.text)
                 .map(part => part.text)
                 .join('');
-            
-            // Enhanced logging for final output
-            console.log(`[AGENT_OUTPUT] "${responseText}"`);
-            
-            logger.info({ msg: `Model ${modelName} succeeded`, response_length: responseText.length });
-            
-            // Create new history with language state preserved
-            const newHistory = [
-                ...updatedChatHistory,
-                { role: 'user', parts: [{ text: userMessage }] },
-                { role: 'model', parts: [{ text: responseText }] },
-            ];
-            
-            // Ensure language state is preserved in the new history
-            if (newHistory.length > 0 && shouldSwitchLanguage) {
-                newHistory[0]._languageState = { current_language: currentLanguage };
-            }
-            
-            return { text: responseText, history: newHistory };
-            
+        } else {
+            responseText = content.parts
+                .filter(part => part.text)
+                .map(part => part.text)
+                .join('');
+        }
+        
+        // Enhanced logging for final output
+        console.log(`[AGENT_OUTPUT] "${responseText}"`);
+        
+        logger.info({ msg: `Model ${modelName} succeeded`, response_length: responseText.length });
+        
+        // Create new history with language state preserved
+        const newHistory = [
+            ...updatedChatHistory,
+            { role: 'user', parts: [{ text: userMessage }] },
+            { role: 'model', parts: [{ text: responseText }] },
+        ];
+        
+        // Ensure language state is preserved in the new history
+        if (newHistory.length > 0 && newLanguage !== languageState.current_language) {
+            newHistory[0]._languageState = { current_language: currentLanguage };
+        }
+        
+        return { text: responseText, history: newHistory };
+        
     } catch (error) {
-        logger.error({ msg: `Model ${modelName} failed`, error: error.message });
+        console.error(`[ERROR] LLM Service failed:`, error);
+        console.error(`[ERROR] Stack trace:`, error.stack);
+        logger.error({ msg: `Model ${modelName} failed`, error: error.message, stack: error.stack });
         
         const geminiErrorInfo = handleGeminiError(error, { language: currentLanguage, includeRetryInfo: true });
         const errorLog = createGeminiErrorLog(error, {
@@ -563,14 +520,14 @@ async function sendMessage(userMessage, chatHistory = []) {
  */
 async function invokeSimpleQuery(promptText) {
     try {
-        const model = getGeminiModel({ modelName: 'gemini-2.5-flash' });
-        const result = await model.generateContent({
+        const model = getGeminiModel({ 
+            modelName: 'gemini-2.5-flash',
             systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
             generationConfig: {
                 temperature: 0.1
-            },
-            contents: [{ role: 'user', parts: [{ text: promptText }] }]
+            }
         });
+        const result = await model.generateContent(promptText);
         
         if (!result.candidates || result.candidates.length === 0) {
             throw new Error('No candidates in response');
