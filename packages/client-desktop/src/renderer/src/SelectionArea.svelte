@@ -242,10 +242,17 @@
 
   let chosenLayout = 'symmetrical';
 
-  // --- REACTIVE CALCULATIONS ---
-  $: {
-    let _ = currentView; // Add dependency on currentView
-    if (containerWidth > 0 && containerHeight > 0 && layoutType === '6-6-6') {
+  // --- EXPLICIT GRID REBUILD FUNCTION (replaces reactive blocks) ---
+  /**
+   * Explicitly rebuilds the grid layout and content.
+   * Called only when layout type changes or on mount, breaking the infinite reactive loop.
+   */
+  function rebuildGridAndContent() {
+    if (containerWidth <= 0 || containerHeight <= 0) {
+      return;
+    }
+
+    if (layoutType === '6-6-6') {
       addLog('DEBUG', `6-6-6 CALC: Container=${containerWidth}x${containerHeight}px`);
       
       const hexGrid = calculateOptimalGrid(
@@ -265,7 +272,12 @@
       chosenLayout = hexGrid.layout;
       
       addLog('INFO', `6-6-6 RESULT (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)}px)`);
-    } else if (containerWidth > 0 && containerHeight > 0 && layoutType === '4-4-4') {
+      
+      if (itemsPerRow > 0 && totalRows > 0) {
+        addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
+        gridCells = buildGridStructure();
+      }
+    } else if (layoutType === '4-4-4') {
       addLog('DEBUG', `4-4-4 CALC: Container=${containerWidth}x${containerHeight}px`);
       
       const rectGrid = calculateOptimalGrid(
@@ -285,6 +297,10 @@
       chosenLayout = rectGrid.layout;
 
       addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
+      
+      if (rectItemsPerRow > 0 && rectTotalRows > 0) {
+        gridCells = buildGridStructure();
+      }
     } else {
       itemsPerRow = 1;
       optimalHexWidth = MIN_BUTTON_SIZE;
@@ -292,21 +308,21 @@
       rectButtonWidth = MIN_BUTTON_SIZE;
       rectButtonHeight = MIN_BUTTON_SIZE;
     }
-  }
-  
-  // Build persistent grid structure when container size OR layout parameters change
-  $: {
-    if (containerWidth > 0 && containerHeight > 0) {
-      if (layoutType === '6-6-6' && itemsPerRow > 0 && totalRows > 0) {
-        addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
-        gridCells = buildGridStructure();
-      } else if (layoutType === '4-4-4' && rectItemsPerRow > 0 && rectTotalRows > 0) {
-        gridCells = buildGridStructure();
-      }
+
+    // Update content after grid is built
+    if (gridCells.length > 0) {
+      updateGridContent();
     }
   }
   
-  // Update grid content when grid structure changes OR when data/view changes OR when order state changes
+  // Only rebuild when layout type changes (not when container size changes)
+  $: {
+    if (layoutType) {
+      rebuildGridAndContent();
+    }
+  }
+  
+  // Update grid content when data/view changes (but not grid structure)
   $: {
     if (gridCells.length > 0 && (
       (currentView === 'categories' && categories.length >= 0) ||
@@ -696,8 +712,15 @@
     if (containerElement) {
       resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
-          containerWidth = entry.contentRect.width;
-          containerHeight = entry.contentRect.height;
+          const newWidth = entry.contentRect.width;
+          const newHeight = entry.contentRect.height;
+          
+          // Only rebuild if dimensions actually changed
+          if (containerWidth !== newWidth || containerHeight !== newHeight) {
+            containerWidth = newWidth;
+            containerHeight = newHeight;
+            rebuildGridAndContent();
+          }
         }
       });
       resizeObserver.observe(containerElement);
@@ -705,6 +728,7 @@
       setTimeout(() => {
         containerWidth = containerElement.clientWidth;
         containerHeight = containerElement.clientHeight;
+        rebuildGridAndContent();
       }, 100);
     }
     return () => resizeObserver?.disconnect();
