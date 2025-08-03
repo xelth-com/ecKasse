@@ -51,8 +51,7 @@ async function createProduct(productData, initiator = { type: 'system', id: null
 
             const auditTrail = JSON.stringify({
                 created_at: new Date().toISOString(),
-                created_by: initiator.type,
-                initiator_id: initiator.id,
+                created_by: initiator.type === 'ai_agent' ? `user:${initiator.id} via ai:${initiator.model}` : `user:${initiator.id}`,
                 version: 1
             });
 

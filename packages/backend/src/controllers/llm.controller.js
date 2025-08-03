@@ -35,11 +35,10 @@ async function handleGeminiPing(req, res, next) {
     const responsePayload = {
       status: 'success',
       original_message: message,
-      gemini_response_text: geminiServiceResponse.text, // just the text for client
-      // Добавляем информацию о лимитах для UI
+      gemini_response_text: geminiServiceResponse.text,
       isTemporary: geminiServiceResponse.isTemporary,
       errorType: geminiServiceResponse.errorType,
-      // full_gemini_service_response: geminiServiceResponse, // Optional: for debugging
+      history: geminiServiceResponse.history // Return the full updated history
     };
     
     logger.info({type: 'http_response', direction: 'out', operation: 'geminiPing', data: responsePayload});

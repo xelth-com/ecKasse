@@ -40,7 +40,9 @@
       "Bash(fuser:*)",
       "Bash(ss:*)",
       "Bash(git commit:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(pgrep:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

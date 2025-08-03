@@ -6,6 +6,7 @@
   import { currentView } from './lib/viewStore.js';
   import { pinpadStore } from './lib/pinpadStore.js';
   import { uiConstantsStore } from './lib/uiConstantsStore.js';
+  import { agentStore } from './lib/agentStore.js';
   import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
@@ -135,14 +136,6 @@
     }
   }
 
-  let agentMessages = [
-    { timestamp: '10:30', type: 'user', message: 'Найди товар Кофе' },
-    { timestamp: '10:30', type: 'agent', message: 'Поиск товара "Кофе"... Найден товар: Кофе Эспрессо - 2.50€' },
-    { timestamp: '10:31', type: 'user', message: 'Создай товар Капучино цена 3.00 категория Напитки' },
-    { timestamp: '10:31', type: 'agent', message: 'Создаю товар "Капучино" с ценой 3.00€ в категории "Напитки"... Товар успешно создан.' },
-    { timestamp: '10:32', type: 'user', message: 'Покажи все товары в категории Напитки' },
-    { timestamp: '10:32', type: 'agent', message: 'Товары в категории "Напитки":\n- Кофе Эспрессо - 2.50€\n- Капучино - 3.00€\n- Американо - 2.00€' },
-  ];
 
   // Language selector functionality
   function displayLanguageSelector() {
@@ -158,7 +151,7 @@
       ]
     };
     
-    agentMessages = [...agentMessages, languageMessage];
+    agentStore.addMessage(languageMessage);
     
     // Auto-scroll to bottom after adding the message
     setTimeout(() => {
@@ -176,7 +169,9 @@
       pinpadStore.switchLanguage(param);
       
       // Remove the language selector message by filtering it out
-      agentMessages = agentMessages.filter(msg => !msg.actions);
+      const currentMessages = $agentStore.messages.filter(msg => !msg.actions);
+      agentStore.clearMessages();
+      currentMessages.forEach(msg => agentStore.addMessage(msg));
       
       // Add confirmation message
       const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -185,7 +180,7 @@
         type: 'agent',
         message: `Language changed to ${param}`
       };
-      agentMessages = [...agentMessages, confirmationMessage];
+      agentStore.addMessage(confirmationMessage);
       
       // Auto-scroll to bottom
       setTimeout(() => {
@@ -353,7 +348,7 @@
         </div>
         <div class="scroll-content" bind:this={agentScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <div class="agent-messages">
-            {#each agentMessages as message}
+            {#each $agentStore.messages as message}
               <div class="agent-message" class:user={message.type === 'user'} class:agent={message.type === 'agent'}>
                 <span class="message-timestamp">{message.timestamp}</span>
                 <span class="message-type">{message.type === 'user' ? 'User' : 'Agent'}</span>
