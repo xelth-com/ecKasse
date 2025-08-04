@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { wsStore } from './lib/wsStore.js';
   import { addLog } from './lib/logStore.js';
   import { orderStore } from './lib/orderStore.js';
@@ -985,10 +986,14 @@
 
   async function sendMessageToAI(message, history) {
     try {
+      // Get current sessionId from authStore
+      const authState = get(authStore);
+      const sessionId = authState.sessionId;
+
       const response = await fetch('/api/llm/ping-gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history }),
+        body: JSON.stringify({ message, history, sessionId }),
       });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

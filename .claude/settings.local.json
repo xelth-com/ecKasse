@@ -42,7 +42,9 @@
       "Bash(git commit:*)",
       "Bash(git restore:*)",
       "Bash(pgrep:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(source .env)",
+      "Bash(source:*)"
     ],
     "deny": []
   }

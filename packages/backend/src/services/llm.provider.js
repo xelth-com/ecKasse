@@ -28,7 +28,7 @@ function getGeminiModel(options = {}) {
         generateContent: (request) => {
             return genAI.models.generateContent({
                 model: modelName,
-                ...request
+                contents: request
             });
         }
     };

@@ -452,13 +452,13 @@ Antworte nur mit dem validen JSON-Objekt.`;
     console.log('📁 Files count:', files.length);
     console.log('📝 System prompt length:', systemPrompt.length);
     
-    // Prepare content array for Gemini
-    const content = [systemPrompt];
+    // Prepare parts array for Gemini multimodal request
+    const parts = [{text: systemPrompt}];
     
-    // Add files to content
+    // Add files to parts
     for (const file of files) {
       console.log(`📄 Adding file: ${file.path} (${file.mimeType}, ${file.size} bytes)`);
-      content.push({
+      parts.push({
         inlineData: {
           data: file.data,
           mimeType: file.mimeType
@@ -468,14 +468,17 @@ Antworte nur mit dem validen JSON-Objekt.`;
     
     // Add user instruction about multiple files if needed
     if (files.length > 1) {
-      content.push(`\nПожалуйста, обработайте все ${files.length} файла в указанном порядке и объедините информацию из всех файлов в одну структуру меню. Сохраните последовательность блюд как они представлены в файлах.`);
+      parts.push({text: `\nПожалуйста, обработайте все ${files.length} файла в указанном порядке и объедините информацию из всех файлов в одну структуру меню. Сохраните последовательность блюд как они представлены в файлах.`});
     }
+
+    // Structure the request correctly for the SDK
+    const request = [{ role: 'user', parts: parts }];
 
     console.log('🤖 Calling Gemini API with files...');
     // Use the unified provider client directly
-    const result = await model.client.generateContent(content);
+    const result = await model.client.generateContent(request);
     console.log('✅ Gemini API response received');
-    const text = result.text;
+    const text = result.candidates[0].content.parts[0].text;
     console.log('📄 Response text length:', text.length);
     console.log('📄 First 200 chars:', text.substring(0, 200));
     return text;
@@ -492,13 +495,17 @@ Antworte nur mit dem validen JSON-Objekt.`;
     switch (model.type) {
       case 'gemini':
         console.log('🤖 Calling Gemini API...');
-        // Use the unified provider client directly
-        const result = await model.client.generateContent([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]);
+        // Use the unified provider client directly with correct request structure
+        const request = [{ 
+          role: 'user', 
+          parts: [
+            { text: systemPrompt },
+            { text: userPrompt }
+          ]
+        }];
+        const result = await model.client.generateContent(request);
         console.log('✅ Gemini API response received');
-        const text = result.text;
+        const text = result.candidates[0].content.parts[0].text;
         console.log('📄 Response text length:', text.length);
         console.log('📄 First 200 chars:', text.substring(0, 200));
         return text;

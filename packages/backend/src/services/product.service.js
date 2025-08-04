@@ -102,7 +102,7 @@ async function createProduct(productData, initiator = { type: 'system', id: null
                 entity: 'product',
                 product: createdProduct,
                 initiator
-            });
+            }, trx);
 
             const result = {
                 success: true,
@@ -279,7 +279,7 @@ async function applyProductUpdateDirectly(trx, id, updates, userSession, current
             product_id: id,
             changes: updates,
             initiator: { type: 'user', id: userSession.user_id, username: userSession.username }
-        });
+        }, trx);
         
         logger.info({ 
             productId: id,
@@ -366,7 +366,7 @@ async function createPendingProductUpdate(trx, id, updates, userSession, current
         changes: updates,
         priority: priority,
         initiator: { type: 'user', id: userSession.user_id, username: userSession.username }
-    });
+    }, trx);
 
     logger.info({ 
         productId: id,

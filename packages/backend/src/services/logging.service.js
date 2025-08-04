@@ -17,13 +17,14 @@ class LoggingService {
    * @param {object} payload_for_tse The data to be sent to the TSE.
    * @returns {Promise<{success: boolean, log?: object, error?: string}>}
    */
-  async logFiscalEvent(event_type, user_id, payload_for_tse) {
+  async logFiscalEvent(event_type, user_id, payload_for_tse, trx = null) {
     const operation_id = crypto.randomUUID();
     let pendingOperationId;
 
     try {
       // Step 1: Create 'PENDING' record in the write-ahead log.
-      const [pendingOp] = await db('pending_fiscal_operations').insert({
+      const dbInstance = trx || db;
+      const [pendingOp] = await dbInstance('pending_fiscal_operations').insert({
         operation_id,
         status: 'PENDING',
         payload_for_tse: JSON.stringify(payload_for_tse)
@@ -37,7 +38,7 @@ class LoggingService {
       }
 
       // Step 3: Update the pending record to 'TSE_SUCCESS'.
-      await db('pending_fiscal_operations')
+      await dbInstance('pending_fiscal_operations')
         .where('id', pendingOperationId)
         .update({
           status: 'TSE_SUCCESS',
@@ -45,7 +46,7 @@ class LoggingService {
         });
 
       // Step 4-8: Commit the successful operation to the final fiscal log.
-      return await this.commitFiscalOperation(pendingOperationId, event_type, user_id);
+      return await this.commitFiscalOperation(pendingOperationId, event_type, user_id, trx);
 
     } catch (error) {
       logger.error({
@@ -55,7 +56,8 @@ class LoggingService {
       });
 
       if (pendingOperationId) {
-        await db('pending_fiscal_operations')
+        const dbInstance = trx || db;
+        await dbInstance('pending_fiscal_operations')
           .where('id', pendingOperationId)
           .update({
             status: 'TSE_FAILED',
@@ -73,8 +75,19 @@ class LoggingService {
    * @param {string} event_type The type of event being logged.
    * @param {number} user_id The ID of the user performing the action.
    */
-  async commitFiscalOperation(pendingOpId, event_type, user_id) {
-    return await db.transaction(async (trx) => {
+  async commitFiscalOperation(pendingOpId, event_type, user_id, trx = null) {
+    if (trx) {
+      // Use existing transaction
+      return await this._commitFiscalOperationInTransaction(trx, pendingOpId, event_type, user_id);
+    } else {
+      // Create new transaction
+      return await db.transaction(async (newTrx) => {
+        return await this._commitFiscalOperationInTransaction(newTrx, pendingOpId, event_type, user_id);
+      });
+    }
+  }
+
+  async _commitFiscalOperationInTransaction(trx, pendingOpId, event_type, user_id) {
       const operation = await trx('pending_fiscal_operations').where('id', pendingOpId).first();
 
       if (!operation) throw new Error(`Pending operation with ID ${pendingOpId} not found.`);
@@ -108,7 +121,6 @@ class LoggingService {
 
       logger.info({ msg: 'Fiscal event committed successfully.', log_id: insertedLog.log_id });
       return { success: true, log: insertedLog };
-    });
   }
 
   /**
