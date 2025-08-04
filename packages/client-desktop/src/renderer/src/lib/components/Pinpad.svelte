@@ -101,7 +101,7 @@
   }
 
   function handleConfirm() {
-    pinpadStore.confirm(agentStore);
+    pinpadStore.confirm();
   }
 
   function handleCancel() {

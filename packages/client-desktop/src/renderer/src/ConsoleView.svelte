@@ -374,7 +374,7 @@
             {/each}
             
             <!-- Draft message -->
-            {#if $agentStore.draftMessage}
+            {#if $agentStore.draftMessage && $pinpadStore.isActive}
               <div class="agent-message user draft">
                 <span class="message-timestamp">{$agentStore.draftMessage.timestamp}</span>
                 <span class="message-type">User</span>
@@ -584,6 +584,12 @@
     align-self: flex-end;
     background-color: #4a69bd;
     color: white;
+  }
+
+  .agent-message.user.draft {
+    background-color: transparent;
+    border: 2px solid #4a69bd;
+    color: #e0e0e0;
   }
 
   .agent-message.agent {

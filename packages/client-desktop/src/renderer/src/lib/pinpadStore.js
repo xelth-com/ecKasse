@@ -77,7 +77,6 @@ function createPinpadStore() {
                     const cursor = state.liveValue.cursor;
                     const newText = text.slice(0, cursor) + char + text.slice(cursor);
                     const newLiveValue = { text: newText, cursor: cursor + 1 };
-                    console.log('Pinpad append:', char, '-> liveValue:', newLiveValue);
                     
                     // Update agent store draft message if in agent mode and agentStore provided
                     if (state.mode === 'agent' && agentStore) {
@@ -110,7 +109,6 @@ function createPinpadStore() {
                     if (cursor > 0) {
                         const newText = text.slice(0, cursor - 1) + text.slice(cursor);
                         const newLiveValue = { text: newText, cursor: cursor - 1 };
-                        console.log('Pinpad backspace -> liveValue:', newLiveValue);
                         
                         // Update agent store draft message if in agent mode and agentStore provided
                         if (state.mode === 'agent' && agentStore) {
@@ -123,7 +121,6 @@ function createPinpadStore() {
                             errorMessage: null
                         };
                     }
-                    console.log('Pinpad backspace (no change) -> liveValue:', state.liveValue);
                     return { ...state, errorMessage: null };
                 } else {
                     // Numeric mode - keep existing behavior
@@ -153,7 +150,7 @@ function createPinpadStore() {
             });
         },
 
-        async confirm(agentStore = null) {
+        async confirm() {
             let state;
             let callback;
             let value;
@@ -164,15 +161,41 @@ function createPinpadStore() {
                 return currentState;
             });
             
-            if (!state.isActive || !state.confirmCallback) return;
+            if (!state.isActive) return;
             
-            callback = state.confirmCallback;
             value = state.layout === 'alpha' ? state.liveValue.text : state.liveValue;
             
-            // Finalize draft message if in agent mode and agentStore provided
-            if (state.mode === 'agent' && agentStore) {
-                agentStore.finalizeDraftMessage();
+            // Handle agent mode specially
+            if (state.mode === 'agent') {
+                // Import agentStore dynamically to avoid circular dependency
+                const { agentStore } = await import('./agentStore.js');
+                
+                try {
+                    // Send message using centralized method
+                    await agentStore.sendMessage(value);
+                    
+                    // Don't deactivate - let user close keyboard manually
+                    // Clear the input for next message
+                    update(state => ({
+                        ...state,
+                        liveValue: { text: '', cursor: 0 }
+                    }));
+                } catch (error) {
+                    console.error('Agent message send failed:', error);
+                    
+                    // Clear input on error but keep keyboard open
+                    update(state => ({
+                        ...state,
+                        liveValue: { text: '', cursor: 0 }
+                    }));
+                }
+                return;
             }
+            
+            // Handle other modes with callback
+            if (!state.confirmCallback) return;
+            
+            callback = state.confirmCallback;
             
             try {
                 // Execute callback and wait for it to complete
@@ -220,9 +243,12 @@ function createPinpadStore() {
                     // Double click - full cancel
                     const callback = state.cancelCallback;
                     
-                    // Cancel draft message if in agent mode and agentStore provided
-                    if (state.mode === 'agent' && agentStore) {
-                        agentStore.cancelDraftMessage();
+                    // Cancel draft message if in agent mode
+                    if (state.mode === 'agent') {
+                        // Import agentStore to cancel draft message
+                        import('./agentStore.js').then(({ agentStore }) => {
+                            agentStore.cancelDraftMessage();
+                        });
                     }
                     
                     const newState = {

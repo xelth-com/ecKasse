@@ -984,56 +984,11 @@
     }
   }
 
-  async function sendMessageToAI(message, history) {
-    try {
-      // Get current sessionId from authStore
-      const authState = get(authStore);
-      const sessionId = authState.sessionId;
-
-      const response = await fetch('/api/llm/ping-gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history, sessionId }),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      addLog('ERROR', 'Failed to send message to AI', { error: error.message });
-      return { gemini_response_text: 'Sorry, I encountered an error. Please try again.', history: history };
-    }
-  }
 
   function handleGeminiClick() {
     consoleView.set('agent');
     pinpadStore.activateAlphaInput(
-      async (inputValue) => {
-        if (!inputValue.trim()) return;
-        
-        // Add user message to chat
-        const userMessage = {
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          type: 'user',
-          message: inputValue
-        };
-        agentStore.addMessage(userMessage);
-        
-        // Get current history and send to AI
-        const currentHistory = agentStore.getHistory();
-        const response = await sendMessageToAI(inputValue, currentHistory);
-        
-        // Add AI response to chat
-        const agentMessage = {
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          type: 'agent',
-          message: response.gemini_response_text
-        };
-        agentStore.addMessage(agentMessage);
-        
-        // Update history
-        agentStore.setHistory(response.history);
-      },
+      (inputValue) => agentStore.sendMessage(inputValue),
       () => {
         addLog('INFO', 'Gemini input cancelled.');
       },
