@@ -34,7 +34,7 @@ async function hybridSearch(query, options = {}) {
     ftsOnly = false,
     vectorOnly = false,
     levenshteinThreshold = 2,
-    vectorDistanceThreshold = 30.0  // Relaxed for mock embeddings
+    vectorDistanceThreshold = 0.5  // Fixed threshold for proper embeddings
   } = options;
 
   console.log(`🔍 Hybrid search for: "${query}"`);
@@ -123,7 +123,7 @@ async function performFTSSearch(query, limit = 10) {
         100 as similarity
       FROM items_fts 
       JOIN items ON items.id = items_fts.rowid 
-      WHERE items_fts MATCH ?
+      WHERE items_fts.display_names_text MATCH ?
       ORDER BY rank
       LIMIT ?
     `, [ftsQuery, limit]);
@@ -149,7 +149,7 @@ async function performFTSSearch(query, limit = 10) {
 async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
   try {
     // Generate embedding for query
-    const queryEmbedding = await generateEmbedding(query);
+    const queryEmbedding = await generateEmbedding(query, { taskType: 'RETRIEVAL_QUERY' });
     const queryEmbeddingBuffer = embeddingToBuffer(queryEmbedding);
 
     // Perform vector search using correct sqlite-vec KNN syntax
@@ -242,7 +242,7 @@ async function searchProducts(productName, filters = {}) {
     const searchResult = await hybridSearch(productName, {
       maxResults: 5,
       levenshteinThreshold: 3,
-      vectorDistanceThreshold: 30.0  // Relaxed for mock embeddings
+      vectorDistanceThreshold: 0.5  // Fixed threshold for proper embeddings
     });
 
     let { results, metadata } = searchResult;

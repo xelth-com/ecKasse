@@ -4,10 +4,12 @@
   import { recoveryStore } from '../recoveryStore.js';
   import { currentTime } from '../timeStore.js';
   import { addLog } from '../logStore.js';
+  import { wsStore } from '../wsStore.js';
 
   // Component state
   let pinInput = '';
   let showPinPad = false;
+  let usersFetched = false;
 
   // Reactive statements
   $: currentState = $authStore;
@@ -15,11 +17,18 @@
   $: isPinEntry = currentState.loginState === 'pin_entry';
   $: isAuthenticated = currentState.isAuthenticated;
 
-  onMount(async () => {
-    // Fetch available users when component mounts
-    if (!isAuthenticated) {
-      await authStore.fetchUsers();
-    }
+  onMount(() => {
+    // Subscribe to WebSocket connection state
+    const unsubscribe = wsStore.subscribe(async (wsState) => {
+      // Only fetch users once when WebSocket connects and user is not authenticated
+      if (wsState.connected && !isAuthenticated && !usersFetched) {
+        usersFetched = true;
+        await authStore.fetchUsers();
+      }
+    });
+
+    // Cleanup subscription on component destroy
+    return unsubscribe;
   });
 
   // Handle user selection
