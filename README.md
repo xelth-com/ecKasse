@@ -1,5 +1,7 @@
 # ecKasse - LLM-Powered Point of Sale System
 
+> ### KI-gestützt: Mehr Zeit für Gäste, weniger Kosten für die Kasse.
+
 **Status:** In Development | **License:** EUPL-1.2 | **Developer:** Betruger Sp. z o.o.
 
 LLM-powered desktop POS system built with Electron, React, and Node.js. Features natural language configuration via Google Gemini and German fiscal compliance (TSE/DSFinV-K).
@@ -42,7 +44,7 @@ All operations use UUID-based `operationId` for idempotency across channels.
 - **TSE Integration:** Technical Security Equipment support
 - **DSFinV-K Export:** Tax authority data format
 - **Time Control:** Mandatory TSE clock verification
-- **Long-term Archival:** Hedera blockchain anchoring
+- **Long-term Archival:** Hedera blockchain anchoring (daily for audit trail consistency)
 - **GoBD Compliance:** Proper accounting record principles
 
 ### UI Innovation

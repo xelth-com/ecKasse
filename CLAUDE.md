@@ -208,7 +208,7 @@ Backend includes version checking for Node.js v20+ compatibility:
 This POS system is designed for German fiscal compliance:
 - TSE (Technical Security Equipment) integration planned
 - DSFinV-K export format for tax authorities
-- Long-term archival with cryptographic integrity
+- Long-term archival with cryptographic integrity (daily Hedera blockchain anchoring for audit trail consistency)
 - Currently in development phase for basic functionality
 
 ## Critical Implementation Notes
