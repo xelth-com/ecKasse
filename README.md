@@ -1,6 +1,7 @@
 # ecKasse - LLM-Powered Point of Sale System
 
-> ### KI-gestützt: Mehr Zeit für Gäste, weniger Kosten für die Kasse.
+> ### Eine Kasse, die hilft – nicht kostet.
+> #### KI-Technologie zum Selbstkostenpreis – für mehr Zeit mit Ihren Gästen.
 
 **Status:** In Development | **License:** EUPL-1.2 | **Developer:** Betruger Sp. z o.o.
 
