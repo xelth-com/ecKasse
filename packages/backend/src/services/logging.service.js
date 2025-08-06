@@ -1,6 +1,7 @@
 const db = require('../db/knex');
 const logger = require('../config/logger');
 const crypto = require('crypto');
+const hieroService = require('./hiero.service');
 
 /**
  * LoggingService provides a centralized interface for all logging activities:
@@ -189,6 +190,185 @@ class LoggingService {
         tse_serial_number: 'mock-tse-serial-12345'
       }
     };
+  }
+
+  /**
+   * Anchors the start-of-day fiscal state to the Hiero Consensus Service.
+   * This creates a cryptographic checkpoint of the fiscal log state at the beginning of each day.
+   * 
+   * @param {string} date - The date in YYYY-MM-DD format (defaults to today)
+   * @returns {Promise<{success: boolean, result?: object, error?: string}>}
+   */
+  async anchorStartOfDay(date = null) {
+    try {
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      const startOfDay = `${targetDate}T00:00:00.000Z`;
+      
+      logger.info({ 
+        msg: 'Starting start-of-day anchor process',
+        date: targetDate
+      });
+
+      // Get the fiscal log state at the end of the previous day
+      const previousDayLogs = await db('fiscal_log')
+        .where('timestamp_utc', '<', startOfDay)
+        .orderBy('timestamp_utc', 'asc');
+
+      // Calculate the cumulative hash of all previous fiscal events
+      const dailyHash = hieroService.createDailyHash(previousDayLogs);
+      
+      // Create the anchor message
+      const anchorMessage = JSON.stringify({
+        type: 'START_OF_DAY_ANCHOR',
+        date: targetDate,
+        previousDayLogCount: previousDayLogs.length,
+        cumulativeHash: dailyHash,
+        timestamp_utc: new Date().toISOString(),
+        systemId: 'ecKasse-pos-system'
+      });
+
+      // Submit to Hiero Consensus Service using sponsored transaction model
+      const result = await hieroService.submitWithClientSigning(anchorMessage);
+      
+      if (!result.success) {
+        throw new Error(`HCS submission failed: ${result.error}`);
+      }
+
+      // Log the successful anchor operation
+      await this.logOperationalEvent('START_DAY_ANCHOR', 1, {
+        date: targetDate,
+        hcs_transaction_id: result.result.transactionId,
+        daily_hash: dailyHash,
+        log_count: previousDayLogs.length
+      });
+
+      logger.info({ 
+        msg: 'Start-of-day anchor completed successfully',
+        date: targetDate,
+        transactionId: result.result.transactionId,
+        logCount: previousDayLogs.length
+      });
+
+      return { 
+        success: true, 
+        result: {
+          date: targetDate,
+          transactionId: result.result.transactionId,
+          dailyHash: dailyHash,
+          logCount: previousDayLogs.length,
+          receipt: result.result.receipt
+        }
+      };
+    } catch (error) {
+      logger.error({ 
+        msg: 'Start-of-day anchor failed',
+        date: date,
+        error: error.message 
+      });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Anchors the end-of-day fiscal state to the Hiero Consensus Service.
+   * This creates a cryptographic checkpoint of all fiscal events that occurred during the day.
+   * 
+   * @param {string} date - The date in YYYY-MM-DD format (defaults to today)
+   * @returns {Promise<{success: boolean, result?: object, error?: string}>}
+   */
+  async anchorEndOfDay(date = null) {
+    try {
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      const startOfDay = `${targetDate}T00:00:00.000Z`;
+      const endOfDay = `${targetDate}T23:59:59.999Z`;
+      
+      logger.info({ 
+        msg: 'Starting end-of-day anchor process',
+        date: targetDate
+      });
+
+      // Get all fiscal log entries for the target day
+      const dayLogs = await db('fiscal_log')
+        .where('timestamp_utc', '>=', startOfDay)
+        .where('timestamp_utc', '<=', endOfDay)
+        .orderBy('timestamp_utc', 'asc');
+
+      // Get cumulative fiscal log state (from beginning of time up to end of day)
+      const cumulativeLogs = await db('fiscal_log')
+        .where('timestamp_utc', '<=', endOfDay)
+        .orderBy('timestamp_utc', 'asc');
+
+      // Calculate the daily hash and cumulative hash
+      const dailyHash = hieroService.createDailyHash(dayLogs);
+      const cumulativeHash = hieroService.createDailyHash(cumulativeLogs);
+      
+      // Calculate daily statistics
+      const dailyStats = {
+        transactionCount: dayLogs.length,
+        firstTransaction: dayLogs.length > 0 ? dayLogs[0].timestamp_utc : null,
+        lastTransaction: dayLogs.length > 0 ? dayLogs[dayLogs.length - 1].timestamp_utc : null
+      };
+
+      // Create the end-of-day anchor message
+      const anchorMessage = JSON.stringify({
+        type: 'END_OF_DAY_ANCHOR',
+        date: targetDate,
+        dailyLogCount: dayLogs.length,
+        cumulativeLogCount: cumulativeLogs.length,
+        dailyHash: dailyHash,
+        cumulativeHash: cumulativeHash,
+        dailyStats: dailyStats,
+        timestamp_utc: new Date().toISOString(),
+        systemId: 'ecKasse-pos-system'
+      });
+
+      // Submit to Hiero Consensus Service using sponsored transaction model
+      const result = await hieroService.submitWithClientSigning(anchorMessage);
+      
+      if (!result.success) {
+        throw new Error(`HCS submission failed: ${result.error}`);
+      }
+
+      // Log the successful anchor operation
+      await this.logOperationalEvent('END_DAY_ANCHOR', 1, {
+        date: targetDate,
+        hcs_transaction_id: result.result.transactionId,
+        daily_hash: dailyHash,
+        cumulative_hash: cumulativeHash,
+        daily_log_count: dayLogs.length,
+        cumulative_log_count: cumulativeLogs.length,
+        daily_stats: dailyStats
+      });
+
+      logger.info({ 
+        msg: 'End-of-day anchor completed successfully',
+        date: targetDate,
+        transactionId: result.result.transactionId,
+        dailyLogCount: dayLogs.length,
+        cumulativeLogCount: cumulativeLogs.length
+      });
+
+      return { 
+        success: true, 
+        result: {
+          date: targetDate,
+          transactionId: result.result.transactionId,
+          dailyHash: dailyHash,
+          cumulativeHash: cumulativeHash,
+          dailyLogCount: dayLogs.length,
+          cumulativeLogCount: cumulativeLogs.length,
+          dailyStats: dailyStats,
+          receipt: result.result.receipt
+        }
+      };
+    } catch (error) {
+      logger.error({ 
+        msg: 'End-of-day anchor failed',
+        date: date,
+        error: error.message 
+      });
+      return { success: false, error: error.message };
+    }
   }
 }
 

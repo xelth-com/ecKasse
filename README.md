@@ -135,7 +135,7 @@ Located in `packages/backend/src/services/llm.service.js`
 - **Function Calling:** Direct API execution via Gemini tools
 - **Product Management:** getProductDetails function for inventory queries
 - **Conversation History:** Maintains context across requests
-- **Error Handling:** Multi-model fallback (Gemini 2.5 Flash → 2.0 Flash → 1.5 Flash)
+- **Error Handling:** Multi-model fallback (Gemini 2.5 Flash → Gemini 2.0 Flash)
 
 ### WebSocket + HTTP Fallback
 Located in `packages/client-desktop/src/renderer/src/lib/wsStore.js`

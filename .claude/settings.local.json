@@ -44,7 +44,14 @@
       "Bash(pgrep:*)",
       "Bash(cp:*)",
       "Bash(source .env)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(if [ -f .env ])",
+      "Bash(then)",
+      "Bash(if grep -q \"HIERO_OPERATOR_ID\" .env)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(if grep -q \"HIERO_OPERATOR_KEY\" .env)",
+      "Bash(if grep -q \"HIERO_TOPIC_ID\" .env)"
     ],
     "deny": []
   }

@@ -912,6 +912,35 @@ class EckasseCLI {
       console.log(`   Categories: ${chalk.bold(totalCategories)}`);
       console.log(`   Items: ${chalk.bold(totalItems)}`);
 
+      // Check for open transactions before proceeding
+      console.log(chalk.blue('\n🔍 Checking for open transactions...'));
+      try {
+        const db = require('../db/knex');
+        const openTransactions = await db('active_transactions')
+          .whereIn('status', ['active', 'parked'])
+          .count('* as count')
+          .first();
+        
+        const openCount = openTransactions ? openTransactions.count : 0;
+        
+        if (openCount > 0) {
+          console.error(chalk.red('\n❌ Cannot proceed with import: Open transactions found'));
+          console.error(chalk.red(`   Found ${openCount} open transaction(s) with status 'active' or 'parked'`));
+          console.error(chalk.yellow('\n💡 Please complete or cancel all open transactions before importing:'));
+          console.error(chalk.gray('   1. In the POS interface, finalize all active orders'));
+          console.error(chalk.gray('   2. Complete or cancel all parked orders'));
+          console.error(chalk.gray('   3. Ensure no transactions remain in active or parked status'));
+          console.error(chalk.gray('   4. Then retry the import operation'));
+          await gracefulExit(1);
+        }
+        
+        console.log(chalk.green('✅ No open transactions found - safe to proceed'));
+      } catch (dbError) {
+        console.error(chalk.red(`\n❌ Error checking transactions: ${dbError.message}`));
+        console.error(chalk.yellow('💡 If the database is not initialized, this check will be skipped'));
+        console.log(chalk.yellow('⚠️  Proceeding without transaction check...'));
+      }
+
       // Dry run mode
       if (options.dryRun) {
         console.log(chalk.green('\n✅ Dry run completed - JSON structure is valid'));

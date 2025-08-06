@@ -456,10 +456,16 @@
 
   .parked-orders-section {
     flex-shrink: 0;
-    margin-bottom: 8px;
+    /* Only add margin when there are visible orders */
+    margin-bottom: 0;
     /* Stack above active order - will grow upward */
     display: flex;
     flex-direction: column-reverse;
+  }
+  
+  /* Add margin only when there are parked orders visible */
+  .parked-orders-section:has(.parked-orders-container) {
+    margin-bottom: 8px;
   }
 
   .active-order-section {

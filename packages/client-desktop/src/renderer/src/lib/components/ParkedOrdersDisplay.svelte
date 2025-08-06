@@ -109,28 +109,24 @@
   }
 </script>
 
+{#if parkedOrders.length > 0}
 <div class="parked-orders-container">
-  {#if parkedOrders.length === 0}
-    <div class="no-orders">
-      <span>Нет припаркованных заказов</span>
-    </div>
-  {:else}
-    <div class="orders-list">
-      {#each parkedOrders as order (order.id)}
-        <button class="order-item" on:click={() => handleOrderClick(order)}>
-          <div class="table-number">
-            {getTableName(order)}
-          </div>
-          <div class="order-stats">
-            <div class="stat-price">{getOrderStats(order).price}</div>
-            <div class="stat-open">{getOrderStats(order).openMinutes}min</div>
-            <div class="stat-activity">{getOrderStats(order).activityMinutes}min</div>
-          </div>
-        </button>
-      {/each}
-    </div>
-  {/if}
+  <div class="orders-list">
+    {#each parkedOrders as order (order.id)}
+      <button class="order-item" on:click={() => handleOrderClick(order)}>
+        <div class="table-number">
+          {getTableName(order)}
+        </div>
+        <div class="order-stats">
+          <div class="stat-price">{getOrderStats(order).price}</div>
+          <div class="stat-open">{getOrderStats(order).openMinutes}min</div>
+          <div class="stat-activity">{getOrderStats(order).activityMinutes}min</div>
+        </div>
+      </button>
+    {/each}
+  </div>
 </div>
+{/if}
 
 <style>
   .parked-orders-container {
@@ -140,15 +136,6 @@
     /* Remove height constraints to allow natural stacking */
   }
 
-  .no-orders {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 44px;
-    color: #888;
-    font-style: italic;
-    font-size: 13px;
-  }
 
   .orders-list {
     display: grid;
