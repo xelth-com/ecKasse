@@ -51,7 +51,8 @@
       "Bash(else)",
       "Bash(fi)",
       "Bash(if grep -q \"HIERO_OPERATOR_KEY\" .env)",
-      "Bash(if grep -q \"HIERO_TOPIC_ID\" .env)"
+      "Bash(if grep -q \"HIERO_TOPIC_ID\" .env)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

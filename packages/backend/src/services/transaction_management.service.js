@@ -2,12 +2,36 @@ const db = require('../db/knex');
 const logger = require('../config/logger');
 const loggingService = require('./logging.service');
 const crypto = require('crypto');
+const sessionManager = require('./session.service');
 
 /**
  * Manages the lifecycle of active transactions (orders/receipts).
  * This service handles creating orders, adding items, and finalizing them for fiscal logging.
  */
 class TransactionManagementService {
+
+  /**
+   * Helper method to determine if we're in demo mode and get the appropriate data source
+   * @param {string} sessionId - Session ID for demo mode (optional)
+   * @returns {object} Data access object (either database or session-based)
+   */
+  _getDataSource(sessionId = null) {
+    if (process.env.APP_MODE === 'demo' && sessionId) {
+      // In demo mode, return a session-based data access object
+      return {
+        isDemo: true,
+        sessionId,
+        transactions: sessionManager.getSessionData(sessionId, 'transactions') || [],
+        setTransactions: (transactions) => sessionManager.setSessionData(sessionId, 'transactions', transactions)
+      };
+    }
+    
+    // In production mode, return database access
+    return {
+      isDemo: false,
+      db
+    };
+  }
 
   /**
    * Finds an existing active transaction based on metadata (e.g., table number) or creates a new one.
@@ -576,12 +600,28 @@ class TransactionManagementService {
 
   /**
    * Retrieves all parked transactions.
+   * @param {string} sessionId - Session ID for demo mode (optional)
    * @returns {Promise<Array>} Array of parked transactions with their metadata.
    */
-  async getParkedTransactions() {
-    logger.info({ service: 'TransactionManagementService', function: 'getParkedTransactions' });
+  async getParkedTransactions(sessionId = null) {
+    logger.info({ service: 'TransactionManagementService', function: 'getParkedTransactions', sessionId });
 
     try {
+      const dataSource = this._getDataSource(sessionId);
+
+      if (dataSource.isDemo) {
+        // Demo mode: filter from session transactions
+        const parkedTransactions = dataSource.transactions.filter(t => t.status === 'parked');
+        
+        logger.info({ 
+          count: parkedTransactions.length,
+          msg: 'Retrieved parked transactions from demo session'
+        });
+
+        return parkedTransactions;
+      }
+
+      // Production mode: query database
       const parkedTransactions = await db('active_transactions')
         .where('status', 'parked')
         .select('*')

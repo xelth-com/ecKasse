@@ -96,6 +96,7 @@ Create `.env` in project root:
 GEMINI_API_KEY=your_google_gemini_api_key
 BACKEND_PORT=3030
 NODE_ENV=development
+APP_MODE=production
 LOG_LEVEL=debug
 DB_FILENAME=./packages/backend/src/db/eckasse_dev.sqlite3
 ```
@@ -117,6 +118,73 @@ npm run seed:backend        # Seed development data
 npm run build:client:desktop # Build Electron app
 npm run dist:client:desktop  # Create distributable package
 ```
+
+## Operating Modes: Production vs. Demo
+
+ecKasse supports two distinct operating modes, controlled via the `APP_MODE` environment variable:
+
+### Production Mode (`APP_MODE=production`) - Default
+**Use Case:** Real-world cafe/restaurant deployment
+
+- **Data Storage:** Shared SQLite database
+- **User Sessions:** All users share the same backend state
+- **Transaction Management:** Persistent database transactions
+- **Fiscal Compliance:** Full TSE/DSFinV-K integration
+- **Configuration:** Standard deployment for actual business operations
+
+### Demo Mode (`APP_MODE=demo`)
+**Use Case:** Public web demonstrations, customer trials, development testing
+
+- **Data Storage:** Isolated in-memory sessions per user
+- **User Sessions:** Each visitor gets their own "sandbox" environment
+- **Transaction Management:** Session-based, automatically cleaned up
+- **Session Isolation:** Actions by one user don't affect other users
+- **Auto-cleanup:** Sessions expire after 24 hours of inactivity
+
+### Configuration
+
+Add to your `.env` file:
+```env
+# Set operating mode
+APP_MODE=production    # Default: shared database state
+# APP_MODE=demo        # Isolated user sessions
+```
+
+### Technical Implementation
+
+**Production Mode:**
+- All requests use the shared SQLite database
+- Standard authentication and user management
+- Persistent data across application restarts
+
+**Demo Mode:**
+- Session middleware creates unique session IDs via `X-Session-ID` headers
+- In-memory session manager stores user-specific data
+- WebSocket and HTTP clients automatically manage session persistence
+- Each demo user experiences an independent POS system instance
+
+### Use Cases
+
+**Production Mode:**
+- Installing ecKasse in a real restaurant/cafe
+- Multiple staff members using the same system
+- Persistent transaction history and reporting needed
+
+**Demo Mode:**
+- Hosting public web demos for potential customers
+- Allowing users to upload their own menus and test the system
+- Trade shows and product demonstrations
+- Development and testing without affecting production data
+
+### Session Management (Demo Mode)
+
+The system automatically handles session creation and management:
+- First request without session ID → Creates new session, returns `X-Session-ID` header
+- Subsequent requests with session ID → Uses existing session data
+- Frontend automatically persists session ID in localStorage
+- Sessions automatically expire and clean up unused memory
+
+This architecture enables seamless public demonstrations where multiple users can simultaneously experience ecKasse without interfering with each other's data.
 
 ### Testing LLM Features
 1. Start development environment: `npm run dev`

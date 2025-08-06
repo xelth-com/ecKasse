@@ -7,11 +7,26 @@ function createWebSocketStore() {
     connected: false,
     isConnected: false, // Keep for backward compatibility
     lastMessage: null,
-    error: null
+    error: null,
+    sessionId: null
   });
 
   let ws = null;
+  let sessionId = null;
   const pendingOperations = new Map();
+  
+  // Initialize session ID from localStorage or create new one
+  function initializeSessionId() {
+    const stored = localStorage.getItem('ecKasse-session-id');
+    if (stored) {
+      sessionId = stored;
+    } else {
+      sessionId = generateUUID();
+      localStorage.setItem('ecKasse-session-id', sessionId);
+    }
+    update(state => ({ ...state, sessionId }));
+    console.log('Session ID initialized:', sessionId);
+  }
 
   // Connect to WebSocket
   function connect() {
@@ -69,7 +84,11 @@ function createWebSocketStore() {
     if (ws && ws.readyState === WebSocket.OPEN) {
       const messageWithId = {
         operationId: generateUUID(),
-        ...message
+        ...message,
+        payload: {
+          ...message.payload,
+          sessionId: sessionId
+        }
       };
       
       console.log('Sending WebSocket message:', messageWithId);
@@ -102,13 +121,15 @@ function createWebSocketStore() {
     });
   }
 
-  // Initialize connection
+  // Initialize session and connection
+  initializeSessionId();
   connect();
 
   return {
     subscribe,
     send,
-    connect
+    connect,
+    getSessionId: () => sessionId
   };
 }
 

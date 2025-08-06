@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const logger = require('./config/logger'); // Путь к вашему логгеру
+const sessionMiddleware = require('./middleware/session.middleware');
 // const mainRoutes = require('./routes/index'); // THIS SHOULD BE COMMENTED OR REMOVED
 const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
 
@@ -13,6 +14,7 @@ const app = express();
 app.use(cors()); // Включить CORS для всех маршрутов (настройте более строго для продакшена)
 app.use(express.json()); // Для парсинга application/json
 app.use(express.urlencoded({ extended: true })); // Для парсинга application/x-www-form-urlencoded
+app.use(sessionMiddleware); // Session management for demo mode
 
 
 // Временное хранилище для operationId HTTP - должно быть синхронизировано или объединено с WebSocket
@@ -78,7 +80,7 @@ app.post('/api/websocket-fallback', async (req, res) => {
   try {
     if (command === 'getParkedTransactions') {
       const transactionManagementService = require('./services/transaction_management.service');
-      responsePayload = await transactionManagementService.getParkedTransactions();
+      responsePayload = await transactionManagementService.getParkedTransactions(req.session ? req.session.id : null);
     } else if (command === 'activateTransaction') {
       const { transactionId, userId, updateTimestamp } = payload;
       if (!transactionId || !userId) {

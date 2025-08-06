@@ -300,7 +300,7 @@ async function handleWebSocketMessage(ws, rawMessage) {
       responseCommand = 'orderUpdated';
     } else if (command === 'getParkedTransactions') {
       const transactionManagementService = require('./services/transaction_management.service');
-      responsePayload = await transactionManagementService.getParkedTransactions();
+      responsePayload = await transactionManagementService.getParkedTransactions(payload.sessionId || null);
     } else if (command === 'updateTransactionMetadata') {
       const { transactionId, metadata, userId, updateTimestamp = false } = payload;
       if (!transactionId || !metadata || !userId) {
