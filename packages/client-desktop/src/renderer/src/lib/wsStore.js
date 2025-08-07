@@ -31,7 +31,9 @@ function createWebSocketStore() {
   // Connect to WebSocket
   function connect() {
     try {
-      ws = new WebSocket('ws://localhost:3030');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}`;
+ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
         console.log('WebSocket connected');
