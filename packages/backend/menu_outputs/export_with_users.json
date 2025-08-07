@@ -1,0 +1,361 @@
+{
+  "$schema": "https://schemas.eckasse.com/oop-pos-mdf/v2.0.0/schema.json",
+  "company_details": {
+    "company_unique_identifier": 2,
+    "company_full_name": "Betruger Sp. z o.o.",
+    "meta_information": {
+      "format_version": "2.0.0",
+      "default_currency_symbol": "€",
+      "default_language": "de",
+      "export_timestamp": "2025-08-07T12:38:53.943Z",
+      "exported_by": "eckasse-cli-export-v2.0.0",
+      "export_version": "2.0.0"
+    },
+    "global_configurations": {
+      "tax_rates_definitions": [
+        {
+          "tax_rate_unique_identifier": 1,
+          "tax_rate_names": {
+            "de": "Standard (19%)"
+          },
+          "rate_percentage": 19
+        }
+      ]
+    },
+    "user_management": {
+      "roles": [
+        {
+          "role_unique_identifier": 13,
+          "role_name": "manager",
+          "role_display_names": {
+            "de": "Manager",
+            "en": "Manager"
+          },
+          "description": "Full system access with all management privileges",
+          "permissions": [
+            "pos.manage_all",
+            "users.manage",
+            "roles.manage",
+            "products.create",
+            "products.edit",
+            "products.delete",
+            "categories.create",
+            "categories.edit",
+            "categories.delete",
+            "reports.view_all",
+            "reports.export",
+            "storno.approve_unlimited",
+            "changes.approve",
+            "settings.modify",
+            "system.admin"
+          ],
+          "default_storno_daily_limit": 1000,
+          "default_storno_emergency_limit": 500,
+          "can_approve_changes": 1,
+          "can_manage_users": 1,
+          "is_system_role": 1,
+          "audit_trail": {
+            "created_at": "2025-08-07T12:15:27.601Z",
+            "created_by": "system_seed",
+            "last_modified_at": "2025-08-07T12:15:27.601Z",
+            "last_modified_by": "system_seed",
+            "version": 1,
+            "change_log": [
+              {
+                "timestamp": "2025-08-07T12:15:27.601Z",
+                "user": "system_seed",
+                "action": "created",
+                "description": "Initial seed data creation"
+              }
+            ]
+          }
+        },
+        {
+          "role_unique_identifier": 14,
+          "role_name": "cashier",
+          "role_display_names": {
+            "de": "Kassierer",
+            "en": "Cashier"
+          },
+          "description": "Standard POS operator with limited privileges",
+          "permissions": [
+            "pos.operate",
+            "products.view",
+            "categories.view",
+            "reports.view_own",
+            "storno.request",
+            "changes.request"
+          ],
+          "default_storno_daily_limit": 50,
+          "default_storno_emergency_limit": 25,
+          "can_approve_changes": 0,
+          "can_manage_users": 0,
+          "is_system_role": 1,
+          "audit_trail": {
+            "created_at": "2025-08-07T12:15:27.606Z",
+            "created_by": "system_seed",
+            "last_modified_at": "2025-08-07T12:15:27.606Z",
+            "last_modified_by": "system_seed",
+            "version": 1,
+            "change_log": [
+              {
+                "timestamp": "2025-08-07T12:15:27.606Z",
+                "user": "system_seed",
+                "action": "created",
+                "description": "Initial seed data creation"
+              }
+            ]
+          }
+        },
+        {
+          "role_unique_identifier": 15,
+          "role_name": "supervisor",
+          "role_display_names": {
+            "de": "Supervisor",
+            "en": "Supervisor"
+          },
+          "description": "Mid-level access with limited management privileges",
+          "permissions": [
+            "pos.operate",
+            "pos.manage_shift",
+            "products.view",
+            "products.edit",
+            "categories.view",
+            "categories.edit",
+            "reports.view_department",
+            "storno.approve_limited",
+            "changes.approve_limited",
+            "users.view"
+          ],
+          "default_storno_daily_limit": 200,
+          "default_storno_emergency_limit": 100,
+          "can_approve_changes": 1,
+          "can_manage_users": 0,
+          "is_system_role": 1,
+          "audit_trail": {
+            "created_at": "2025-08-07T12:15:27.611Z",
+            "created_by": "system_seed",
+            "last_modified_at": "2025-08-07T12:15:27.611Z",
+            "last_modified_by": "system_seed",
+            "version": 1,
+            "change_log": [
+              {
+                "timestamp": "2025-08-07T12:15:27.611Z",
+                "user": "system_seed",
+                "action": "created",
+                "description": "Initial seed data creation"
+              }
+            ]
+          }
+        }
+      ],
+      "users": [
+        {
+          "user_unique_identifier": 13,
+          "username": "admin",
+          "email": "admin@eckasse.local",
+          "full_name": "System Administrator",
+          "role_id": 13,
+          "storno_daily_limit": 1000,
+          "storno_emergency_limit": 500,
+          "trust_score": 100,
+          "is_active": 1,
+          "user_preferences": {
+            "language": "de",
+            "theme": "light",
+            "notifications": {
+              "pending_changes": true,
+              "storno_requests": true,
+              "system_alerts": true
+            }
+          },
+          "audit_trail": {
+            "created_at": "2025-08-07T12:15:27.811Z",
+            "created_by": "system_seed",
+            "last_modified_at": "2025-08-07T12:15:27.811Z",
+            "last_modified_by": "system_seed",
+            "version": 1,
+            "change_log": [
+              {
+                "timestamp": "2025-08-07T12:15:27.811Z",
+                "user": "system_seed",
+                "action": "created",
+                "description": "Initial seed data creation"
+              }
+            ]
+          }
+        },
+        {
+          "user_unique_identifier": 14,
+          "username": "cashier1",
+          "email": "cashier1@eckasse.local",
+          "full_name": "Maria Schmidt",
+          "role_id": 14,
+          "storno_daily_limit": 50,
+          "storno_emergency_limit": 25,
+          "trust_score": 50,
+          "is_active": 1,
+          "user_preferences": {
+            "language": "de",
+            "theme": "light",
+            "notifications": {
+              "pending_changes": false,
+              "storno_requests": false,
+              "system_alerts": true
+            }
+          },
+          "audit_trail": {
+            "created_at": "2025-08-07T12:15:27.811Z",
+            "created_by": "system_seed",
+            "last_modified_at": "2025-08-07T12:15:27.811Z",
+            "last_modified_by": "system_seed",
+            "version": 1,
+            "change_log": [
+              {
+                "timestamp": "2025-08-07T12:15:27.811Z",
+                "user": "system_seed",
+                "action": "created",
+                "description": "Initial seed data creation"
+              }
+            ]
+          }
+        },
+        {
+          "user_unique_identifier": 15,
+          "username": "supervisor1",
+          "email": "supervisor1@eckasse.local",
+          "full_name": "Hans Müller",
+          "role_id": 15,
+          "storno_daily_limit": 200,
+          "storno_emergency_limit": 100,
+          "trust_score": 75,
+          "is_active": 1,
+          "user_preferences": {
+            "language": "de",
+            "theme": "light",
+            "notifications": {
+              "pending_changes": true,
+              "storno_requests": true,
+              "system_alerts": true
+            }
+          },
+          "audit_trail": {
+            "created_at": "2025-08-07T12:15:27.811Z",
+            "created_by": "system_seed",
+            "last_modified_at": "2025-08-07T12:15:27.811Z",
+            "last_modified_by": "system_seed",
+            "version": 1,
+            "change_log": [
+              {
+                "timestamp": "2025-08-07T12:15:27.811Z",
+                "user": "system_seed",
+                "action": "created",
+                "description": "Initial seed data creation"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "branches": [
+      {
+        "branch_unique_identifier": 2,
+        "branch_names": {
+          "de": "Hauptfiliale"
+        },
+        "branch_address": null,
+        "point_of_sale_devices": [
+          {
+            "pos_device_unique_identifier": 2,
+            "pos_device_names": {
+              "de": "Kasse 1"
+            },
+            "pos_device_type": "DESKTOP",
+            "pos_device_external_number": 1,
+            "pos_device_settings": {},
+            "categories_for_this_pos": [
+              {
+                "category_unique_identifier": 7,
+                "category_names": {
+                  "de": "Speisen"
+                },
+                "category_type": "food",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": null,
+                "audit_trail": {}
+              },
+              {
+                "category_unique_identifier": 8,
+                "category_names": {
+                  "de": "Getränke"
+                },
+                "category_type": "drink",
+                "parent_category_unique_identifier": null,
+                "default_linked_main_group_unique_identifier": null,
+                "audit_trail": {}
+              }
+            ],
+            "items_for_this_pos": [
+              {
+                "item_unique_identifier": 30,
+                "associated_category_unique_identifier": 7,
+                "display_names": {
+                  "menu": {
+                    "de": "Super Widget"
+                  },
+                  "button": {
+                    "de": "Widget"
+                  },
+                  "receipt": {
+                    "de": "Super Widget"
+                  }
+                },
+                "item_price_value": 19.99,
+                "pricing_schedules": [],
+                "availability_schedule": {},
+                "additional_item_attributes": {},
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-08-07T12:15:27.568Z",
+                  "created_by": "seed",
+                  "version": 1
+                }
+              },
+              {
+                "item_unique_identifier": 31,
+                "associated_category_unique_identifier": 8,
+                "display_names": {
+                  "menu": {
+                    "de": "Eco Mug"
+                  },
+                  "button": {
+                    "de": "Mug"
+                  },
+                  "receipt": {
+                    "de": "Eco Mug"
+                  }
+                },
+                "item_price_value": 12.5,
+                "pricing_schedules": [],
+                "availability_schedule": {},
+                "additional_item_attributes": {},
+                "item_flags": {
+                  "is_sellable": true,
+                  "has_negative_price": false
+                },
+                "audit_trail": {
+                  "created_at": "2025-08-07T12:15:27.569Z",
+                  "created_by": "seed",
+                  "version": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

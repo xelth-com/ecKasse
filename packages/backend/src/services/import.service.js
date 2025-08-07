@@ -14,6 +14,7 @@
  * @version 2.0.0
  */
 
+const bcrypt = require('bcrypt');
 const db = require('../db/knex');
 const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
 const logger = require('../config/logger');
@@ -95,6 +96,11 @@ async function cleanExistingData(trx) {
   } catch (error) {
     logger.warn('vec_items table not found, skipping cleanup');
   }
+  await trx('storno_log').del();
+  await trx('pending_changes').del();
+  await trx('user_sessions').del();
+  await trx('users').del();
+  await trx('roles').del();
   await trx('items').del();
   await trx('categories').del();
   await trx('pos_devices').del();
@@ -102,8 +108,8 @@ async function cleanExistingData(trx) {
   await trx('companies').del();
   
   // Reset auto-increment sequences
-  await trx.raw('UPDATE sqlite_sequence SET seq = 0 WHERE name IN (?, ?, ?, ?, ?)', 
-    ['companies', 'branches', 'pos_devices', 'categories', 'items']);
+  await trx.raw('UPDATE sqlite_sequence SET seq = 0 WHERE name IN (?, ?, ?, ?, ?, ?, ?)', 
+    ['companies', 'branches', 'pos_devices', 'categories', 'items', 'roles', 'users']);
   
   logger.info('Database cleanup completed');
 }
@@ -136,6 +142,62 @@ async function importHierarchicalData(trx, jsonData, stats) {
   const companyId = companyResult[0].id || companyResult[0];
 
   stats.companies++;
+
+  // Step 2a: Import user management if it exists
+  const roleIdMap = new Map();
+  if (companyDetails.user_management) {
+    logger.info('Importing user management data...');
+    // Import roles first
+    if (companyDetails.user_management.roles) {
+      for (const role of companyDetails.user_management.roles) {
+        const [newRole] = await trx('roles').insert({
+          role_name: role.role_name,
+          role_display_names: JSON.stringify(role.role_display_names),
+          description: role.description,
+          permissions: JSON.stringify(role.permissions),
+          default_storno_daily_limit: role.default_storno_daily_limit,
+          default_storno_emergency_limit: role.default_storno_emergency_limit,
+          can_approve_changes: role.can_approve_changes,
+          can_manage_users: role.can_manage_users,
+          is_system_role: role.is_system_role,
+          audit_trail: JSON.stringify(role.audit_trail)
+        }).returning('id');
+        const newRoleId = typeof newRole === 'object' ? newRole.id : newRole;
+        roleIdMap.set(role.role_unique_identifier, newRoleId);
+        stats.roles = (stats.roles || 0) + 1;
+      }
+    }
+
+    // Import users
+    if (companyDetails.user_management.users) {
+      const defaultPassword = 'changeme';
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
+
+      for (const user of companyDetails.user_management.users) {
+        const newRoleId = roleIdMap.get(user.role_id);
+        if (!newRoleId) {
+          logger.warn(`Could not find new role ID for old role ID ${user.role_id} for user ${user.username}. Skipping user.`);
+          continue;
+        }
+        await trx('users').insert({
+          username: user.username,
+          email: user.email,
+          password_hash: hashedPassword,
+          full_name: user.full_name,
+          role_id: newRoleId,
+          storno_daily_limit: user.storno_daily_limit,
+          storno_emergency_limit: user.storno_emergency_limit,
+          trust_score: user.trust_score,
+          is_active: user.is_active,
+          force_password_change: true, // IMPORTANT FOR SECURITY
+          user_preferences: JSON.stringify(user.user_preferences),
+          audit_trail: JSON.stringify(user.audit_trail)
+        });
+        stats.users = (stats.users || 0) + 1;
+      }
+    }
+  }
 
   // Step 2: Import branches
   if (!companyDetails.branches || !Array.isArray(companyDetails.branches)) {

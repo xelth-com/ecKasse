@@ -49,6 +49,47 @@ async function exportToOopMdf(options = {}) {
     const exportedData = await exportHierarchicalDataOptimized(company.id, includeEmbeddings);
     const branches = exportedData.branches;
 
+    // Step 3: Export user management data
+    const roles = await db('roles').select('id as role_unique_identifier', 'role_name', 'role_display_names', 'description', 'permissions', 'default_storno_daily_limit', 'default_storno_emergency_limit', 'can_approve_changes', 'can_manage_users', 'is_system_role', 'audit_trail');
+    const users = await db('users').select('id as user_unique_identifier', 'username', 'email', 'full_name', 'role_id', 'storno_daily_limit', 'storno_emergency_limit', 'trust_score', 'is_active', 'user_preferences', 'audit_trail');
+
+    const user_management = {
+      roles: roles.map(r => {
+        try {
+          return {
+            ...r, 
+            permissions: JSON.parse(r.permissions || '{}'), 
+            role_display_names: JSON.parse(r.role_display_names || '{}'), 
+            audit_trail: JSON.parse(r.audit_trail || '{}')
+          };
+        } catch (e) {
+          logger.warn('Invalid JSON in role data', { role_id: r.role_unique_identifier, error: e.message });
+          return {
+            ...r, 
+            permissions: {}, 
+            role_display_names: {}, 
+            audit_trail: {}
+          };
+        }
+      }),
+      users: users.map(u => {
+        try {
+          return {
+            ...u, 
+            user_preferences: JSON.parse(u.user_preferences || '{}'), 
+            audit_trail: JSON.parse(u.audit_trail || '{}')
+          };
+        } catch (e) {
+          logger.warn('Invalid JSON in user data', { user_id: u.user_unique_identifier, error: e.message });
+          return {
+            ...u, 
+            user_preferences: {}, 
+            audit_trail: {}
+          };
+        }
+      })
+    };
+
     // Step 4: Build final oop-pos-mdf structure
     const exportedConfig = {
       "$schema": "https://schemas.eckasse.com/oop-pos-mdf/v2.0.0/schema.json",
@@ -66,6 +107,8 @@ async function exportToOopMdf(options = {}) {
         
         // Parse global configurations
         global_configurations: JSON.parse(company.global_configurations || '{}'),
+
+        user_management,
         
         // Add branches
         branches: branches
@@ -149,10 +192,10 @@ async function exportHierarchicalDataOptimized(companyId, includeEmbeddings = tr
   if (includeEmbeddings) {
     itemsQuery = itemsQuery
       .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
-      .select('items.*', 'categories.source_unique_identifier as category_source_id', 'vec_items.item_embedding as embedding_vector');
+      .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'vec_items.item_embedding as embedding_vector');
   } else {
     itemsQuery = itemsQuery
-      .select('items.*', 'categories.source_unique_identifier as category_source_id');
+      .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id');
   }
 
   const items = await itemsQuery;
@@ -194,9 +237,18 @@ async function exportHierarchicalDataOptimized(companyId, includeEmbeddings = tr
       const deviceCategories = categoriesByPosDevice.get(device.id) || [];
       const deviceItems = itemsByPosDevice.get(device.id) || [];
       
+      // Handle pos_device_name as either string or JSON
+      let posDeviceNames = {};
+      try {
+        posDeviceNames = JSON.parse(device.pos_device_name || '{}');
+      } catch (e) {
+        // If it's not JSON, treat it as a plain string and wrap it
+        posDeviceNames = { "de": device.pos_device_name || "Unknown Device" };
+      }
+
       return {
         pos_device_unique_identifier: device.id,
-        pos_device_names: JSON.parse(device.pos_device_name || '{}'),
+        pos_device_names: posDeviceNames,
         pos_device_type: device.pos_device_type,
         pos_device_external_number: device.pos_device_external_number,
         pos_device_settings: JSON.parse(device.pos_device_settings || '{}'),
@@ -205,9 +257,18 @@ async function exportHierarchicalDataOptimized(companyId, includeEmbeddings = tr
       };
     });
     
+    // Handle branch_name as either string or JSON
+    let branchNames = {};
+    try {
+      branchNames = JSON.parse(branch.branch_name || '{}');
+    } catch (e) {
+      // If it's not JSON, treat it as a plain string and wrap it
+      branchNames = { "de": branch.branch_name || "Unknown Branch" };
+    }
+
     return {
       branch_unique_identifier: branch.id,
-      branch_names: JSON.parse(branch.branch_name || '{}'),
+      branch_names: branchNames,
       branch_address: branch.branch_address,
       point_of_sale_devices: processedPosDevices
     };
@@ -235,15 +296,26 @@ function processCategories(categories) {
     categoryIdMap.set(cat.id, cat.source_unique_identifier);
   });
   
-  return categories.map(category => ({
-    category_unique_identifier: parseInt(category.source_unique_identifier),
-    category_names: JSON.parse(category.category_names || '{}'),
-    category_type: category.category_type,
-    parent_category_unique_identifier: category.parent_category_id ? 
-      parseInt(categoryIdMap.get(category.parent_category_id)) : null,
-    default_linked_main_group_unique_identifier: category.default_linked_main_group_unique_identifier,
-    audit_trail: JSON.parse(category.audit_trail || '{}')
-  }));
+  return categories.map(category => {
+    // Use source_unique_identifier if it exists and is numeric, otherwise use internal id
+    let categoryId;
+    if (category.source_unique_identifier) {
+      const parsedSourceId = parseInt(category.source_unique_identifier);
+      categoryId = isNaN(parsedSourceId) ? category.id : parsedSourceId;
+    } else {
+      categoryId = category.id;
+    }
+    
+    return {
+      category_unique_identifier: categoryId,
+      category_names: JSON.parse(category.category_names || '{}'),
+      category_type: category.category_type,
+      parent_category_unique_identifier: category.parent_category_id ? 
+        parseInt(categoryIdMap.get(category.parent_category_id)) : null,
+      default_linked_main_group_unique_identifier: category.default_linked_main_group_unique_identifier,
+      audit_trail: JSON.parse(category.audit_trail || '{}')
+    };
+  });
 }
 
 /**
@@ -251,9 +323,27 @@ function processCategories(categories) {
  */
 function processItems(items, includeEmbeddings) {
   return items.map(item => {
+    // Use source_unique_identifier if it exists and is numeric, otherwise use internal id
+    let itemId;
+    if (item.source_unique_identifier) {
+      const parsedSourceId = parseInt(item.source_unique_identifier);
+      itemId = isNaN(parsedSourceId) ? item.id : parsedSourceId;
+    } else {
+      itemId = item.id;
+    }
+    
+    // Same logic for category ID
+    let categoryId;
+    if (item.category_source_id) {
+      const parsedCategoryId = parseInt(item.category_source_id);
+      categoryId = isNaN(parsedCategoryId) ? item.category_internal_id : parsedCategoryId;
+    } else {
+      categoryId = item.category_internal_id;
+    }
+    
     const exportedItem = {
-      item_unique_identifier: parseInt(item.source_unique_identifier),
-      associated_category_unique_identifier: parseInt(item.category_source_id),
+      item_unique_identifier: itemId,
+      associated_category_unique_identifier: categoryId,
       display_names: JSON.parse(item.display_names || '{}'),
       item_price_value: parseFloat(item.item_price_value),
       pricing_schedules: JSON.parse(item.pricing_schedules || '[]'),
@@ -269,8 +359,8 @@ function processItems(items, includeEmbeddings) {
       const displayNames = JSON.parse(item.display_names || '{}');
       const additionalAttrs = JSON.parse(item.additional_item_attributes || '{}');
       const semanticString = [
-        displayNames.de || displayNames.en || '',
-        displayNames.en || '',
+        displayNames.menu?.de || displayNames.menu?.en || '',
+        displayNames.menu?.en || '',
         additionalAttrs.description || '',
         additionalAttrs.ingredients || ''
       ].filter(Boolean).join(' ').trim();

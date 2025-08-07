@@ -53,7 +53,8 @@
       "Bash(if grep -q \"HIERO_OPERATOR_KEY\" .env)",
       "Bash(if grep -q \"HIERO_TOPIC_ID\" .env)",
       "Bash(sed:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npx knex:*)"
     ],
     "deny": []
   }

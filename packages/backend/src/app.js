@@ -6,6 +6,7 @@ const logger = require('./config/logger'); // Путь к вашему логг�
 const sessionMiddleware = require('./middleware/session.middleware');
 // const mainRoutes = require('./routes/index'); // THIS SHOULD BE COMMENTED OR REMOVED
 const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
+const systemRoutes = require('./routes/system.routes.js');
 
 
 const app = express();
@@ -47,6 +48,7 @@ logger.info(`Serving static files from: ${staticPath}`);
 // Подключение маршрутов API
 // app.use('/api', mainRoutes); // Когда у вас будут роуты
 app.use('/api/llm', llmRoutes); // Mount the LLM routes
+app.use('/api/system', systemRoutes);
 
 // HTTP fallback endpoint for WebSocket commands
 app.post('/api/websocket-fallback', async (req, res) => {
