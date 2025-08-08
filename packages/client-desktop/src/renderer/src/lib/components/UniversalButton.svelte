@@ -6,6 +6,7 @@
   export let color = '#666666';
   export let textColor = '';
   export let backgroundStyle = '';
+  export let customStyle = '';
   export let disabled = false;
   export let data = null;
   export let width = 120;
@@ -114,7 +115,7 @@
         <div class="shape-overlay {showShape}"></div>
       {/if}
     {:else if label}
-      <span class="button-text">{displayLabel}</span>
+      <span class="button-text" style="{customStyle}">{@html displayLabel}</span>
     {/if}
   </div>
 </button>

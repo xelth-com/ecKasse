@@ -35,14 +35,17 @@ async function main() {
 
   try {
     // === Step 1: Parse Menu ===
+    console.log('PROGRESS: Step 1/6 - Parsing menu PDF with LLM...');
     logger.info('Step 1: Parsing menu PDF with LLM...');
     const parser = new MenuParserLLM();
     const restaurantName = path.basename(filePath, path.extname(filePath)).replace(/menu|karte/i, '').trim();
     const parsedResult = await parser.parseMenu(filePath, { restaurantName });
     const mdfData = parsedResult.configuration;
+    console.log('PROGRESS: ✅ Menu parsing completed successfully');
     logger.info('✅ Menu parsed successfully.');
 
     // === Step 2: Clean Database ===
+    console.log('PROGRESS: Step 2/6 - Cleaning existing database data...');
     logger.info('Step 2: Cleaning all existing data...');
     await db.transaction(async (trx) => {
         await trx('menu_layouts').del();
@@ -53,31 +56,41 @@ async function main() {
         await trx('branches').del();
         await trx('companies').del();
     });
+    console.log('PROGRESS: ✅ Database cleaning completed');
     logger.info('✅ Database cleaned.');
 
     // === Step 3: Import Parsed Data ===
+    console.log('PROGRESS: Step 3/6 - Importing data and generating embeddings...');
     logger.info('Step 3: Importing data and generating initial embeddings...');
     await importFromOopMdf(mdfData);
+    console.log('PROGRESS: ✅ Data import completed successfully');
     logger.info('✅ Data imported successfully.');
     
     // === Step 4: Save "Original Menu" Layout ===
+    console.log('PROGRESS: Step 4/6 - Saving original menu layout...');
     logger.info('Step 4: Saving "Original Menu Layout" snapshot...');
     const originalCategories = await db('categories').select('*');
     const originalLayout = await layoutService.saveLayout('Original Menu Layout', originalCategories, 'ORIGINAL_MENU');
     await layoutService.activateLayout(originalLayout.id); // Activate the original layout by default
+    console.log('PROGRESS: ✅ Original menu layout saved and activated');
     logger.info(`✅ "Original Menu Layout" saved with ID: ${originalLayout.id} and activated.`);
 
     // === Step 5: Enrich Data for "Smart" Layout ===
+    console.log('PROGRESS: Step 5/6 - Enriching data for AI optimization...');
     logger.info('Step 5: Enriching data for "AI Optimized Layout"...');
     const enrichedData = await enrichMdfData(mdfData);
     const enrichedCategories = enrichedData.company_details.branches[0].point_of_sale_devices[0].categories_for_this_pos;
+    console.log('PROGRESS: ✅ Data enrichment completed');
     logger.info('✅ Enrichment complete.');
 
     // === Step 6: Save "AI Optimized" Layout ===
+    console.log('PROGRESS: Step 6/6 - Saving AI optimized layout...');
     logger.info('Step 6: Saving "AI Optimized Layout" snapshot...');
     const aiLayout = await layoutService.saveLayout('AI Optimized Layout', enrichedCategories, 'AI_OPTIMIZED');
+    console.log('PROGRESS: ✅ AI optimized layout saved successfully');
     logger.info(`✅ "AI Optimized Layout" saved with ID: ${aiLayout.id}.`);
     
+    console.log('PROGRESS: 🎉 Full initialization complete! The POS is ready.');
     logger.info(chalk.green('\n🎉🎉🎉 Full initialization complete! The POS is ready.'));
 
   } catch (error) {

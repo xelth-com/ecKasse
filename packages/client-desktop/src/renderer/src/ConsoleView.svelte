@@ -287,6 +287,71 @@
   
   // Export functions for use by SelectionArea
   export { scrollToBottom, cycleViews, getIsAtBottom, displayLanguageSelector };
+  
+  // Set up IPC listeners for menu import progress
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    // Listen for import progress messages
+    if (window.electronAPI.onImportProgress) {
+      window.electronAPI.onImportProgress((progressMessage) => {
+        const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        agentStore.addMessage({
+          timestamp,
+          type: 'agent',
+          message: progressMessage
+        });
+        
+        // Auto-scroll to show progress
+        setTimeout(() => {
+          if (agentScrollElement && $currentView === 'agent') {
+            agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+            checkScrollPosition();
+          }
+        }, 100);
+      });
+    }
+    
+    // Listen for import completion
+    if (window.electronAPI.onImportComplete) {
+      window.electronAPI.onImportComplete((success, finalMessage) => {
+        const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        
+        // Add the completion message
+        agentStore.addMessage({
+          timestamp,
+          type: 'agent',
+          message: finalMessage
+        });
+        
+        // If successful, add a summary request to the LLM
+        if (success) {
+          setTimeout(() => {
+            const summaryTimestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            agentStore.addMessage({
+              timestamp: summaryTimestamp,
+              type: 'agent',
+              message: 'Menu import completed successfully! Your new menu structure is now ready for use. You can navigate back to the selection area to explore the imported categories and products.'
+            });
+            
+            // Auto-scroll to show final messages
+            setTimeout(() => {
+              if (agentScrollElement && $currentView === 'agent') {
+                agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+                checkScrollPosition();
+              }
+            }, 100);
+          }, 1000);
+        }
+        
+        // Auto-scroll to show completion message
+        setTimeout(() => {
+          if (agentScrollElement && $currentView === 'agent') {
+            agentScrollElement.scrollTop = agentScrollElement.scrollHeight;
+            checkScrollPosition();
+          }
+        }, 100);
+      });
+    }
+  }
 </script>
 
 <div class="console-view">

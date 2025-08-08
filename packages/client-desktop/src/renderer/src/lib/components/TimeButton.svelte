@@ -26,8 +26,7 @@
   function formatDate(date) {
     return date.toLocaleDateString('de-DE', {
       day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+      month: '2-digit'
     });
   }
 </script>

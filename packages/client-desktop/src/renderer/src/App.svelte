@@ -2,6 +2,7 @@
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
   import LoginAndTaskView from './lib/components/LoginAndTaskView.svelte';
+  import ControlCenter from './lib/components/ControlCenter.svelte';
   import { authStore } from './lib/authStore.js';
   import { currentView } from './lib/viewStore.js';
   
@@ -36,6 +37,9 @@
       <SelectionArea {handleSmartAction} {isAtBottom} {consoleViewComponent} />
     </div>
   </main>
+  
+  <!-- Control Center overlay - renders above everything -->
+  <ControlCenter />
 {:else}
   <LoginAndTaskView />
 {/if}

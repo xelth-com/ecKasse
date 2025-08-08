@@ -7,6 +7,7 @@
   import { parkedOrdersStore } from './lib/parkedOrdersStore.js';
   import { currentView as consoleView } from './lib/viewStore.js';
   import { currentTime, timeStore } from './lib/timeStore.js';
+  import { toggleControlCenter } from './lib/controlCenterStore.js';
   import UniversalButton from './lib/components/UniversalButton.svelte';
   import Pinpad from './lib/components/Pinpad.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
@@ -102,6 +103,34 @@
    * @param {boolean} hasOverlap - Whether buttons overlap (true for hex, false for rect)
    * @returns {Object} {columns, rows, buttonWidth, buttonHeight}
    */
+
+  /**
+   * Shorten user names for display in half-buttons
+   * @param {string} fullName - Full name to shorten
+   * @returns {string} Shortened name with line break
+   */
+  function shortenUserName(fullName) {
+    if (!fullName) return 'Login';
+    
+    // Split by spaces and take first words
+    const words = fullName.split(' ');
+    if (words.length === 1) {
+      // Single word - take first 4 chars, split 2-2
+      const word = words[0];
+      if (word.length <= 4) return word;
+      return word.substring(0, 2) + '<br>' + word.substring(2, 4);
+    }
+    
+    // Multiple words - take first 2-3 chars from each of first two words
+    const firstWord = words[0];
+    const secondWord = words[1] || '';
+    
+    const firstPart = firstWord.substring(0, 3);
+    const secondPart = secondWord.substring(0, 3);
+    
+    return firstPart + '<br>' + secondPart;
+  }
+
   function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
     const availableWidth = containerWidth;
     const availableHeight = containerHeight - 2 * verticalPadding;
@@ -613,7 +642,14 @@
 
       // Slot 3: Keyboard Toggle
       if (rightHalfCells[2]) {
-        rightHalfCells[2].content = { isKeyboardToggle: true, icon: '⌨️', color: '#404040', textColor: '#666' };
+        rightHalfCells[2].content = { 
+          isKeyboardToggle: true, 
+          icon: `<svg width="72" height="72" viewBox="0 0 24 24" fill="#404040">
+            <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+          </svg>`, 
+          color: '#404040', 
+          textColor: '#666' 
+        };
       }
 
       // Last Slot (Bottommost): Time Button
@@ -847,9 +883,8 @@
   }
 
   function handleTimeClick() {
-    addLog('INFO', 'Time settings accessed');
-    timeStore.resetTimeOffset();
-    addLog('INFO', 'Time offset reset - using client time');
+    addLog('INFO', 'Control Center accessed');
+    toggleControlCenter();
   }
 
   function handleUserButtonClick() {
@@ -1174,14 +1209,14 @@
     };
     if (cell.content.isUserButton) {
       const currentUser = $authStore.currentUser;
-      const userLabel = currentUser ? currentUser.full_name : 'Login';
+      const userLabel = currentUser ? shortenUserName(currentUser.full_name) : 'Login';
       return {
         label: userLabel,
         onClick: handleUserButtonClick,
         active: true,
         color: currentUser ? '#2c3e50' : '#6c757d',
-        textColor: '#fff',
-        customStyle: 'font-size: 11px; font-weight: 600; line-height: 1.2; white-space: pre-line; text-align: center;'
+        textColor: '#666',
+        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
       };
     }
     if (cell.content.isSmartNavigation) {
@@ -1209,14 +1244,29 @@
         };
       }
     };
-    if (cell.content.isTimeButton) return { 
-      label: formatTime($currentTime), 
-      onClick: handleTimeClick, 
-      active: true, 
-      color: '#2c2c2e',
-      textColor: '#666',
-      customStyle: 'font-size: 12px; font-weight: 600; line-height: 1.2; white-space: pre-line; text-align: center;'
-    };
+    if (cell.content.isTimeButton) {
+      const timeText = formatTime($currentTime);
+      const dateText = $currentTime.toLocaleDateString('de-DE', { 
+        day: '2-digit', 
+        month: '2-digit' 
+      });
+      
+      return { 
+        icon: `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background gear icon - bigger and properly centered -->
+          <g transform="translate(25,25) scale(2.2)" opacity="0.15">
+            <path d="M0,7.5A1.5,1.5 0 0,1 -1.5,6A1.5,1.5 0 0,1 0,4.5A1.5,1.5 0 0,1 1.5,6A1.5,1.5 0 0,1 0,7.5M7.43,0.97C7.47,-0.35 7.5,-0.67 7.5,-1C7.5,-1.33 7.47,-1.66 7.43,-2L9.54,-3.63C9.73,-3.78 9.78,-4.05 9.66,-4.27L7.66,-7.73C7.54,-7.95 7.27,-8.04 7.05,-7.95L4.56,-6.95C4.04,-7.34 3.5,-7.68 2.87,-7.93L2.5,-10.58C2.46,-10.82 2.25,-11 2,-11H-2C-2.25,-11 -2.46,-10.82 -2.5,-10.58L-2.87,-7.93C-3.5,-7.68 -4.04,-7.34 -4.56,-6.95L-7.05,-7.95C-7.27,-8.04 -7.54,-7.95 -7.66,-7.73L-9.66,-4.27C-9.78,-4.05 -9.73,-3.78 -9.54,-3.63L-7.43,-2C-7.47,-1.66 -7.5,-1.33 -7.5,-1C-7.5,-0.67 -7.47,-0.35 -7.43,0.97L-9.54,2.63C-9.73,2.78 -9.78,3.05 -9.66,3.27L-7.66,6.73C-7.54,6.95 -7.27,7.03 -7.05,6.95L-4.56,5.94C-4.04,6.34 -3.5,6.68 -2.87,6.93L-2.5,9.58C-2.46,9.82 -2.25,10 -2,10H2C2.25,10 2.46,9.82 2.5,9.58L2.87,6.93C3.5,6.68 4.04,6.34 4.56,5.94L7.05,6.95C7.27,7.03 7.54,6.95 7.66,6.73L9.66,3.27C9.78,3.05 9.73,2.78 9.54,2.63L7.43,0.97Z" fill="#999"/>
+          </g>
+          <!-- Time text on top line -->
+          <text x="25" y="20" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle" dominant-baseline="middle" fill="#666">${timeText}</text>
+          <!-- Date text on bottom line -->
+          <text x="25" y="32" font-family="Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" dominant-baseline="middle" fill="#777">${dateText}</text>
+        </svg>`,
+        onClick: handleTimeClick, 
+        active: true, 
+        color: '#2c2c2e'
+      };
+    }
     if (cell.content.isBetrugerCap) return {
       isBetrugerCap: true,
       label: cell.content.label,
