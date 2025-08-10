@@ -1,0 +1,17 @@
+[
+  {
+    "id": "1811a19c-8e4f-40ab-8b90-a84f63390d33",
+    "name": "New HPRT_TP80K",
+    "roles": [
+      "receipts"
+    ],
+    "model": "HPRT_TP80K",
+    "manufacturer": "HPRT",
+    "ip": "192.168.0.130",
+    "port": {
+      "type": "LAN",
+      "ip": "192.168.0.130"
+    },
+    "configuredAt": "2025-08-10T19:36:16.677Z"
+  }
+]

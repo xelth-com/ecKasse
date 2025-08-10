@@ -54,7 +54,8 @@
       "Bash(if grep -q \"HIERO_TOPIC_ID\" .env)",
       "Bash(sed:*)",
       "Bash(chmod:*)",
-      "Bash(npx knex:*)"
+      "Bash(npx knex:*)",
+      "Bash(npm search:*)"
     ],
     "deny": []
   }

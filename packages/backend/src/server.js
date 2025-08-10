@@ -514,6 +514,15 @@ async function startServer() {
   // Run recovery process for stale active transactions
   await runRecoveryProcess();
 
+  // Initialize printer service
+  try {
+    const printerService = require('./services/printer_service');
+    await printerService.loadPrinters();
+    logger.info('Printer service initialized successfully');
+  } catch (error) {
+    logger.warn('Failed to initialize printer service:', error.message);
+  }
+
   // Now, start the server.
   httpServer.listen(PORT, () => {
     logger.info(`Backend server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
