@@ -309,3 +309,506 @@ async function withTimeout(promise, timeoutMs, errorMessage) {
 ---
 
 This roadmap provides a clear path for completing the printer auto-configuration system and extending it with advanced features. Each task includes sufficient technical detail for developers to understand the requirements and begin implementation.
+
+## Opus4.1 - Strategic Vision & Next-Generation Features
+
+This section outlines the next evolution of ecKasse from a foundational POS system to an intelligent, distributed, and highly secure platform. Ideas are sorted by implementation priority and practical value.
+
+### 🔴 Приоритетные улучшения (High Priority - Practical Implementation)
+
+#### 1. Intelligent Receipt Processing & Analytics
+**Priority:** High - Immediate business value
+**Implementation Time:** 2-3 weeks
+
+Transform receipt data into actionable business intelligence through AI-powered analysis.
+
+```javascript
+// packages/backend/src/services/receipt-analytics.service.js
+class ReceiptAnalyticsService {
+  async analyzeReceiptData(receiptId) {
+    const receipt = await this.getReceiptWithItems(receiptId);
+    const analysis = await this.llmService.analyze(receipt, {
+      patterns: ['peak_hours', 'item_combinations', 'customer_preferences'],
+      metrics: ['revenue_trends', 'inventory_velocity', 'profit_margins']
+    });
+    
+    return {
+      businessInsights: analysis.insights,
+      recommendations: analysis.recommendations,
+      predictedDemand: await this.predictDemand(receipt.items),
+      optimizations: await this.suggestOptimizations(analysis)
+    };
+  }
+
+  async generateBusinessReport(timeRange, filters) {
+    const receipts = await this.getReceiptsInRange(timeRange, filters);
+    const aggregatedAnalysis = await this.llmService.aggregateAnalytics(receipts);
+    
+    return {
+      salesTrends: aggregatedAnalysis.trends,
+      topPerformers: aggregatedAnalysis.bestsellers,
+      underperformers: aggregatedAnalysis.slowmovers,
+      reorderSuggestions: await this.generateReorderSuggestions(aggregatedAnalysis),
+      priceOptimizations: await this.suggestPriceAdjustments(aggregatedAnalysis)
+    };
+  }
+}
+```
+
+**Features:**
+- Real-time sales pattern recognition
+- Inventory optimization recommendations
+- Customer behavior analysis
+- Automated reorder suggestions
+- Dynamic pricing optimization
+
+#### 2. Multi-Device Synchronization with Conflict Resolution
+**Priority:** High - Critical for scalability
+**Implementation Time:** 3-4 weeks
+
+Enable multiple POS terminals to operate simultaneously with intelligent conflict resolution.
+
+```javascript
+// packages/backend/src/services/sync.service.js
+class SyncService {
+  constructor() {
+    this.conflictResolver = new ConflictResolver();
+    this.eventEmitter = new EventEmitter();
+    this.devices = new Map(); // device_id -> device_state
+  }
+
+  async synchronizeTransaction(transaction, deviceId) {
+    const transactionId = transaction.id;
+    const conflicts = await this.detectConflicts(transaction);
+    
+    if (conflicts.length > 0) {
+      const resolution = await this.conflictResolver.resolve(conflicts, {
+        priority: this.getDevicePriority(deviceId),
+        timestamp: transaction.timestamp,
+        transactionType: transaction.type
+      });
+      
+      transaction = await this.applyResolution(transaction, resolution);
+    }
+    
+    // Broadcast to all connected devices
+    this.eventEmitter.emit('transaction_synced', {
+      transaction,
+      deviceId,
+      resolution: conflicts.length > 0 ? 'resolved' : 'clean'
+    });
+    
+    return transaction;
+  }
+
+  async detectConflicts(transaction) {
+    const conflicts = [];
+    
+    // Check inventory conflicts
+    for (const item of transaction.items) {
+      const currentStock = await this.getItemStock(item.id);
+      if (currentStock < item.quantity) {
+        conflicts.push({
+          type: 'inventory_shortage',
+          item: item,
+          available: currentStock,
+          requested: item.quantity
+        });
+      }
+    }
+    
+    // Check concurrent transaction conflicts
+    const concurrentTransactions = await this.getConcurrentTransactions(
+      transaction.timestamp, 5000 // 5 second window
+    );
+    
+    for (const concurrent of concurrentTransactions) {
+      const sharedItems = this.findSharedItems(transaction, concurrent);
+      if (sharedItems.length > 0) {
+        conflicts.push({
+          type: 'concurrent_access',
+          items: sharedItems,
+          conflictingTransaction: concurrent.id
+        });
+      }
+    }
+    
+    return conflicts;
+  }
+}
+```
+
+**Features:**
+- Real-time inventory synchronization
+- Optimistic concurrency control
+- Device-specific conflict resolution rules
+- Transaction rollback and recovery
+- Network partition tolerance
+
+#### 3. Voice-Controlled POS Operations
+**Priority:** Medium-High - Modern UX improvement
+**Implementation Time:** 2-3 weeks
+
+Integrate speech recognition for hands-free operation during busy periods.
+
+```javascript
+// packages/client-desktop/src/renderer/public/voice-control.js
+class VoiceController {
+  constructor(websocketManager) {
+    this.ws = websocketManager;
+    this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    this.isListening = false;
+    this.commands = new Map();
+    this.setupRecognition();
+    this.setupCommands();
+  }
+
+  setupCommands() {
+    // Product operations
+    this.commands.set(/добавить (.*) количество (\d+)/, this.addProduct.bind(this));
+    this.commands.set(/найти товар (.*)/, this.searchProduct.bind(this));
+    this.commands.set(/удалить (.*) из чека/, this.removeProduct.bind(this));
+    
+    // Transaction operations  
+    this.commands.set(/новый чек/, this.newTransaction.bind(this));
+    this.commands.set(/оплата (наличными|картой)/, this.processPayment.bind(this));
+    this.commands.set(/скидка (\d+) процентов/, this.applyDiscount.bind(this));
+    
+    // Navigation
+    this.commands.set(/показать меню/, this.showMenu.bind(this));
+    this.commands.set(/отчеты за (день|неделю|месяц)/, this.showReports.bind(this));
+  }
+
+  async addProduct(productName, quantity) {
+    const operationId = this.generateUUID();
+    const response = await this.ws.sendMessage({
+      operationId,
+      command: 'llm_query',
+      payload: {
+        query: `Добавить товар "${productName}" количество ${quantity} в текущий чек`,
+        context: 'voice_command'
+      }
+    });
+    
+    this.announceResult(`Добавлен товар ${productName}, количество ${quantity}`);
+    return response;
+  }
+
+  announceResult(message) {
+    // Text-to-speech feedback
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'ru-RU';
+    speechSynthesis.speak(utterance);
+  }
+}
+```
+
+**Features:**
+- Russian language speech recognition
+- Product search and addition by voice
+- Payment processing commands
+- Audio feedback for confirmation
+- Noise cancellation for kitchen environments
+
+#### 4. Smart Inventory Management with Predictive Analytics
+**Priority:** High - Direct cost savings
+**Implementation Time:** 4-5 weeks
+
+AI-driven inventory management with demand forecasting and automated ordering.
+
+```javascript
+// packages/backend/src/services/inventory-ai.service.js
+class InventoryAIService {
+  async predictDemand(productId, timeHorizon = '7d') {
+    const historicalData = await this.getHistoricalSales(productId, '90d');
+    const seasonalData = await this.getSeasonalPatterns(productId);
+    const externalFactors = await this.getExternalFactors(); // weather, events, etc.
+    
+    const prediction = await this.llmService.predict({
+      historical: historicalData,
+      seasonal: seasonalData,
+      external: externalFactors,
+      horizon: timeHorizon
+    });
+    
+    return {
+      expectedQuantity: prediction.quantity,
+      confidence: prediction.confidence,
+      factors: prediction.influencingFactors,
+      recommendations: await this.generateInventoryActions(prediction)
+    };
+  }
+
+  async generateInventoryActions(prediction) {
+    const actions = [];
+    
+    if (prediction.confidence > 0.8) {
+      if (prediction.trend === 'increasing') {
+        actions.push({
+          action: 'increase_order',
+          quantity: Math.ceil(prediction.quantity * 1.2),
+          urgency: prediction.timeUntilStockout < 48 ? 'high' : 'medium'
+        });
+      } else if (prediction.trend === 'decreasing') {
+        actions.push({
+          action: 'reduce_order',
+          quantity: Math.ceil(prediction.quantity * 0.8),
+          reason: 'predicted_demand_decrease'
+        });
+      }
+    }
+    
+    return actions;
+  }
+
+  async optimizeMenuPricing(productId) {
+    const costAnalysis = await this.getCostAnalysis(productId);
+    const competitorPricing = await this.getCompetitorPricing(productId);
+    const demandElasticity = await this.calculateDemandElasticity(productId);
+    
+    const optimization = await this.llmService.optimizePrice({
+      costs: costAnalysis,
+      competition: competitorPricing,
+      elasticity: demandElasticity,
+      targetMargin: 0.35 // 35% target margin
+    });
+    
+    return {
+      recommendedPrice: optimization.price,
+      expectedRevenue: optimization.revenueProjection,
+      riskAssessment: optimization.risks,
+      testingStrategy: optimization.abTestPlan
+    };
+  }
+}
+```
+
+### 🟡 Теоретические и стратегические концепции (Medium Priority - Visionary Features)
+
+#### Strategic Technology Integration
+1. **Blockchain Receipt Verification** - Immutable transaction records with smart contract validation for audit compliance
+2. **Federated Learning Menu Optimization** - Cross-restaurant learning without sharing sensitive data  
+3. **AR Menu Visualization** - Augmented reality menu displays with nutritional information overlay
+4. **IoT Kitchen Integration** - Smart appliance coordination with automatic cooking time optimization
+5. **Biometric Customer Recognition** - Seamless personalization without privacy invasion
+6. **Edge AI Processing** - Local AI inference for reduced latency and improved privacy
+7. **Quantum-Safe Encryption** - Future-proof security for financial transactions
+8. **Digital Twin Restaurant** - Virtual restaurant simulation for operational optimization
+
+#### Next-Generation User Experience
+9. **Gesture-Based Interface** - Touchless operation using computer vision for hygiene
+10. **Predictive Customer Service** - AI anticipates customer needs before they ask
+11. **Adaptive UI Intelligence** - Interface that learns and optimizes based on staff usage patterns
+12. **Holographic Menu Displays** - 3D product visualization for enhanced customer experience
+13. **Neural Interface Compatibility** - Brain-computer interface readiness for future accessibility
+14. **Emotional Intelligence Integration** - AI that recognizes and responds to customer emotions
+15. **Time-Dilated Analytics** - Analysis that accounts for temporal perception differences during rush periods
+
+#### Advanced Business Intelligence
+16. **Chaos Engineering Testing** - Automated failure injection to improve system resilience  
+17. **Swarm Intelligence Logistics** - Decentralized delivery optimization using swarm algorithms
+18. **Quantum Computing Menu Optimization** - Complex combinatorial optimization for menu engineering
+19. **Synthetic Customer Generation** - AI-generated customer personas for market testing
+20. **Memetic Algorithm Pricing** - Cultural evolution-inspired dynamic pricing strategies
+21. **Fractal Resource Allocation** - Self-similar optimization patterns across different time scales
+22. **Hypergraph Transaction Analysis** - Multi-dimensional relationship analysis between customers, products, and time
+
+#### Distributed Systems Evolution
+23. **Mesh Network POS Clustering** - Self-healing network topology for multi-location businesses
+24. **Consensus-Based Inventory** - Distributed agreement protocols for inventory accuracy
+25. **Event Sourcing Architecture** - Complete transaction history reconstruction capability
+26. **CQRS with Temporal Queries** - Command-Query separation with time-travel analytics
+27. **Microservices Orchestration** - Dynamic service composition based on business needs
+28. **Zero-Knowledge Proof Payments** - Privacy-preserving payment verification without transaction details
+29. **Homomorphic Analytics** - Encrypted data analysis without decryption
+30. **Quantum Entanglement Sync** - Theoretical instant synchronization across any distance
+
+---
+
+The Opus4.1 roadmap represents a transformative vision for ecKasse, balancing immediate practical improvements with long-term strategic positioning. The prioritized implementations focus on delivering measurable business value while establishing the foundation for revolutionary features that will define the future of intelligent POS systems.
+
+## Касса как Сервис (KaaS) - On-Demand Cloud POS
+
+**Концепция:** Веб-версия ecKasse для экстренных ситуаций и временных мероприятий
+
+### 🚀 Основная идея
+
+Создание облачной версии POS-системы, доступной через веб-браузер для ситуаций, когда основная система недоступна или требуется быстрое развертывание кассы для временных мероприятий.
+
+### 🎯 Сценарии использования
+
+#### Экстренные ситуации
+- **Поломка основного оборудования** - Мгновенный переход на веб-версию с любого устройства
+- **Отключение электричества** - Работа с мобильных устройств на батарее
+- **Технические сбои** - Резервная система без прерывания торговли
+- **Удаленное управление** - Администрирование системы из любой точки
+
+#### Временные мероприятия  
+- **Выездная торговля** - Фестивали, ярмарки, выставки
+- **Popup-кафе** - Быстрое развертывание без установки ПО
+- **Сезонные точки** - Летние веранды, новогодние ярмарки
+- **Тестирование бизнеса** - Пилотные проекты без капитальных вложений
+
+### 💡 Технические преимущества
+
+#### Существующая архитектура готова
+```javascript
+// Текущий backend уже служит веб-интерфейс
+// packages/backend/src/app.js
+app.use(express.static(path.join(__dirname, '../client-desktop/src/renderer/public')));
+
+// WebSocket и HTTP API уже универсальны
+app.use('/api', routes);
+websocketService.setupWebSocketHandlers(server);
+```
+
+#### Минимальные доработки требуются
+- **PWA преобразование** - Добавить service worker для офлайн-режима
+- **Адаптивная верстка** - Оптимизация для планшетов и смартфонов  
+- **Облачная синхронизация** - Автоматическое резервирование данных
+- **Мультитенантность** - Изоляция данных разных заведений
+
+### 🔧 Архитектура KaaS
+
+#### Уровень развертывания
+```yaml
+# docker-compose.kaas.yml
+version: '3.8'
+services:
+  kaas-instance:
+    image: eckasse/kaas:latest
+    environment:
+      - INSTANCE_ID=${TENANT_ID}
+      - DB_ENCRYPTION_KEY=${TENANT_KEY}
+      - BACKUP_ENDPOINT=${CLOUD_BACKUP_URL}
+    volumes:
+      - tenant_data:/app/data
+    ports:
+      - "3030:3030"
+```
+
+#### Мгновенное развертывание
+```bash
+# Одна команда для запуска новой кассы
+curl -X POST https://kaas.eckasse.com/deploy \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -d '{"restaurant_name": "Кафе Быстро", "location": "Фестиваль"}'
+
+# Ответ: {"url": "https://cafe-bistro-f7x9.kaas.eckasse.com", "ready_in": "30s"}
+```
+
+### 📱 Progressive Web App Features
+
+#### Кроссплатформенность
+- **Десктоп** - Полнофункциональный интерфейс в браузере
+- **Планшеты** - Оптимизированный интерфейс для касс
+- **Смартфоны** - Мобильная касса для курьеров и официантов
+- **Киоски** - Самообслуживание для клиентов
+
+#### Офлайн-возможности  
+```javascript
+// service-worker.js - автономная работа
+self.addEventListener('fetch', event => {
+  if (event.request.url.includes('/api/transaction')) {
+    event.respondWith(
+      // Сохранить транзакцию локально, синхронизировать при подключении
+      caches.open('pending-transactions').then(cache => {
+        cache.put(event.request, response.clone());
+        return response;
+      })
+    );
+  }
+});
+```
+
+### 🔒 Безопасность и соответствие требованиям
+
+#### Шифрование уровня приложения
+```javascript
+// Все данные шифруются перед отправкой в облако
+class TenantEncryption {
+  constructor(tenantKey) {
+    this.key = crypto.createHash('sha256').update(tenantKey).digest();
+  }
+  
+  encrypt(data) {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipher('aes-256-gcm', this.key, iv);
+    return cipher.update(JSON.stringify(data), 'utf8', 'hex') + cipher.final('hex');
+  }
+}
+```
+
+#### Соответствие немецкому законодательству
+- **TSE интеграция** - Облачные технические средства защиты
+- **GDPr соответствие** - Географическая изоляция данных в ЕС
+- **Фискальная отчетность** - Автоматическая генерация DSFinV-K
+- **Аудит готовность** - Все операции логируются с временными метками
+
+### 💰 Бизнес-модель
+
+#### Ценовые уровни
+1. **Emergency (Экстренная)** - €5/день - Базовая касса для срочных нужд
+2. **Event (Мероприятие)** - €15/день - Полный функционал для событий  
+3. **Popup (Временная)** - €50/месяц - Долгосрочная аренда
+4. **Enterprise (Корпоративная)** - €200/месяц - Белый лейбл + интеграции
+
+#### Монетизация добавленной стоимости
+- **Интеграции платежей** - Комиссия с транзакций
+- **Аналитика и отчеты** - Premium функции
+- **Брендирование** - Кастомизация интерфейса
+- **API доступ** - Интеграция с внешними системами
+
+### 🚀 План внедрения
+
+#### Фаза 1: MVP (4-6 недель)
+```javascript
+// Приоритетные задачи
+const phase1Tasks = [
+  'Адаптивная верстка существующего интерфейса',
+  'PWA manifest и service worker',
+  'Базовая мультитенантность',
+  'Docker контейнеризация',
+  'Автоматическое развертывание'
+];
+```
+
+#### Фаза 2: Производство (8-10 недель) 
+```javascript
+const phase2Tasks = [
+  'Облачная инфраструктура (AWS/Azure)',
+  'Система биллинга и подписок',
+  'TSE облачная интеграция',
+  'Расширенная аналитика',
+  'Мобильные приложения (опционально)'
+];
+```
+
+#### Фаза 3: Масштабирование (12+ недель)
+```javascript  
+const phase3Tasks = [
+  'Белый лейбл для партнеров',
+  'API marketplace',
+  'AI-powered recommendations',
+  'Международная экспансия',
+  'Blockchain интеграция для аудита'
+];
+```
+
+### 🌟 Уникальные конкурентные преимущества
+
+#### Технические
+- **Мгновенное развертывание** - От заказа до работы за 30 секунд
+- **Полная совместимость** - Те же данные, что и в десктопной версии
+- **AI-интеграция** - LLM помощник доступен в облаке
+- **Автономность** - Работа без интернета с последующей синхронизацией
+
+#### Бизнес
+- **Нулевые капзатраты** - Никакого оборудования для старта
+- **Гибкое ценообразование** - Плати только за использование
+- **Мгновенное масштабирование** - От одной до тысяч касс
+- **Встроенная аналитика** - Понимание бизнеса с первого дня
+
+---
+
+**KaaS концепция** превращает ecKasse из локального решения в универсальную платформу, способную обслуживать любые потребности розничной торговли - от экстренных ситуаций до масштабных мероприятий. Техническая основа уже существует, требуется только адаптация и облачная инфраструктура.

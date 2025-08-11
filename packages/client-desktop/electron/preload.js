@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   invoke: (channel, ...args) => {
     // Allow specific channels for security
-    const allowedChannels = ['get-backend-url', 'show-open-dialog', 'start-menu-import'];
+    const allowedChannels = ['get-backend-url', 'show-open-dialog', 'start-menu-import', 'list-menu-files'];
     if (allowedChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }

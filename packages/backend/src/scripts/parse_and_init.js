@@ -24,6 +24,18 @@ const layoutService = require('../services/layout.service');
 const logger = require('../config/logger');
 const chalk = require('chalk');
 
+// Standardized progress reporting function
+function reportProgress(message, isComplete = false) {
+  const prefix = isComplete ? '✅' : '⏳';
+  console.log(`PROGRESS: ${prefix} ${message}`);
+}
+
+// Step progress tracking
+function reportStep(currentStep, totalSteps, description, isComplete = false) {
+  const prefix = isComplete ? '✅' : '⏳';
+  console.log(`PROGRESS: ${prefix} Step ${currentStep}/${totalSteps}: ${description}`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -32,22 +44,29 @@ async function main() {
     process.exit(1);
   }
 
+  reportProgress(`Starting menu import from: ${path.basename(filePath)}`);
   logger.info(`🚀 Starting full initialization from: ${filePath}`);
+
+  // Progress callback for detailed item tracking
+  const progressCallback = (current, total, itemName) => {
+    if (itemName) {
+      reportProgress(`Processing item ${current}/${total}: ${itemName}`);
+    } else {
+      reportProgress(`Processing ${current}/${total} items`);
+    }
+  };
 
   try {
     // === Step 1: Parse Menu ===
-    console.log('PROGRESS: Step 1/6 - Parsing menu PDF with LLM...');
-    logger.info('Step 1: Parsing menu PDF with LLM...');
+    reportStep(1, 6, 'Parsing menu with AI');
     const parser = new MenuParserLLM();
     const restaurantName = path.basename(filePath, path.extname(filePath)).replace(/menu|karte/i, '').trim();
     const parsedResult = await parser.parseMenu(filePath, { restaurantName });
     const mdfData = parsedResult.configuration;
-    console.log('PROGRESS: ✅ Menu parsing completed successfully');
-    logger.info('✅ Menu parsed successfully.');
+    reportStep(1, 6, 'Menu parsed successfully', true);
 
     // === Step 2: Clean Database ===
-    console.log('PROGRESS: Step 2/6 - Cleaning existing database data...');
-    logger.info('Step 2: Cleaning all existing data...');
+    reportStep(2, 6, 'Cleaning existing data');
     await db.transaction(async (trx) => {
         await trx('menu_layouts').del();
         await trx('vec_items').del();
@@ -57,46 +76,37 @@ async function main() {
         await trx('branches').del();
         await trx('companies').del();
     });
-    console.log('PROGRESS: ✅ Database cleaning completed');
-    logger.info('✅ Database cleaned.');
+    reportStep(2, 6, 'Database cleaned', true);
 
     // === Step 3: Import Parsed Data ===
-    console.log('PROGRESS: Step 3/6 - Importing data and generating embeddings...');
-    logger.info('Step 3: Importing data and generating initial embeddings...');
-    await importFromOopMdf(mdfData);
-    console.log('PROGRESS: ✅ Data import completed successfully');
-    logger.info('✅ Data imported successfully.');
+    reportStep(3, 6, 'Importing data and generating embeddings');
+    await importFromOopMdf(mdfData, progressCallback);
+    reportStep(3, 6, 'Import completed', true);
     
     // === Step 4: Save "Original Menu" Layout ===
-    console.log('PROGRESS: Step 4/6 - Saving original menu layout...');
-    logger.info('Step 4: Saving "Original Menu Layout" snapshot...');
+    reportStep(4, 6, 'Saving original menu layout');
     const originalCategories = await db('categories').select('*');
     const originalLayout = await layoutService.saveLayout('Original Menu Layout', originalCategories, 'ORIGINAL_MENU');
-    await layoutService.activateLayout(originalLayout.id); // Activate the original layout by default
-    console.log('PROGRESS: ✅ Original menu layout saved and activated');
-    logger.info(`✅ "Original Menu Layout" saved with ID: ${originalLayout.id} and activated.`);
+    await layoutService.activateLayout(originalLayout.id);
+    reportStep(4, 6, 'Original layout saved and activated', true);
 
     // === Step 5: Enrich Data for "Smart" Layout ===
-    console.log('PROGRESS: Step 5/6 - Enriching data for AI optimization...');
-    logger.info('Step 5: Enriching data for "AI Optimized Layout"...');
-    const enrichedData = await enrichMdfData(mdfData);
+    reportStep(5, 6, 'Enriching data for AI optimization');
+    const enrichedData = await enrichMdfData(mdfData, progressCallback);
     const enrichedCategories = enrichedData.company_details.branches[0].point_of_sale_devices[0].categories_for_this_pos;
-    console.log('PROGRESS: ✅ Data enrichment completed');
-    logger.info('✅ Enrichment complete.');
+    reportStep(5, 6, 'Data enrichment completed', true);
 
     // === Step 6: Save "AI Optimized" Layout ===
-    console.log('PROGRESS: Step 6/6 - Saving AI optimized layout...');
-    logger.info('Step 6: Saving "AI Optimized Layout" snapshot...');
+    reportStep(6, 6, 'Saving AI optimized layout');
     const aiLayout = await layoutService.saveLayout('AI Optimized Layout', enrichedCategories, 'AI_OPTIMIZED');
-    console.log('PROGRESS: ✅ AI optimized layout saved successfully');
-    logger.info(`✅ "AI Optimized Layout" saved with ID: ${aiLayout.id}.`);
+    reportStep(6, 6, 'AI optimized layout saved', true);
     
-    console.log('PROGRESS: 🎉 Full initialization complete! The POS is ready.');
+    reportProgress('🎉 Menu import completed successfully!', true);
     logger.info(chalk.green('\n🎉🎉🎉 Full initialization complete! The POS is ready.'));
     
-    // === Step 7: Signal UI to refresh ===
+    // === Signal UI to refresh ===
     try {
-      console.log('PROGRESS: Signaling UI to refresh with new menu data...');
+      reportProgress('Refreshing user interface...');
       const port = process.env.BACKEND_PORT || 3030;
       await axios.post(`http://localhost:${port}/api/system/request-ui-refresh`);
       console.log('PROGRESS: ✅ UI refresh signal sent successfully');

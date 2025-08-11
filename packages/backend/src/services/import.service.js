@@ -23,10 +23,11 @@ const crypto = require('crypto');
 /**
  * Import a complete oop-pos-mdf JSON configuration into the database
  * @param {Object} jsonData - The parsed oop-pos-mdf JSON data
+ * @param {Function} progressCallback - Callback for progress reporting (current, total, itemName)
  * @param {Object} options - Import options
  * @returns {Promise<Object>} - Import result with statistics
  */
-async function importFromOopMdf(jsonData, options = {}) {
+async function importFromOopMdf(jsonData, progressCallback = null, options = {}) {
   const startTime = Date.now();
   const stats = {
     companies: 0,
@@ -50,7 +51,7 @@ async function importFromOopMdf(jsonData, options = {}) {
       await cleanExistingData(trx);
       
       // Step 2: Import hierarchical data
-      const importResult = await importHierarchicalData(trx, jsonData, stats);
+      const importResult = await importHierarchicalData(trx, jsonData, stats, progressCallback);
       
       return importResult;
     });
@@ -121,7 +122,7 @@ async function cleanExistingData(trx) {
  * @param {Object} stats - Statistics object to update
  * @returns {Promise<Object>} - Import result
  */
-async function importHierarchicalData(trx, jsonData, stats) {
+async function importHierarchicalData(trx, jsonData, stats, progressCallback = null) {
   const companyDetails = jsonData.company_details;
   
   if (!companyDetails) {
@@ -347,7 +348,7 @@ async function importHierarchicalData(trx, jsonData, stats) {
 
       // Step 5: Import items with integrated vectorization
       if (posDevice.items_for_this_pos && Array.isArray(posDevice.items_for_this_pos)) {
-        await importItemsWithVectorization(trx, posDevice.items_for_this_pos, posDeviceId, categoryIdMap, stats);
+        await importItemsWithVectorization(trx, posDevice.items_for_this_pos, posDeviceId, categoryIdMap, stats, progressCallback);
       }
     }
   }
@@ -369,8 +370,9 @@ async function importHierarchicalData(trx, jsonData, stats) {
  * @param {number} posDeviceId - POS device ID
  * @param {Map} categoryIdMap - Map of category unique IDs to database IDs
  * @param {Object} stats - Statistics object to update
+ * @param {Function} progressCallback - Callback for progress reporting (current, total, itemName)
  */
-async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdMap, stats) {
+async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdMap, stats, progressCallback = null) {
   logger.info(`Processing ${items.length} items with vectorization for POS device ${posDeviceId}`);
   
   // Create reverse category lookup for semantic string construction
@@ -390,8 +392,14 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
     }
   }
   
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     const itemName = item.display_names?.menu?.de || item.display_names?.menu?.en || 'Unknown Item';
+    
+    // Report progress
+    if (progressCallback) {
+      progressCallback(i + 1, items.length, itemName);
+    }
     
     logger.debug('Processing item with vectorization', { itemName });
     

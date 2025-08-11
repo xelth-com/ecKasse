@@ -1,12 +1,19 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { agentStore } from '../agentStore.js';
   import { currentView } from '../viewStore.js';
+  import { wsStore } from '../wsStore.js';
+  import { addLog } from '../logStore.js';
   
   const dispatch = createEventDispatcher();
   
-  let isDragOver = false;
   let isImporting = false;
+  let availableFiles = [];
+  let selectedFiles = new Set();
+  let loadingFiles = true;
+  let loadError = null;
+  let uploadedFiles = [];
+  let uploadProgress = {};
   
   // File size limits (should match backend limits)
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -15,108 +22,187 @@
   // Check if in demo mode - you might want to get this from a store or API
   const isDemoMode = true; // For now, assume demo mode
   
-  function formatFileSize(bytes) {
-    return Math.round(bytes / (1024 * 1024) * 100) / 100;
-  }
+  // Determine execution environment
+  const isElectron = typeof window !== 'undefined' && window.electronAPI;
+  const isWebBrowser = !isElectron;
   
-  function checkFileSize(file) {
-    const maxAllowed = isDemoMode ? MAX_FILE_SIZE_DEMO : MAX_FILE_SIZE;
-    const maxAllowedMB = Math.round(maxAllowed / (1024 * 1024));
-    const fileSizeMB = formatFileSize(file.size);
-    
-    if (file.size > maxAllowed) {
-      return {
-        valid: false,
-        error: `File size (${fileSizeMB}MB) exceeds maximum allowed size of ${maxAllowedMB}MB ${isDemoMode ? '(demo mode limit)' : ''}.`
-      };
+  // File input element for web browser mode
+  let fileInput;
+  
+  // Load available files on component mount
+  onMount(async () => {
+    if (isElectron) {
+      await loadAvailableFiles();
+    } else {
+      // In web browser mode, start with empty state
+      loadingFiles = false;
     }
-    
-    return { valid: true, sizeMB: fileSizeMB };
-  }
+  });
   
-  async function handleFileSelect() {
-    if (isImporting) return;
+  // Load available files for Electron mode
+  async function loadAvailableFiles() {
+    if (!isElectron) return;
+    
+    loadingFiles = true;
+    loadError = null;
     
     try {
-      // Use Electron's file dialog
-      const result = await window.electronAPI.invoke('show-open-dialog');
+      const result = await window.electronAPI.invoke('list-menu-files');
       
       if (result && result.error) {
-        // Handle security error from file dialog
-        agentStore.addMessage({
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          type: 'agent',
-          message: result.error
-        });
-        return;
-      }
-      
-      if (result && result.filePath) {
-        await startImportProcess(result.filePath);
+        loadError = result.error;
+        availableFiles = [];
+      } else if (Array.isArray(result)) {
+        availableFiles = result;
+      } else {
+        loadError = 'Unexpected response format';
+        availableFiles = [];
       }
     } catch (error) {
-      console.error('Error selecting file:', error);
-      agentStore.addMessage({
-        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-        type: 'agent',
-        message: `Error selecting file: ${error.message}`
-      });
+      console.error('Error loading files:', error);
+      loadError = error.message;
+      availableFiles = [];
+    } finally {
+      loadingFiles = false;
     }
   }
   
-  async function handleDrop(event) {
-    event.preventDefault();
-    isDragOver = false;
+  // Handle file upload for web browser mode
+  async function handleFileUpload(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
     
-    if (isImporting) return;
-    
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      
+    for (const file of files) {
       // Check file type
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
         agentStore.addMessage({
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: 'Please drop a PDF, JPG, or PNG file.'
+          message: `File "${file.name}" has unsupported format. Please select PDF, JPG, or PNG files.`
         });
-        return;
+        continue;
       }
       
       // Check file size
-      const sizeCheck = checkFileSize(file);
-      if (!sizeCheck.valid) {
+      const maxAllowed = isDemoMode ? MAX_FILE_SIZE_DEMO : MAX_FILE_SIZE;
+      if (file.size > maxAllowed) {
+        const maxAllowedMB = Math.round(maxAllowed / (1024 * 1024));
+        const fileSizeMB = Math.round(file.size / (1024 * 1024) * 100) / 100;
         agentStore.addMessage({
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: sizeCheck.error
+          message: `File "${file.name}" (${fileSizeMB}MB) exceeds maximum size of ${maxAllowedMB}MB ${isDemoMode ? '(demo mode limit)' : ''}.`
         });
-        return;
+        continue;
       }
       
-      // For drag-and-drop, we need to save the file to a temporary location
-      // For now, just show an error asking to use the file dialog
-      agentStore.addMessage({
-        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-        type: 'agent',
-        message: `File size: ${sizeCheck.sizeMB}MB - within limits. However, drag-and-drop support is not yet implemented. Please use the "Select File" button.`
-      });
+      // Add file to upload queue
+      const fileInfo = {
+        file: file,
+        name: file.name,
+        size: Math.round(file.size / (1024 * 1024) * 100) / 100,
+        type: file.type.split('/')[1].toUpperCase(),
+        selected: true,
+        uploaded: false
+      };
+      
+      uploadedFiles = [...uploadedFiles, fileInfo];
+    }
+    
+    // Clear the file input
+    if (fileInput) {
+      fileInput.value = '';
     }
   }
   
-  function handleDragOver(event) {
-    event.preventDefault();
-    isDragOver = true;
+  // Trigger file selection in web browser mode
+  function triggerFileSelect() {
+    if (fileInput) {
+      fileInput.click();
+    }
   }
   
-  function handleDragLeave(event) {
-    event.preventDefault();
-    isDragOver = false;
+  // Remove uploaded file from list
+  function removeUploadedFile(index) {
+    uploadedFiles = uploadedFiles.filter((_, i) => i !== index);
   }
   
-  async function startImportProcess(filePath) {
+  function toggleFileSelection(file) {
+    if (isElectron) {
+      // Electron mode - toggle based on file path
+      if (selectedFiles.has(file.path)) {
+        selectedFiles.delete(file.path);
+      } else {
+        selectedFiles.add(file.path);
+      }
+      selectedFiles = selectedFiles; // Trigger reactivity
+    } else {
+      // Web browser mode - toggle file selection
+      const index = uploadedFiles.findIndex(f => f.name === file.name);
+      if (index !== -1) {
+        uploadedFiles[index].selected = !uploadedFiles[index].selected;
+        uploadedFiles = uploadedFiles; // Trigger reactivity
+      }
+    }
+  }
+  
+  function selectAllFiles() {
+    if (isElectron) {
+      const validFiles = availableFiles.filter(file => file.sizeValid);
+      selectedFiles = new Set(validFiles.map(file => file.path));
+    } else {
+      uploadedFiles = uploadedFiles.map(file => ({ ...file, selected: true }));
+    }
+  }
+  
+  function clearSelection() {
+    if (isElectron) {
+      selectedFiles = new Set();
+    } else {
+      uploadedFiles = uploadedFiles.map(file => ({ ...file, selected: false }));
+    }
+  }
+  
+  // Get count of selected files for both modes
+  function getSelectedCount() {
+    if (isElectron) {
+      return selectedFiles.size;
+    } else {
+      return uploadedFiles.filter(file => file.selected).length;
+    }
+  }
+  
+  async function handleImportSelected() {
+    const selectedCount = getSelectedCount();
+    if (isImporting || selectedCount === 0) return;
+    
+    if (isElectron) {
+      const filePaths = Array.from(selectedFiles);
+      await startImportProcess(filePaths);
+    } else {
+      // Web browser mode - upload and import files
+      const selectedUploadedFiles = uploadedFiles.filter(file => file.selected);
+      await uploadAndImportFiles(selectedUploadedFiles);
+    }
+  }
+  
+  function getFileTypeDisplay(file) {
+    return `${file.type} • ${file.size}MB`;
+  }
+  
+  function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+  
+  // Import process for Electron mode
+  async function startImportProcess(filePaths) {
     if (isImporting) return;
     
     isImporting = true;
@@ -127,15 +213,20 @@
     
     // Add initial message
     const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const fileCount = Array.isArray(filePaths) ? filePaths.length : 1;
+    const fileNames = Array.isArray(filePaths) 
+      ? filePaths.map(path => path.split('/').pop()).join(', ')
+      : filePaths.split('/').pop();
+    
     agentStore.addMessage({
       timestamp,
       type: 'agent',
-      message: `Starting menu import from: ${filePath.split('/').pop()}\n\nThis process will:\n1. Parse the menu with AI\n2. Clean existing data\n3. Import new menu structure\n4. Create optimized layouts\n\nPlease wait...`
+      message: `Starting menu import from ${fileCount} file(s): ${fileNames}\n\nThis process will:\n1. Parse the menu(s) with AI\n2. Clean existing data\n3. Import new menu structure\n4. Create optimized layouts\n\nPlease wait...`
     });
     
     try {
-      // Start the import process
-      const result = await window.electronAPI.invoke('start-menu-import', filePath);
+      // Start the import process (backend now supports both single file and array)
+      const result = await window.electronAPI.invoke('start-menu-import', filePaths);
       
       // Handle security error response
       if (result && !result.success && result.message) {
@@ -158,6 +249,121 @@
     }
   }
   
+  // Upload and import process for web browser mode
+  async function uploadAndImportFiles(selectedFiles) {
+    if (isImporting || selectedFiles.length === 0) return;
+    
+    isImporting = true;
+    
+    // Close control center and switch to agent view
+    dispatch('close');
+    currentView.set('agent');
+    
+    const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const fileNames = selectedFiles.map(f => f.name).join(', ');
+    
+    agentStore.addMessage({
+      timestamp,
+      type: 'agent',
+      message: `Starting menu import from ${selectedFiles.length} file(s): ${fileNames}\n\nThis process will:\n1. Upload files to server\n2. Parse the menu(s) with AI\n3. Clean existing data\n4. Import new menu structure\n5. Create optimized layouts\n\nPlease wait...`
+    });
+    
+    try {
+      // Get backend URL - in web browser mode, use current location
+      const backendUrl = `${window.location.protocol}//${window.location.host}`;
+      
+      // Upload each file and start import
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const fileInfo = selectedFiles[i];
+        
+        agentStore.addMessage({
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: `Uploading file ${i + 1}/${selectedFiles.length}: ${fileInfo.name}`
+        });
+        
+        const formData = new FormData();
+        formData.append('menuFile', fileInfo.file);
+        
+        // Track upload progress if possible
+        const xhr = new XMLHttpRequest();
+        
+        const uploadPromise = new Promise((resolve, reject) => {
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round((event.loaded / event.total) * 100);
+              agentStore.addMessage({
+                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                type: 'agent',
+                message: `Uploading ${fileInfo.name}: ${percent}%`
+              });
+            }
+          });
+          
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const result = JSON.parse(xhr.responseText);
+                resolve(result);
+              } catch (parseError) {
+                reject(new Error('Invalid response format'));
+              }
+            } else {
+              try {
+                const errorResult = JSON.parse(xhr.responseText);
+                reject(new Error(errorResult.message || `HTTP ${xhr.status}`));
+              } catch (parseError) {
+                reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+              }
+            }
+          };
+          
+          xhr.onerror = function() {
+            reject(new Error('Network error occurred'));
+          };
+          
+          xhr.open('POST', `${backendUrl}/api/menu/upload-and-import`);
+          xhr.send(formData);
+        });
+        
+        const result = await uploadPromise;
+        
+        if (!result.success) {
+          throw new Error(result.message || 'Upload failed');
+        }
+        
+        agentStore.addMessage({
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: `File ${fileInfo.name} uploaded successfully. Processing...`
+        });
+        
+        // Mark file as uploaded
+        fileInfo.uploaded = true;
+      }
+      
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: '✅ Menu import completed successfully!\n\nYou can now navigate back to the selection area to see your new menu items.'
+      });
+      
+      // Refresh categories
+      addLog('INFO', 'Refreshing categories after successful menu import');
+      wsStore.send({ command: 'getCategories' });
+      
+    } catch (error) {
+      console.error('Error uploading and importing files:', error);
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: `Import failed: ${error.message}`
+      });
+    } finally {
+      isImporting = false;
+    }
+  }
+  
   // Listen for import progress
   if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.onImportProgress) {
     window.electronAPI.onImportProgress((progress) => {
@@ -171,6 +377,13 @@
     
     window.electronAPI.onImportComplete((success, message) => {
       const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      
+      // If successful, refresh categories
+      if (success) {
+        addLog('INFO', 'Refreshing categories after successful menu import');
+        wsStore.send({ command: 'getCategories' });
+      }
+      
       agentStore.addMessage({
         timestamp,
         type: 'agent',
@@ -185,30 +398,155 @@
 
 <div class="menu-importer">
   <h3>Menu Import</h3>
-  <p>Import a menu from PDF, JPG, or PNG file</p>
+  <p>
+    {#if isElectron}
+      Select one or more menu files from the menu_inputs directory
+    {:else}
+      Upload and import menu files (PDF, JPG, PNG)
+    {/if}
+  </p>
   <p class="size-limit">Max file size: {isDemoMode ? '10MB (demo mode)' : '50MB'}</p>
   
-  <div 
-    class="drop-zone" 
-    class:drag-over={isDragOver}
-    class:importing={isImporting}
-    on:drop={handleDrop}
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-  >
-    {#if isImporting}
-      <div class="importing-indicator">
-        <div class="spinner"></div>
-        <p>Importing menu...</p>
-      </div>
-    {:else}
-      <div class="drop-content">
-        <p>Drop your menu file here</p>
-        <span>or</span>
-        <button class="select-file-btn" on:click={handleFileSelect}>Select File</button>
-      </div>
-    {/if}
-  </div>
+  <!-- Hidden file input for web browser mode -->
+  {#if isWebBrowser}
+    <input 
+      type="file" 
+      bind:this={fileInput}
+      on:change={handleFileUpload}
+      accept=".pdf,.jpg,.jpeg,.png"
+      multiple
+      style="display: none;"
+    />
+  {/if}
+  
+  {#if isImporting}
+    <div class="importing-indicator">
+      <div class="spinner"></div>
+      <p>Importing menu...</p>
+    </div>
+  {:else if isElectron && loadingFiles}
+    <div class="loading-files">
+      <div class="spinner"></div>
+      <p>Loading available files...</p>
+    </div>
+  {:else if isElectron && loadError}
+    <div class="error-message">
+      <p>Error loading files: {loadError}</p>
+      <button class="retry-btn" on:click={loadAvailableFiles}>Retry</button>
+    </div>
+  {:else}
+    <div class="file-selector">
+      {#if isWebBrowser && uploadedFiles.length === 0}
+        <div class="upload-area">
+          <div class="upload-prompt">
+            <p>No files selected yet.</p>
+            <button class="upload-btn" on:click={triggerFileSelect}>
+              <svg class="upload-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+              </svg>
+              Choose Files
+            </button>
+            <p class="upload-hint">Select multiple PDF, JPG, or PNG files</p>
+          </div>
+        </div>
+      {:else if isElectron && availableFiles.length === 0}
+        <div class="no-files">
+          <p>No menu files found in the menu_inputs directory.</p>
+          <p>Please add PDF, JPG, or PNG files to the menu_inputs folder.</p>
+        </div>
+      {:else}
+        <!-- File list controls -->
+        <div class="file-controls">
+          <div class="selection-info">
+            {#if isElectron}
+              <span>{selectedFiles.size} of {availableFiles.length} files selected</span>
+            {:else}
+              <span>{uploadedFiles.filter(f => f.selected).length} of {uploadedFiles.length} files selected</span>
+            {/if}
+          </div>
+          <div class="control-buttons">
+            {#if isWebBrowser}
+              <button class="control-btn" on:click={triggerFileSelect}>Add More Files</button>
+            {/if}
+            <button class="control-btn" on:click={selectAllFiles} 
+              disabled={isElectron ? availableFiles.every(f => !f.sizeValid) : uploadedFiles.length === 0}>
+              Select All Valid
+            </button>
+            <button class="control-btn" on:click={clearSelection} disabled={getSelectedCount() === 0}>
+              Clear Selection
+            </button>
+          </div>
+        </div>
+        
+        <!-- File list -->
+        <div class="file-list">
+          {#if isElectron}
+            {#each availableFiles as file (file.path)}
+              <div class="file-item" class:invalid={!file.sizeValid} class:selected={selectedFiles.has(file.path)}>
+                <label class="file-checkbox">
+                  <input 
+                    type="checkbox" 
+                    disabled={!file.sizeValid}
+                    checked={selectedFiles.has(file.path)}
+                    on:change={() => toggleFileSelection(file)}
+                  />
+                  <div class="file-info">
+                    <div class="file-name">{file.name}</div>
+                    <div class="file-details">
+                      <span class="file-type">{getFileTypeDisplay(file)}</span>
+                      <span class="file-date">Modified: {formatDate(file.lastModified)}</span>
+                    </div>
+                    {#if !file.sizeValid}
+                      <div class="size-warning">File too large (max {isDemoMode ? '10MB' : '50MB'})</div>
+                    {/if}
+                  </div>
+                </label>
+              </div>
+            {/each}
+          {:else}
+            {#each uploadedFiles as fileInfo, index (fileInfo.name)}
+              <div class="file-item" class:selected={fileInfo.selected} class:uploaded={fileInfo.uploaded}>
+                <label class="file-checkbox">
+                  <input 
+                    type="checkbox" 
+                    checked={fileInfo.selected}
+                    on:change={() => toggleFileSelection(fileInfo)}
+                  />
+                  <div class="file-info">
+                    <div class="file-name">{fileInfo.name}</div>
+                    <div class="file-details">
+                      <span class="file-type">{fileInfo.type} • {fileInfo.size}MB</span>
+                      {#if fileInfo.uploaded}
+                        <span class="upload-status uploaded">✓ Uploaded</span>
+                      {:else}
+                        <span class="upload-status pending">Pending upload</span>
+                      {/if}
+                    </div>
+                  </div>
+                </label>
+                <button class="remove-btn" on:click={() => removeUploadedFile(index)} title="Remove file">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                  </svg>
+                </button>
+              </div>
+            {/each}
+          {/if}
+        </div>
+        
+        <!-- Import controls -->
+        <div class="import-controls">
+          <button 
+            class="import-btn" 
+            disabled={getSelectedCount() === 0}
+            on:click={handleImportSelected}
+          >
+            Import Selected Files ({getSelectedCount()})
+          </button>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -235,64 +573,195 @@
     font-weight: 500;
   }
   
-  .drop-zone {
-    border: 2px dashed #666;
-    border-radius: 8px;
-    padding: 40px;
-    text-align: center;
-    transition: all 0.3s ease;
-    background-color: #444;
-    min-height: 150px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .drop-zone.drag-over {
-    border-color: #4CAF50;
-    background-color: rgba(76, 175, 80, 0.1);
-  }
-  
-  .drop-zone.importing {
-    border-color: #4a69bd;
-    background-color: rgba(74, 105, 189, 0.1);
-  }
-  
-  .drop-content {
+  .loading-files {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
+    padding: 40px;
+    text-align: center;
   }
   
-  .drop-content p {
+  .loading-files p {
     margin: 0;
     color: #e0e0e0;
     font-size: 16px;
   }
   
-  .drop-content span {
+  .error-message {
+    background-color: #4a1a1a;
+    border: 1px solid #d32f2f;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .error-message p {
+    margin: 0 0 15px 0;
+    color: #ffcdd2;
+    font-size: 14px;
+  }
+  
+  .retry-btn {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .retry-btn:hover {
+    background-color: #b71c1c;
+  }
+  
+  .file-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .no-files {
+    text-align: center;
+    padding: 40px;
+    color: #aaa;
+  }
+  
+  .no-files p {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+  }
+  
+  .file-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #555;
+  }
+  
+  .selection-info {
     color: #aaa;
     font-size: 14px;
   }
   
-  .select-file-btn {
-    background-color: #4a69bd;
+  .control-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .control-btn {
+    background-color: #555;
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
+    padding: 6px 12px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     transition: background-color 0.3s ease;
   }
   
-  .select-file-btn:hover {
+  .control-btn:hover:not(:disabled) {
+    background-color: #666;
+  }
+  
+  .control-btn:disabled {
+    background-color: #333;
+    color: #666;
+    cursor: not-allowed;
+  }
+  
+  .file-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #555;
+    border-radius: 8px;
+  }
+  
+  .file-item {
+    border-bottom: 1px solid #555;
+  }
+  
+  .file-item:last-child {
+    border-bottom: none;
+  }
+  
+  .file-item.invalid {
+    background-color: rgba(211, 47, 47, 0.1);
+  }
+  
+  .file-item.selected:not(.invalid) {
+    background-color: rgba(74, 105, 189, 0.2);
+  }
+  
+  .file-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    gap: 12px;
+  }
+  
+  .file-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+  
+  .file-checkbox input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+  .file-info {
+    flex-grow: 1;
+  }
+  
+  .file-name {
+    color: #e0e0e0;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  
+  .file-details {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: #aaa;
+  }
+  
+  .size-warning {
+    color: #ff5252;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  
+  .import-controls {
+    padding: 15px 0;
+    text-align: center;
+  }
+  
+  .import-btn {
+    background-color: #4a69bd;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+  }
+  
+  .import-btn:hover:not(:disabled) {
     background-color: #3d5aa0;
   }
   
-  .select-file-btn:disabled {
+  .import-btn:disabled {
     background-color: #666;
+    color: #999;
     cursor: not-allowed;
   }
   
@@ -301,6 +770,7 @@
     flex-direction: column;
     align-items: center;
     gap: 15px;
+    padding: 40px;
   }
   
   .importing-indicator p {
@@ -322,5 +792,116 @@
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+  }
+  
+  /* Scrollbar styling for file list */
+  .file-list::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .file-list::-webkit-scrollbar-track {
+    background: #333;
+  }
+  
+  .file-list::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+  }
+  
+  .file-list::-webkit-scrollbar-thumb:hover {
+    background: #666;
+  }
+  
+  /* Web browser mode styles */
+  .upload-area {
+    border: 2px dashed #666;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    background-color: #444;
+  }
+  
+  .upload-prompt p {
+    margin: 0 0 20px 0;
+    color: #aaa;
+    font-size: 16px;
+  }
+  
+  .upload-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #4a69bd;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 auto 10px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .upload-btn:hover {
+    background-color: #3d5aa0;
+  }
+  
+  .upload-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .upload-hint {
+    margin: 10px 0 0 0;
+    color: #888;
+    font-size: 14px;
+  }
+  
+  .file-item.uploaded {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-left: 3px solid #4CAF50;
+  }
+  
+  .upload-status {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .upload-status.uploaded {
+    color: #4CAF50;
+  }
+  
+  .upload-status.pending {
+    color: #ff9800;
+  }
+  
+  .remove-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  
+  .remove-btn:hover {
+    background-color: rgba(211, 47, 47, 0.1);
+    color: #d32f2f;
+  }
+  
+  .file-item {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  
+  .file-checkbox {
+    flex: 1;
   }
 </style>

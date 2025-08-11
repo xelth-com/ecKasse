@@ -8,6 +8,7 @@ const sessionMiddleware = require('./middleware/session.middleware');
 const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
 const systemRoutes = require('./routes/system.routes.js');
 const printerRoutes = require('./routes/printers.js');
+const menuRoutes = require('./routes/menu.routes.js'); // For menu file upload and import
 
 
 const app = express();
@@ -51,6 +52,7 @@ logger.info(`Serving static files from: ${staticPath}`);
 app.use('/api/llm', llmRoutes); // Mount the LLM routes
 app.use('/api/system', systemRoutes);
 app.use('/api/printers', printerRoutes);
+app.use('/api/menu', menuRoutes); // Mount the menu upload routes
 
 // HTTP fallback endpoint for WebSocket commands
 app.post('/api/websocket-fallback', async (req, res) => {

@@ -209,6 +209,120 @@ async function ensureDefaultUsersAndRoles() {
           });
         }
       }
+      
+      // Step 3: Ensure minimal structure exists (company, branch, POS device, categories)
+      const existingCompanies = await trx('companies').count('id as count');
+      const companyCount = existingCompanies[0].count;
+      
+      if (companyCount === 0) {
+        logger.info('No companies found in database, creating default company structure...');
+        
+        // Create default company
+        const companyResult = await trx('companies').insert({
+          company_full_name: 'Default Restaurant',
+          meta_information: JSON.stringify({
+            tax_number: '000000000',
+            address: {
+              street: 'Default Street 1',
+              city: 'Default City',
+              postal_code: '00000',
+              country: 'DE'
+            },
+            contact_info: {
+              phone: '+49 000 000000',
+              email: 'contact@restaurant.local'
+            }
+          }),
+          global_configurations: JSON.stringify({
+            currency: 'EUR',
+            timezone: 'Europe/Berlin',
+            language: 'de',
+            fiscal_compliance: 'DE'
+          })
+        }).returning('id');
+        
+        const companyId = companyResult[0].id || companyResult[0];
+        logger.info('Default company created successfully', { companyId });
+        
+        // Create default branch
+        const branchResult = await trx('branches').insert({
+          company_id: companyId,
+          branch_name: 'Main Branch',
+          branch_address: 'Default Street 1, 00000 Default City'
+        }).returning('id');
+        
+        const branchId = branchResult[0].id || branchResult[0];
+        logger.info('Default branch created successfully', { branchId });
+        
+        // Create default POS device
+        const posDeviceResult = await trx('pos_devices').insert({
+          branch_id: branchId,
+          pos_device_name: 'Main Terminal',
+          pos_device_type: 'terminal',
+          pos_device_external_number: 1,
+          pos_device_settings: JSON.stringify({
+            receipt_printer: true,
+            cash_drawer: true,
+            display: 'builtin'
+          })
+        }).returning('id');
+        
+        const posDeviceId = posDeviceResult[0].id || posDeviceResult[0];
+        logger.info('Default POS device created successfully', { posDeviceId });
+        
+        // Create default categories
+        const categories = [
+          {
+            pos_device_id: posDeviceId,
+            source_unique_identifier: 'default-food',
+            category_names: JSON.stringify({
+              de: 'Speisen',
+              en: 'Food',
+              ru: 'Еда'
+            }),
+            category_type: 'food',
+            default_linked_main_group_unique_identifier: 1,
+            audit_trail: JSON.stringify({
+              created_at: new Date().toISOString(),
+              created_by: 'system_initialization'
+            })
+          },
+          {
+            pos_device_id: posDeviceId,
+            source_unique_identifier: 'default-drinks',
+            category_names: JSON.stringify({
+              de: 'Getränke',
+              en: 'Drinks',
+              ru: 'Напитки'
+            }),
+            category_type: 'drink',
+            default_linked_main_group_unique_identifier: 2,
+            audit_trail: JSON.stringify({
+              created_at: new Date().toISOString(),
+              created_by: 'system_initialization'
+            })
+          }
+        ];
+        
+        for (const category of categories) {
+          await trx('categories').insert(category);
+        }
+        
+        logger.info('Default categories created successfully', { 
+          categories: categories.map(c => c.source_unique_identifier)
+        });
+        
+        logger.warn('⚠️  DEFAULT STRUCTURE CREATED', {
+          company: 'Default Restaurant',
+          branch: 'Main Branch',
+          posDevice: 'Main Terminal (POS-001)',
+          categories: ['Speisen', 'Getränke'],
+          note: 'Ready for menu import or manual product creation'
+        });
+        
+      } else {
+        logger.info('Company structure already exists, skipping default structure creation');
+      }
     });
     
     logger.info('✅ Database initialization completed successfully');

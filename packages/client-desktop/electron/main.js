@@ -193,39 +193,132 @@ ipcMain.handle('show-open-dialog', async () => {
   }
 });
 
-// IPC handler for starting menu import
-ipcMain.handle('start-menu-import', async (event, filePath) => {
+// IPC handler for listing menu files
+ipcMain.handle('list-menu-files', async () => {
   try {
-    // Security check: ensure file is within menu_inputs directory
+    const menuInputsDir = path.resolve(__dirname, '../../../menu_inputs');
+    
+    // Check if directory exists
+    if (!fs.existsSync(menuInputsDir)) {
+      console.log('Creating menu_inputs directory:', menuInputsDir);
+      fs.mkdirSync(menuInputsDir, { recursive: true });
+      return [];
+    }
+    
+    // Read directory contents
+    const files = fs.readdirSync(menuInputsDir);
+    
+    // Filter for supported file types and add file info
+    const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const menuFiles = [];
+    
+    for (const file of files) {
+      const filePath = path.join(menuInputsDir, file);
+      const ext = path.extname(file).toLowerCase();
+      
+      // Skip non-supported files and directories
+      if (!supportedExtensions.includes(ext)) continue;
+      
+      try {
+        const stats = fs.statSync(filePath);
+        if (stats.isFile()) {
+          const sizeCheck = checkFileSize(filePath);
+          menuFiles.push({
+            name: file,
+            path: filePath,
+            size: sizeCheck.sizeMB,
+            sizeValid: sizeCheck.valid,
+            type: ext.substring(1).toUpperCase(),
+            lastModified: stats.mtime
+          });
+        }
+      } catch (fileError) {
+        console.warn(`Error reading file ${file}:`, fileError.message);
+      }
+    }
+    
+    // Sort by last modified (newest first)
+    menuFiles.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+    
+    console.log(`Found ${menuFiles.length} menu files in ${menuInputsDir}`);
+    return menuFiles;
+    
+  } catch (error) {
+    console.error('Error in list-menu-files:', error);
+    return { error: error.message };
+  }
+});
+
+// IPC handler for starting menu import
+ipcMain.handle('start-menu-import', async (event, filePaths) => {
+  try {
+    // Handle both single file (string) and multiple files (array) for backward compatibility
+    const files = Array.isArray(filePaths) ? filePaths : [filePaths];
+    
+    if (files.length === 0) {
+      return { success: false, message: 'No files specified for import.' };
+    }
+    
     const allowedDir = path.resolve(__dirname, '../../../menu_inputs');
-    const normalizedFile = path.resolve(filePath);
-    const normalizedAllowed = path.resolve(allowedDir);
+    const validFiles = [];
     
-    if (!normalizedFile.startsWith(normalizedAllowed)) {
-      console.error('Security violation: Import file outside allowed directory', filePath);
-      return { 
-        success: false, 
-        message: 'File must be located in the menu_inputs directory for security reasons.' 
-      };
+    // Validate all files first
+    for (const filePath of files) {
+      const normalizedFile = path.resolve(filePath);
+      const normalizedAllowed = path.resolve(allowedDir);
+      
+      if (!normalizedFile.startsWith(normalizedAllowed)) {
+        console.error('Security violation: Import file outside allowed directory', filePath);
+        return { 
+          success: false, 
+          message: `Security violation: ${path.basename(filePath)} must be in menu_inputs directory.` 
+        };
+      }
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return { 
+          success: false, 
+          message: `File not found: ${path.basename(filePath)}` 
+        };
+      }
+      
+      // Check file size
+      const sizeCheck = checkFileSize(filePath);
+      if (!sizeCheck.valid) {
+        console.error('File size violation:', filePath, sizeCheck.error);
+        return { 
+          success: false, 
+          message: `${path.basename(filePath)}: ${sizeCheck.error}` 
+        };
+      }
+      
+      validFiles.push({ path: filePath, size: sizeCheck.sizeMB });
     }
     
-    // Check file size
-    const sizeCheck = checkFileSize(filePath);
-    if (!sizeCheck.valid) {
-      console.error('File size violation:', filePath, sizeCheck.error);
-      return { 
-        success: false, 
-        message: sizeCheck.error 
-      };
-    }
-    
-    console.log(`Starting menu import for: ${filePath} (${sizeCheck.sizeMB}MB)`);
+    const totalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
+    console.log(`Starting menu import for ${validFiles.length} file(s) (${totalSize.toFixed(2)}MB total):`);
+    validFiles.forEach(file => console.log(`  - ${path.basename(file.path)} (${file.size}MB)`));
     
     // Path to the parse_and_init.js script
     const scriptPath = path.resolve(__dirname, '../../backend/src/scripts/parse_and_init.js');
     
-    // Spawn the Node.js process
-    const childProcess = spawn('node', [scriptPath, filePath], {
+    // For now, process files sequentially (script accepts one file at a time)
+    // TODO: Update script to handle multiple files in one run for better performance
+    let processedCount = 0;
+    const totalFiles = validFiles.length;
+    
+    // For now, process only the first file (script accepts one file at a time)
+    // TODO: Update to handle multiple files properly with sequential processing
+    const firstFile = validFiles[0];
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('menu-import-progress', 
+        `Processing file: ${path.basename(firstFile.path)}`);
+    }
+    
+    // Spawn the Node.js process for the first file
+    const childProcess = spawn('node', [scriptPath, firstFile.path], {
       stdio: ['ignore', 'pipe', 'pipe'],
       cwd: path.resolve(__dirname, '../../backend')
     });

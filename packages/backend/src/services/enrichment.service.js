@@ -74,7 +74,7 @@ Full Name: "{productName}"
  * @param {Object} options - Enrichment options
  * @returns {Promise<Object>} - Enriched MDF data
  */
-async function enrichMdfData(mdfData, options = {}) {
+async function enrichMdfData(mdfData, progressCallback = null, options = {}) {
     console.log(chalk.blue('🔬 Starting multi-pass enrichment process...'));
     
     // Create a deep copy to avoid modifying the original
@@ -88,7 +88,7 @@ async function enrichMdfData(mdfData, options = {}) {
         // Pass 2: Item enrichment and abbreviation generation
         if (!options.skipWebSearch) {
             console.log(chalk.blue('\n🔍 Pass 2: Enriching items with web data and generating abbreviations...'));
-            await enrichItemsWithWebData(enrichedData);
+            await enrichItemsWithWebData(enrichedData, progressCallback);
         } else {
             console.log(chalk.gray('\n⏭️  Pass 2: Skipping web search enrichment'));
         }
@@ -163,7 +163,7 @@ async function validateAndPrepareData(enrichedData) {
  * Pass 2: Enrich items with web data and generate abbreviations
  * @param {Object} enrichedData - The MDF data to enrich
  */
-async function enrichItemsWithWebData(enrichedData) {
+async function enrichItemsWithWebData(enrichedData, progressCallback = null) {
     let processedItems = 0;
     let totalItems = 0;
     
@@ -189,7 +189,14 @@ async function enrichItemsWithWebData(enrichedData) {
                         processedItems++;
                         
                         try {
-                            console.log(chalk.gray(`   Processing item ${processedItems}/${totalItems}: ${item.display_names?.menu?.de || 'Unknown'}`));
+                            const itemName = item.display_names?.menu?.de || item.display_names?.menu?.en || 'Unknown';
+                            
+                            // Report progress if callback provided
+                            if (progressCallback) {
+                                progressCallback(processedItems, totalItems, `Enriching ${itemName}`);
+                            } else {
+                                console.log(chalk.gray(`   Processing item ${processedItems}/${totalItems}: ${itemName}`));
+                            }
                             
                             // Enrich with web data
                             await enrichItemWithWebData(item);

@@ -7,6 +7,7 @@
   import { pinpadStore } from './lib/pinpadStore.js';
   import { uiConstantsStore } from './lib/uiConstantsStore.js';
   import { agentStore } from './lib/agentStore.js';
+  import { wsStore } from './lib/wsStore.js';
   import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
   import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
@@ -322,8 +323,12 @@
           message: finalMessage
         });
         
-        // If successful, add a summary request to the LLM
+        // If successful, add a summary request to the LLM and refresh categories
         if (success) {
+          // Refresh categories in the selection area
+          addLog('INFO', 'Refreshing categories after successful menu import');
+          wsStore.send({ command: 'getCategories' });
+          
           setTimeout(() => {
             const summaryTimestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
             agentStore.addMessage({
@@ -415,8 +420,10 @@
           <div class="agent-messages">
             {#each $agentStore.messages as message}
               <div class="agent-message" class:user={message.type === 'user'} class:agent={message.type === 'agent'}>
-                <span class="message-timestamp">{message.timestamp}</span>
-                <span class="message-type">{message.type === 'user' ? 'User' : 'Agent'}</span>
+                <div class="message-header">
+                  <span class="message-timestamp">{message.timestamp}</span>
+                  <span class="message-type">{message.type === 'user' ? 'User' : 'Agent'}</span>
+                </div>
                 <div class="message-content">{message.message}</div>
                 {#if message.actions}
                   <div class="message-actions">
@@ -441,8 +448,10 @@
             <!-- Draft message -->
             {#if $agentStore.draftMessage && $pinpadStore.isActive}
               <div class="agent-message user draft">
-                <span class="message-timestamp">{$agentStore.draftMessage.timestamp}</span>
-                <span class="message-type">User</span>
+                <div class="message-header">
+                  <span class="message-timestamp">{$agentStore.draftMessage.timestamp}</span>
+                  <span class="message-type">User</span>
+                </div>
                 <div class="message-content">{$agentStore.draftMessage.message}<span class="cursor">|</span></div>
               </div>
             {/if}
@@ -669,17 +678,22 @@
     color: #e0e0e0;
   }
 
+  .message-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: 8px;
+  }
+
   .message-timestamp {
     font-size: 12px;
     color: #aaa;
-    margin-right: 8px;
   }
 
   .message-type {
     font-weight: bold;
     font-size: 13px;
-    margin-bottom: 4px;
-    display: block;
+    color: #ccc;
   }
 
   .message-content {

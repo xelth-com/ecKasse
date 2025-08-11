@@ -801,7 +801,7 @@
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
         products = state.lastMessage.payload;
         currentView = 'products';
-        status = products.length > 0 ? '' : 'No products found in this category.';
+        status = ''; // Always clear status on successful response, even for empty categories
       } else {
         status = 'Error: Could not load products from backend.';
       }
@@ -1355,6 +1355,14 @@
              --hex-vertical-padding: {HEX_VERTICAL_PADDING}px;
              --rect-vertical-padding: {RECT_VERTICAL_PADDING}px;
            ">
+        
+        <!-- Empty category info overlay -->
+        {#if currentView === 'products' && products.length === 0}
+          <div class="empty-category-info">
+            <p class="empty-message">Diese Kategorie enthält noch keine Produkte.</p>
+            <p class="empty-hint">Verwenden Sie das Menü-Import Tool oder fügen Sie Produkte manuell hinzu.</p>
+          </div>
+        {/if}
         {#each gridRows as row, rowIndex}
           <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
             {#each row as cell (`${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
@@ -1448,7 +1456,33 @@
     margin-bottom: 0;
   }
   
+  .empty-category-info {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 20px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 350px;
+  }
   
+  .empty-message {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+  }
+  
+  .empty-hint {
+    margin: 0;
+    font-size: 14px;
+    color: #999;
+    font-style: italic;
+  }
   
   .pinpad-overlay {
     position: absolute;
