@@ -59,7 +59,8 @@
       "Bash(tree:*)",
       "Bash(touch:*)",
       "Bash(command -v:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
