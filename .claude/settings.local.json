@@ -55,7 +55,11 @@
       "Bash(sed:*)",
       "Bash(chmod:*)",
       "Bash(npx knex:*)",
-      "Bash(npm search:*)"
+      "Bash(npm search:*)",
+      "Bash(tree:*)",
+      "Bash(touch:*)",
+      "Bash(command -v:*)",
+      "Bash(/dev/null)"
     ],
     "deny": []
   }

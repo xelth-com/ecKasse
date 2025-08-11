@@ -1,0 +1,11 @@
+{
+  "name": "@eckasse/core",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Core business logic for ecKasse POS system",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

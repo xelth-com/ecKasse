@@ -1,0 +1,11 @@
+{
+  "name": "@eckasse/adapters", 
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Infrastructure adapters for ecKasse",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

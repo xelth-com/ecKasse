@@ -153,3 +153,7 @@ menu_outputs/*
 
 # feur mich
 ideasHistory.md
+# Exclude closed-source web package from open source distribution
+packages/web/
+LICENSE-COMMERCIAL
+LICENSE-EUPL-BACKUP.md

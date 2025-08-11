@@ -1,0 +1,11 @@
+{
+  "name": "@eckasse/shared-frontend",
+  "version": "1.0.0",
+  "private": true, 
+  "license": "MIT",
+  "description": "Shared frontend components for ecKasse",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
