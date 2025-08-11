@@ -538,6 +538,10 @@
                     "minLength": 1,
                     "maxLength": 255
                   },
+                  "password_hash": {
+                    "type": "string",
+                    "description": "Optional bcrypt password hash for user authentication. If not provided during import, a default password will be used."
+                  },
                   "role_unique_identifier": {
                     "type": "integer",
                     "minimum": 1

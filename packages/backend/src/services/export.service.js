@@ -51,7 +51,7 @@ async function exportToOopMdf(options = {}) {
 
     // Step 3: Export user management data
     const roles = await db('roles').select('id as role_unique_identifier', 'role_name', 'role_display_names', 'description', 'permissions', 'default_storno_daily_limit', 'default_storno_emergency_limit', 'can_approve_changes', 'can_manage_users', 'is_system_role', 'audit_trail');
-    const users = await db('users').select('id as user_unique_identifier', 'username', 'email', 'full_name', 'role_id', 'storno_daily_limit', 'storno_emergency_limit', 'trust_score', 'is_active', 'user_preferences', 'audit_trail');
+    const users = await db('users').select('id as user_unique_identifier', 'username', 'email', 'password_hash', 'full_name', 'role_id', 'storno_daily_limit', 'storno_emergency_limit', 'trust_score', 'is_active', 'user_preferences', 'audit_trail');
 
     const user_management = {
       roles: roles.map(r => {

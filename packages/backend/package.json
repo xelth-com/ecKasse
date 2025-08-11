@@ -24,7 +24,7 @@
     "@node-escpos/usb-adapter": "^0.3.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "chalk": "^4.1.2",
     "cheerio": "^1.1.0",

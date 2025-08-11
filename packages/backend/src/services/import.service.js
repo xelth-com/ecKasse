@@ -99,17 +99,17 @@ async function cleanExistingData(trx) {
   await trx('storno_log').del();
   await trx('pending_changes').del();
   await trx('user_sessions').del();
-  await trx('users').del();
-  await trx('roles').del();
+  // await trx('users').del(); // Preserve existing users
+  // await trx('roles').del(); // Preserve existing roles
   await trx('items').del();
   await trx('categories').del();
   await trx('pos_devices').del();
   await trx('branches').del();
   await trx('companies').del();
   
-  // Reset auto-increment sequences
-  await trx.raw('UPDATE sqlite_sequence SET seq = 0 WHERE name IN (?, ?, ?, ?, ?, ?, ?)', 
-    ['companies', 'branches', 'pos_devices', 'categories', 'items', 'roles', 'users']);
+  // Reset auto-increment sequences (excluding users and roles)
+  await trx.raw('UPDATE sqlite_sequence SET seq = 0 WHERE name IN (?, ?, ?, ?, ?)', 
+    ['companies', 'branches', 'pos_devices', 'categories', 'items']);
   
   logger.info('Database cleanup completed');
 }
@@ -143,58 +143,133 @@ async function importHierarchicalData(trx, jsonData, stats) {
 
   stats.companies++;
 
-  // Step 2a: Import user management if it exists
+  // Step 2a: Import user management if it exists (using upsert logic)
   const roleIdMap = new Map();
   if (companyDetails.user_management) {
-    logger.info('Importing user management data...');
-    // Import roles first
+    logger.info('Importing user management data with upsert logic...');
+    
+    // Import roles first with upsert logic
     if (companyDetails.user_management.roles) {
       for (const role of companyDetails.user_management.roles) {
-        const [newRole] = await trx('roles').insert({
-          role_name: role.role_name,
-          role_display_names: JSON.stringify(role.role_display_names),
-          description: role.description,
-          permissions: JSON.stringify(role.permissions),
-          default_storno_daily_limit: role.default_storno_daily_limit,
-          default_storno_emergency_limit: role.default_storno_emergency_limit,
-          can_approve_changes: role.can_approve_changes,
-          can_manage_users: role.can_manage_users,
-          is_system_role: role.is_system_role,
-          audit_trail: JSON.stringify(role.audit_trail)
-        }).returning('id');
-        const newRoleId = typeof newRole === 'object' ? newRole.id : newRole;
-        roleIdMap.set(role.role_unique_identifier, newRoleId);
-        stats.roles = (stats.roles || 0) + 1;
+        // Check if role already exists by role_name
+        const existingRole = await trx('roles').where('role_name', role.role_name).first();
+        
+        let roleId;
+        if (existingRole) {
+          // Update existing role
+          logger.info(`Updating existing role: ${role.role_name}`);
+          await trx('roles').where('id', existingRole.id).update({
+            role_display_names: JSON.stringify(role.role_display_names),
+            description: role.description,
+            permissions: JSON.stringify(role.permissions),
+            default_storno_daily_limit: role.default_storno_daily_limit,
+            default_storno_emergency_limit: role.default_storno_emergency_limit,
+            can_approve_changes: role.can_approve_changes,
+            can_manage_users: role.can_manage_users,
+            is_system_role: role.is_system_role,
+            audit_trail: JSON.stringify({
+              ...JSON.parse(existingRole.audit_trail || '{}'),
+              updated_at: new Date().toISOString(),
+              updated_by: 'import_service',
+              import_data: role.audit_trail
+            })
+          });
+          roleId = existingRole.id;
+          stats.rolesUpdated = (stats.rolesUpdated || 0) + 1;
+        } else {
+          // Insert new role
+          logger.info(`Creating new role: ${role.role_name}`);
+          const [newRole] = await trx('roles').insert({
+            role_name: role.role_name,
+            role_display_names: JSON.stringify(role.role_display_names),
+            description: role.description,
+            permissions: JSON.stringify(role.permissions),
+            default_storno_daily_limit: role.default_storno_daily_limit,
+            default_storno_emergency_limit: role.default_storno_emergency_limit,
+            can_approve_changes: role.can_approve_changes,
+            can_manage_users: role.can_manage_users,
+            is_system_role: role.is_system_role,
+            audit_trail: JSON.stringify({
+              created_at: new Date().toISOString(),
+              created_by: 'import_service',
+              import_data: role.audit_trail
+            })
+          }).returning('id');
+          roleId = typeof newRole === 'object' ? newRole.id : newRole;
+          stats.rolesCreated = (stats.rolesCreated || 0) + 1;
+        }
+        
+        roleIdMap.set(role.role_unique_identifier, roleId);
       }
     }
 
-    // Import users
+    // Import users with upsert logic
     if (companyDetails.user_management.users) {
-      const defaultPassword = 'changeme';
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
-
       for (const user of companyDetails.user_management.users) {
         const newRoleId = roleIdMap.get(user.role_id);
         if (!newRoleId) {
           logger.warn(`Could not find new role ID for old role ID ${user.role_id} for user ${user.username}. Skipping user.`);
           continue;
         }
-        await trx('users').insert({
-          username: user.username,
+        
+        // Check if user already exists by username
+        const existingUser = await trx('users').where('username', user.username).first();
+        
+        // Prepare user data
+        const userData = {
           email: user.email,
-          password_hash: hashedPassword,
           full_name: user.full_name,
           role_id: newRoleId,
           storno_daily_limit: user.storno_daily_limit,
           storno_emergency_limit: user.storno_emergency_limit,
           trust_score: user.trust_score,
           is_active: user.is_active,
-          force_password_change: true, // IMPORTANT FOR SECURITY
-          user_preferences: JSON.stringify(user.user_preferences),
-          audit_trail: JSON.stringify(user.audit_trail)
-        });
-        stats.users = (stats.users || 0) + 1;
+          user_preferences: JSON.stringify(user.user_preferences || {})
+        };
+        
+        // Handle password hash - use imported hash if available, otherwise set default
+        if (user.password_hash) {
+          userData.password_hash = user.password_hash;
+          userData.force_password_change = false; // If hash is imported, assume it's intentional
+        } else {
+          const defaultPassword = 'changeme';
+          const saltRounds = 12;
+          userData.password_hash = await bcrypt.hash(defaultPassword, saltRounds);
+          userData.force_password_change = true; // Force change for default password
+        }
+        
+        if (existingUser) {
+          // Update existing user (preserve some sensitive fields)
+          logger.info(`Updating existing user: ${user.username}`);
+          
+          // Don't overwrite password_hash if not provided in import (security)
+          if (!user.password_hash) {
+            delete userData.password_hash;
+            delete userData.force_password_change;
+          }
+          
+          userData.audit_trail = JSON.stringify({
+            ...JSON.parse(existingUser.audit_trail || '{}'),
+            updated_at: new Date().toISOString(),
+            updated_by: 'import_service',
+            import_data: user.audit_trail
+          });
+          
+          await trx('users').where('id', existingUser.id).update(userData);
+          stats.usersUpdated = (stats.usersUpdated || 0) + 1;
+        } else {
+          // Insert new user
+          logger.info(`Creating new user: ${user.username}`);
+          userData.username = user.username;
+          userData.audit_trail = JSON.stringify({
+            created_at: new Date().toISOString(),
+            created_by: 'import_service',
+            import_data: user.audit_trail
+          });
+          
+          await trx('users').insert(userData);
+          stats.usersCreated = (stats.usersCreated || 0) + 1;
+        }
       }
     }
   }
@@ -277,6 +352,9 @@ async function importHierarchicalData(trx, jsonData, stats) {
     }
   }
 
+  // Note: Default user creation is now handled by db_init.js on server startup
+  // This ensures consistent user access regardless of import operations
+  
   return {
     companyId,
     totalItems: stats.items,

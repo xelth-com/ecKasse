@@ -236,12 +236,10 @@ ipcMain.handle('start-menu-import', async (event, filePath) => {
       const lines = output.split('\n').filter(line => line.trim());
       
       lines.forEach(line => {
-        // Look for PROGRESS: prefixed lines
-        if (line.includes('PROGRESS:')) {
-          const progressMessage = line.replace(/.*PROGRESS:\s*/, '').trim();
-          if (progressMessage && mainWindow) {
-            mainWindow.webContents.send('menu-import-progress', progressMessage);
-          }
+        if (line.trim() && mainWindow) {
+          // Send all non-empty output lines as progress updates
+          // This provides detailed, real-time feedback during import
+          mainWindow.webContents.send('menu-import-progress', line.trim());
         }
       });
     });

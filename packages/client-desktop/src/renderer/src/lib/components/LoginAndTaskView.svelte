@@ -13,6 +13,16 @@
   onMount(() => {
     const unsubscribeWs = wsStore.subscribe(async (wsState) => {
       if (isDemoMode) return;
+      
+      // Handle UI refresh requests
+      if (wsState.lastMessage && wsState.lastMessage.command === 'ui-refresh-request') {
+        addLog('INFO', 'UI refresh requested - reloading application...');
+        // Show a brief notification before reloading
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+      
       if (wsState.connected && !$authStore.isAuthenticated && !usersFetched) {
         usersFetched = true;
         addLog('INFO', 'Production mode: Connected, fetching users...');
@@ -227,12 +237,35 @@
           <p class="error">Ошибка: {$recoveryStore.error}</p>
         {/if}
       {:else if $authStore.isAuthenticated}
-        <div class="welcome-section">
-          <h3>👋 Добро пожаловать, {$authStore.currentUser?.full_name}!</h3>
-          <div class="main-actions">
-            <button class="btn-confirm" on:click={handleConfirmNoPending}>🚀 Перейти к работе с кассой</button>
+        {#if $authStore.currentUser?.force_password_change}
+          <div class="password-change-section">
+            <h3>🔐 Требуется смена PIN-кода</h3>
+            <div class="security-warning">
+              <div class="warning-icon">⚠️</div>
+              <div class="warning-content">
+                <h4>Требование безопасности</h4>
+                <p>Вы используете временный PIN-код. Для обеспечения безопасности системы необходимо изменить PIN-код перед началом работы.</p>
+                <p><strong>Текущий PIN:</strong> временный код</p>
+                <p><strong>Что нужно сделать:</strong> Обратитесь к администратору для смены PIN-кода</p>
+              </div>
+            </div>
+            <div class="main-actions">
+              <button class="btn-change-password">🔑 Сменить PIN-код</button>
+              <button class="btn-logout" on:click={() => authStore.logout()}>🚪 Выход из системы</button>
+            </div>
+            <div class="development-notice">
+              <h4>⚙️ В разработке</h4>
+              <p>Функция смены PIN-кода находится в разработке. Пожалуйста, обратитесь к системному администратору для изменения вашего PIN-кода.</p>
+            </div>
           </div>
-        </div>
+        {:else}
+          <div class="welcome-section">
+            <h3>👋 Добро пожаловать, {$authStore.currentUser?.full_name}!</h3>
+            <div class="main-actions">
+              <button class="btn-confirm" on:click={handleConfirmNoPending}>🚀 Перейти к работе с кассой</button>
+            </div>
+          </div>
+        {/if}
       {/if}
     </div>
   </div>
@@ -294,4 +327,16 @@
   .btn-confirm, .btn-postpone-all { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; border: none; border-radius: 8px; padding: 16px 32px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); letter-spacing: 0.5px; }
   .btn-confirm:hover, .btn-postpone-all:hover { background: linear-gradient(135deg, #0056b3 0%, #004085 100%); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4); }
   .btn-confirm:active, .btn-postpone-all:active { transform: translateY(0); box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3); }
+  .password-change-section { text-align: center; }
+  .security-warning { display: flex; align-items: flex-start; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 1rem; margin: 1rem 0; text-align: left; }
+  .warning-icon { font-size: 2rem; margin-right: 1rem; color: #856404; }
+  .warning-content h4 { margin-top: 0; color: #856404; font-size: 1.1rem; }
+  .warning-content p { margin: 0.5rem 0; color: #856404; line-height: 1.4; }
+  .btn-change-password { background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%); color: #212529; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin-right: 1rem; }
+  .btn-change-password:hover { background: linear-gradient(135deg, #ffb300 0%, #ff8f00 100%); transform: translateY(-1px); }
+  .btn-logout { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+  .btn-logout:hover { background: linear-gradient(135deg, #495057 0%, #343a40 100%); transform: translateY(-1px); }
+  .development-notice { background-color: #e7f3ff; border: 2px solid #007bff; border-radius: 8px; padding: 1rem; margin: 1.5rem 0; text-align: left; }
+  .development-notice h4 { margin-top: 0; color: #0056b3; font-size: 1rem; }
+  .development-notice p { margin: 0.5rem 0; color: #0056b3; line-height: 1.4; }
 </style>

@@ -31,6 +31,10 @@ const httpServer = http.createServer(app);
 // Используем правильный конструктор WebSocket Server
 const wss = new WebSocket.Server({ server: httpServer });
 
+// Initialize WebSocket service for broadcasting
+const websocketService = require('./services/websocket.service');
+websocketService.init(wss);
+
 // Хранилище для отслеживания активных/обработанных operationId (упрощенно)
 const processedOperationIds = new Set();
 const OPERATION_ID_TTL = 60000; // Время жизни ID операции в мс (например, 1 минута)
@@ -521,14 +525,25 @@ async function runRecoveryProcess() {
  */
 async function startServer() {
   const { recoverPendingFiscalOperations } = require('./scripts/recover_pending_operations');
+  const { ensureDefaultUsersAndRoles, validateDatabaseStructure } = require('./db/db_init');
   
-  // Ensure data integrity by recovering any pending operations from the last session.
+  // Step 1: Validate database structure
+  const structureValid = await validateDatabaseStructure();
+  if (!structureValid) {
+    logger.error('Database structure validation failed. Please run migrations.');
+    process.exit(1);
+  }
+  
+  // Step 2: Ensure default users and roles exist (CRITICAL for preventing lockout)
+  await ensureDefaultUsersAndRoles();
+  
+  // Step 3: Ensure data integrity by recovering any pending operations from the last session.
   await recoverPendingFiscalOperations();
   
-  // Run recovery process for stale active transactions
+  // Step 4: Run recovery process for stale active transactions
   await runRecoveryProcess();
 
-  // Initialize printer service
+  // Step 5: Initialize printer service
   try {
     const printerService = require('./services/printer_service');
     await printerService.loadPrinters();
@@ -537,7 +552,7 @@ async function startServer() {
     logger.warn('Failed to initialize printer service:', error.message);
   }
 
-  // Now, start the server.
+  // Step 6: Start the server
   httpServer.listen(PORT, () => {
     logger.info(`Backend server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
   });

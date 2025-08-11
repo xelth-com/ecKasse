@@ -15,6 +15,7 @@
 require('dotenv').config({ path: '../../../.env' });
 const fs = require('fs').promises;
 const path = require('path');
+const axios = require('axios');
 const db = require('../db/knex');
 const MenuParserLLM = require('../lib/menu_parser_llm');
 const { importFromOopMdf } = require('../services/import.service');
@@ -92,6 +93,18 @@ async function main() {
     
     console.log('PROGRESS: 🎉 Full initialization complete! The POS is ready.');
     logger.info(chalk.green('\n🎉🎉🎉 Full initialization complete! The POS is ready.'));
+    
+    // === Step 7: Signal UI to refresh ===
+    try {
+      console.log('PROGRESS: Signaling UI to refresh with new menu data...');
+      const port = process.env.BACKEND_PORT || 3030;
+      await axios.post(`http://localhost:${port}/api/system/request-ui-refresh`);
+      console.log('PROGRESS: ✅ UI refresh signal sent successfully');
+      logger.info('✅ UI refresh signal sent to all connected clients');
+    } catch (refreshError) {
+      console.log('PROGRESS: ⚠️ Failed to send UI refresh signal (clients may need manual refresh)');
+      logger.warn('Failed to send UI refresh signal:', refreshError.message);
+    }
 
   } catch (error) {
     logger.error('❌ Full initialization script failed:', { error: error.message, stack: error.stack });
