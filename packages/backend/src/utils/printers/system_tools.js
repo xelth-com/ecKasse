@@ -229,11 +229,130 @@ const systemTools = {
    * Sends a raw binary command to a specific printer port.
    * @param {object} port - The port to send the command to.
    * @param {Buffer} command - The binary command buffer.
+   * @param {number} timeout - Connection timeout in milliseconds (default: 5000)
    */
-  execute_printer_command: async (port, command) => {
-    console.log(`[SystemTools] STUB: Sending command to ${port.ip} via ${port.type}`);
-    // Real implementation would use Node's 'net' module to open a socket and write the buffer.
-    return Promise.resolve({ status: 'success' });
+  execute_printer_command: async (port, command, timeout = 5000) => {
+    if (port.type === 'LAN') {
+      return new Promise((resolve, reject) => {
+        const net = require('net');
+        const socket = new net.Socket();
+        
+        console.log(`[SystemTools] Connecting to printer at ${port.ip}:9100...`);
+        
+        let isConnected = false;
+        let dataBuffer = Buffer.alloc(0);
+        
+        const cleanup = () => {
+          if (socket && !socket.destroyed) {
+            socket.destroy();
+          }
+        };
+        
+        const connectionTimeout = setTimeout(() => {
+          if (!isConnected) {
+            console.log(`[SystemTools] Connection timeout after ${timeout}ms`);
+            cleanup();
+            resolve({ status: 'timeout', message: `Connection timeout to ${port.ip}` });
+          }
+        }, timeout);
+        
+        socket.on('connect', () => {
+          isConnected = true;
+          clearTimeout(connectionTimeout);
+          console.log(`[SystemTools] Connected to printer at ${port.ip}`);
+          
+          try {
+            console.log(`[SystemTools] Sending ${command.length} bytes to printer...`);
+            socket.write(command);
+            
+            // Set a timeout for receiving response (printers usually respond quickly)
+            const responseTimeout = setTimeout(() => {
+              console.log(`[SystemTools] Command sent successfully, closing connection`);
+              cleanup();
+              resolve({ 
+                status: 'success', 
+                message: `Command sent to ${port.ip}`,
+                bytesSent: command.length
+              });
+            }, 1000); // Wait 1 second for any response, then consider success
+            
+          } catch (writeError) {
+            clearTimeout(responseTimeout);
+            console.error(`[SystemTools] Error sending command: ${writeError.message}`);
+            cleanup();
+            resolve({ status: 'error', message: `Write error: ${writeError.message}` });
+          }
+        });
+        
+        socket.on('data', (data) => {
+          dataBuffer = Buffer.concat([dataBuffer, data]);
+          console.log(`[SystemTools] Received ${data.length} bytes from printer`);
+        });
+        
+        socket.on('error', (error) => {
+          clearTimeout(connectionTimeout);
+          console.error(`[SystemTools] Socket error: ${error.message}`);
+          cleanup();
+          resolve({ status: 'error', message: `Socket error: ${error.message}` });
+        });
+        
+        socket.on('close', () => {
+          console.log(`[SystemTools] Connection to ${port.ip} closed`);
+          if (isConnected) {
+            resolve({ 
+              status: 'success', 
+              message: `Command completed, connection closed`,
+              bytesSent: command.length,
+              responseData: dataBuffer
+            });
+          }
+        });
+        
+        try {
+          socket.connect(9100, port.ip);
+        } catch (connectError) {
+          clearTimeout(connectionTimeout);
+          console.error(`[SystemTools] Connection error: ${connectError.message}`);
+          resolve({ status: 'error', message: `Connection error: ${connectError.message}` });
+        }
+      });
+      
+    } else if (port.type === 'USB') {
+      // USB implementation
+      return new Promise((resolve) => {
+        if (!port.device) {
+          resolve({ status: 'error', message: 'USB device not available' });
+          return;
+        }
+        
+        console.log(`[SystemTools] Sending ${command.length} bytes to USB printer...`);
+        
+        try {
+          port.device.write(command, (error) => {
+            if (error) {
+              console.error(`[SystemTools] USB write error: ${error.message}`);
+              resolve({ status: 'error', message: `USB write error: ${error.message}` });
+            } else {
+              console.log(`[SystemTools] USB command sent successfully`);
+              resolve({ 
+                status: 'success', 
+                message: 'USB command sent successfully',
+                bytesSent: command.length
+              });
+            }
+          });
+        } catch (usbError) {
+          console.error(`[SystemTools] USB error: ${usbError.message}`);
+          resolve({ status: 'error', message: `USB error: ${usbError.message}` });
+        }
+      });
+      
+    } else {
+      return Promise.resolve({ 
+        status: 'error', 
+        message: `Unsupported port type: ${port.type}` 
+      });
+    }
   },
 
   /**

@@ -119,8 +119,22 @@ async function handleWebSocketMessage(ws, rawMessage) {
     } else if (command === 'finishTransaction') {
       const { transactionId, paymentData, userId } = payload;
       const transactionManagementService = require('./services/transaction_management.service.js');
-      responsePayload = await transactionManagementService.finishTransaction(transactionId, paymentData, userId);
+      const result = await transactionManagementService.finishTransaction(transactionId, paymentData, userId);
+      
+      // Include printStatus in response payload for UI notifications
+      responsePayload = {
+        ...result,
+        printStatus: result.printStatus || { status: 'unknown' }
+      };
       responseCommand = 'transactionFinished';
+    } else if (command === 'reprintReceipt') {
+      const { transactionId } = payload;
+      if (!transactionId) {
+        throw new Error('transactionId is required for reprint');
+      }
+      const printerService = require('./services/printer_service.js');
+      responsePayload = await printerService.reprintReceipt(transactionId);
+      responseCommand = 'reprintResult';
     } else if (command === 'getCategories') {
       responsePayload = await db('categories').select('*');
     } else if (command === 'getItemsByCategory') {

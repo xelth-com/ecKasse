@@ -1,17 +1,22 @@
 [
   {
-    "id": "1811a19c-8e4f-40ab-8b90-a84f63390d33",
-    "name": "New HPRT_TP80K",
-    "roles": [
-      "receipts"
-    ],
+    "id": "test-printer-001",
+    "name": "Test Receipt Printer",
     "model": "HPRT_TP80K",
-    "manufacturer": "HPRT",
-    "ip": "192.168.0.130",
-    "port": {
-      "type": "LAN",
-      "ip": "192.168.0.130"
-    },
-    "configuredAt": "2025-08-10T19:36:16.677Z"
+    "roles": ["receipts"],
+    "ip_address": "192.168.1.100",
+    "port_type": "LAN",
+    "port": 9100,
+    "status": "active"
+  },
+  {
+    "id": "test-printer-002",
+    "name": "Test Xprinter",
+    "model": "XPRINTER_XP-V330L",
+    "roles": ["receipts"],
+    "ip_address": "192.168.123.100",
+    "port_type": "LAN",
+    "port": 9100,
+    "status": "active"
   }
 ]

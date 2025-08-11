@@ -1,6 +1,7 @@
 const db = require('../db/knex');
 const logger = require('../config/logger');
 const loggingService = require('./logging.service');
+const printerService = require('./printer_service');
 const crypto = require('crypto');
 const sessionManager = require('./session.service');
 
@@ -275,11 +276,70 @@ class TransactionManagementService {
     }
 
     logger.info({ msg: 'Transaction finished successfully', transactionId });
-    return { 
-      success: true, 
-      fiscal_log: fiscalLogResult.log,
-      transaction: finishedTransaction
-    };
+    // Third phase: Attempt receipt printing (after successful transaction completion)
+    try {
+      const receiptData = await printerService._prepareReceiptData(finishedTransaction, fiscalLogResult.log);
+      const printResult = await printerService.printReceipt(receiptData);
+      
+      if (printResult.status === 'success') {
+        logger.info({ 
+          msg: 'Receipt printed successfully', 
+          transactionId, 
+          printer: printResult.printer,
+          bytesSize: printResult.bytesSize
+        });
+        
+        return { 
+          success: true, 
+          fiscal_log: fiscalLogResult.log,
+          transaction: finishedTransaction,
+          print_result: printResult,
+          printStatus: { status: 'success' }
+        };
+      } else {
+        // Print failed but transaction is complete - log error but don't fail
+        await loggingService.logOperationalEvent(userId, 'print_failed', {
+          transaction_uuid: transaction.uuid,
+          print_error: printResult.message,
+          printer: printResult.printer || 'unknown'
+        });
+        
+        logger.warn({ 
+          msg: 'Receipt printing failed but transaction completed successfully', 
+          transactionId, 
+          printError: printResult.message 
+        });
+        
+        return { 
+          success: true, 
+          fiscal_log: fiscalLogResult.log,
+          transaction: finishedTransaction,
+          print_warning: printResult.message,
+          printStatus: { status: 'failed', error: printResult.message }
+        };
+      }
+      
+    } catch (printError) {
+      // Print service error - log but don't fail the transaction
+      await loggingService.logOperationalEvent(userId, 'print_error', {
+        transaction_uuid: transaction.uuid,
+        error_message: printError.message
+      });
+      
+      logger.error({ 
+        msg: 'Receipt printing error (transaction completed successfully)', 
+        transactionId, 
+        error: printError.message 
+      });
+      
+      return { 
+        success: true, 
+        fiscal_log: fiscalLogResult.log,
+        transaction: finishedTransaction,
+        print_error: printError.message,
+        printStatus: { status: 'failed', error: printError.message }
+      };
+    }
   }
 
   /**

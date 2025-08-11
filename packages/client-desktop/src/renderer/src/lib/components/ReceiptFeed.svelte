@@ -2,6 +2,8 @@
   import { onMount, afterUpdate } from 'svelte';
   import { receiptsStore } from '../receiptsStore.js';
   import { addLog } from '../logStore.js';
+  import { wsStore } from '../wsStore.js';
+  import { notificationStore } from '../notificationStore.js';
 
   export let autoExpandLatest = false; // Prop to auto-expand latest receipt
   
@@ -61,10 +63,42 @@
     return 'Unnamed Item';
   }
 
-  function handleReprintReceipt(receipt) {
+  async function handleReprintReceipt(receipt) {
     addLog('INFO', `Reprint requested for receipt №${receipt.id}`);
-    // TODO: Implement reprint functionality
-    console.log('Reprint receipt:', receipt);
+    
+    try {
+      // Show loading notification
+      notificationStore.showInfo(`Reprinting receipt №${receipt.id}...`, 3000);
+      
+      // Send reprint command via WebSocket
+      const result = await wsStore.send('reprintReceipt', { 
+        transactionId: receipt.id 
+      });
+      
+      if (result.status === 'success') {
+        notificationStore.showPrintNotification(
+          `Receipt №${receipt.id} reprinted successfully`, 
+          'success',
+          4000
+        );
+        addLog('SUCCESS', `Receipt №${receipt.id} reprinted successfully`);
+      } else {
+        notificationStore.showPrintNotification(
+          `Reprint failed: ${result.message}`, 
+          'error',
+          6000
+        );
+        addLog('ERROR', `Reprint failed for receipt №${receipt.id}: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Reprint error:', error);
+      notificationStore.showPrintNotification(
+        `Reprint error: ${error.message}`, 
+        'error',
+        6000
+      );
+      addLog('ERROR', `Reprint error for receipt №${receipt.id}: ${error.message}`);
+    }
   }
 </script>
 

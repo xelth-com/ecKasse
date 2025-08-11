@@ -49,6 +49,93 @@ async function testPrinterSystem() {
       console.log('🟡 No receipt printer was configured in this run.');
     }
 
+    // Step 4: Test receipt printing if a printer was configured
+    if (receiptPrinter) {
+      console.log('\n[Step 4] Testing receipt printing via API endpoint...');
+      try {
+        const http = require('http');
+        
+        const postData = JSON.stringify({
+          business_name: "Test Print Store",
+          business_address: "Auto-Test Address",
+          business_phone: "+49 000 000000", 
+          receipt_number: "AUTO-TEST-" + Date.now(),
+          date_time: new Date().toLocaleString('de-DE'),
+          cashier_name: "Test Script",
+          items: [
+            {
+              name: "Auto Test Item",
+              quantity: 1,
+              unit_price: 10.00,
+              total_price: 10.00
+            }
+          ],
+          subtotal: 10.00,
+          tax_rate: 19,
+          tax_amount: 1.90,
+          total: 11.90,
+          payment_method: "Test",
+          tse_qr_data: "TSE:V0:AUTOTEST:20250811000000:11.90EUR:19%",
+          farewell_message: "Auto-test completed!"
+        });
+        
+        const options = {
+          hostname: 'localhost',
+          port: 3030,
+          path: '/api/printers/test-receipt',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        };
+        
+        const apiResult = await new Promise((resolve, reject) => {
+          const req = http.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => {
+              data += chunk;
+            });
+            res.on('end', () => {
+              try {
+                const result = JSON.parse(data);
+                resolve({ status: res.statusCode, body: result });
+              } catch (parseError) {
+                reject(new Error(`Failed to parse response: ${parseError.message}`));
+              }
+            });
+          });
+          
+          req.on('error', (error) => {
+            reject(error);
+          });
+          
+          req.write(postData);
+          req.end();
+          
+          // Add timeout
+          setTimeout(() => {
+            req.destroy();
+            reject(new Error('API request timeout'));
+          }, 10000);
+        });
+        
+        if (apiResult.status === 200) {
+          console.log('✅ Receipt printing test successful!');
+          console.log('API Response:', JSON.stringify(apiResult.body, null, 2));
+        } else {
+          console.log('⚠️  Receipt printing test returned non-200 status:', apiResult.status);
+          console.log('API Response:', JSON.stringify(apiResult.body, null, 2));
+        }
+        
+      } catch (apiError) {
+        console.log('❌ Receipt printing test failed:', apiError.message);
+        console.log('Note: Make sure the backend server is running on port 3030');
+      }
+    } else {
+      console.log('\n[Step 4] Skipping receipt printing test (no printer configured)');
+    }
+
     console.log('\n🎉 Test finished successfully!');
 
   } catch (error) {
