@@ -1,19 +1,116 @@
 import { writable } from 'svelte/store';
 import { timeStore } from './timeStore.js';
 
-// Create a writable store for WebSocket state
+// Create a writable store for WebSocket state with high-availability failover
 function createWebSocketStore() {
   const { subscribe, set, update } = writable({
     connected: false,
     isConnected: false, // Keep for backward compatibility
     lastMessage: null,
     error: null,
-    sessionId: null
+    sessionId: null,
+    currentServer: null,
+    serverIndex: 0,
+    connectionAttempts: 0
   });
+
+  // High-availability server configuration
+  const servers = [
+    'eck1.com',
+    'eck2.com', 
+    'eck3.com'
+  ];
+
+  // Fallback to current host if no servers configured or for development
+  const getServerList = () => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return [window.location.host];
+    }
+    return servers.length > 0 ? servers : [window.location.host];
+  };
 
   let ws = null;
   let sessionId = null;
+  let currentServerIndex = 0;
+  let connectionAttempts = 0;
+  let reconnectTimeout = null;
   const pendingOperations = new Map();
+  const maxReconnectAttempts = servers.length * 2; // Try each server twice
+
+  // Server performance tracking for smart selection
+  const serverStats = new Map();
+  
+  // Initialize server stats
+  function initializeServerStats() {
+    const serverList = getServerList();
+    serverList.forEach(server => {
+      if (!serverStats.has(server)) {
+        serverStats.set(server, {
+          successfulConnections: 0,
+          failedConnections: 0,
+          averageResponseTime: 0,
+          lastConnectionTime: null,
+          reliability: 1.0 // Start with neutral reliability
+        });
+      }
+    });
+  }
+
+  // Calculate server reliability score
+  function calculateReliability(stats) {
+    const total = stats.successfulConnections + stats.failedConnections;
+    if (total === 0) return 1.0; // Neutral for new servers
+    
+    const successRate = stats.successfulConnections / total;
+    const timeBonus = stats.averageResponseTime < 1000 ? 0.1 : 0; // Bonus for fast responses
+    
+    return Math.min(successRate + timeBonus, 1.0);
+  }
+
+  // Smart server selection - prefers better performing servers
+  function selectBestServer() {
+    const serverList = getServerList();
+    
+    // For development, just use random
+    if (serverList.length === 1) {
+      return 0;
+    }
+    
+    // Calculate weighted probabilities based on reliability
+    const weights = serverList.map(server => {
+      const stats = serverStats.get(server);
+      return stats ? stats.reliability : 1.0;
+    });
+    
+    // Weighted random selection
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (let i = 0; i < weights.length; i++) {
+      random -= weights[i];
+      if (random <= 0) {
+        return i;
+      }
+    }
+    
+    // Fallback to pure random
+    return Math.floor(Math.random() * serverList.length);
+  }
+
+  // Initialize random starting server for load balancing
+  function initializeRandomStartServer() {
+    initializeServerStats();
+    currentServerIndex = selectBestServer();
+    const serverList = getServerList();
+    console.log(`Initialized with smart-selected server index: ${currentServerIndex} (${serverList[currentServerIndex]})`);
+    
+    // Log server stats for debugging
+    console.log('Server reliability scores:', 
+      Array.from(serverStats.entries()).map(([server, stats]) => 
+        `${server}: ${(stats.reliability * 100).toFixed(1)}%`
+      ).join(', ')
+    );
+  }
   
   // Initialize session ID from localStorage or create new one
   function initializeSessionId() {
@@ -28,16 +125,79 @@ function createWebSocketStore() {
     console.log('Session ID initialized:', sessionId);
   }
 
-  // Connect to WebSocket
-  function connect() {
+  // Get next server in round-robin fashion
+  function getNextServer() {
+    const serverList = getServerList();
+    const server = serverList[currentServerIndex];
+    currentServerIndex = (currentServerIndex + 1) % serverList.length;
+    return server;
+  }
+
+  // Connect to WebSocket with round-robin failover
+  function connect(retryCount = 0) {
+    // Clear any existing reconnect timeout
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+
+    // Check if we've exceeded maximum reconnection attempts
+    if (retryCount >= maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached. Stopping reconnection.');
+      update(state => ({ 
+        ...state, 
+        connected: false, 
+        isConnected: false,
+        error: 'Failed to connect to any server after maximum attempts',
+        connectionAttempts: retryCount
+      }));
+      return;
+    }
+
     try {
+      const currentServer = getNextServer();
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const wsUrl = `${protocol}//${window.location.host}`;
-ws = new WebSocket(wsUrl);
+      const wsUrl = `${protocol}//${currentServer}`;
+      
+      console.log(`Attempting WebSocket connection to ${wsUrl} (attempt ${retryCount + 1}/${maxReconnectAttempts})`);
+      
+      // Update state with current connection attempt
+      update(state => ({ 
+        ...state, 
+        currentServer,
+        serverIndex: currentServerIndex,
+        connectionAttempts: retryCount + 1,
+        error: null
+      }));
+
+      ws = new WebSocket(wsUrl);
+      
+      const connectionStartTime = Date.now();
       
       ws.onopen = () => {
-        console.log('WebSocket connected');
-        update(state => ({ ...state, connected: true, isConnected: true, error: null }));
+        const connectionTime = Date.now() - connectionStartTime;
+        console.log(`WebSocket connected to ${currentServer} (${connectionTime}ms)`);
+        
+        // Update server stats - successful connection
+        if (serverStats.has(currentServer)) {
+          const stats = serverStats.get(currentServer);
+          stats.successfulConnections++;
+          stats.lastConnectionTime = connectionTime;
+          stats.averageResponseTime = stats.averageResponseTime === 0 
+            ? connectionTime 
+            : (stats.averageResponseTime + connectionTime) / 2;
+          stats.reliability = calculateReliability(stats);
+          serverStats.set(currentServer, stats);
+        }
+        
+        connectionAttempts = 0; // Reset attempts on successful connection
+        update(state => ({ 
+          ...state, 
+          connected: true, 
+          isConnected: true, 
+          error: null,
+          connectionAttempts: 0
+        }));
       };
 
       ws.onmessage = (event) => {
@@ -64,20 +224,67 @@ ws = new WebSocket(wsUrl);
         }
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log(`WebSocket disconnected from ${currentServer} (code: ${event.code}, reason: ${event.reason})`);
+        
+        // Update server stats - failed connection (if it was an unexpected close)
+        if (event.code !== 1000 && serverStats.has(currentServer)) { // 1000 = normal closure
+          const stats = serverStats.get(currentServer);
+          stats.failedConnections++;
+          stats.reliability = calculateReliability(stats);
+          serverStats.set(currentServer, stats);
+          console.log(`Updated reliability for ${currentServer}: ${(stats.reliability * 100).toFixed(1)}%`);
+        }
+        
         update(state => ({ ...state, connected: false, isConnected: false }));
-        // Auto-reconnect after 3 seconds
-        setTimeout(connect, 3000);
+        
+        // Attempt reconnection to next server after delay
+        const delay = Math.min(1000 * Math.pow(2, Math.floor(retryCount / servers.length)), 30000); // Exponential backoff with max 30s
+        console.log(`Reconnecting in ${delay}ms to next server...`);
+        
+        reconnectTimeout = setTimeout(() => {
+          connect(retryCount + 1);
+        }, delay);
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        update(state => ({ ...state, error: error.message }));
+        console.error(`WebSocket error on ${currentServer}:`, error);
+        
+        // Update server stats - error counts as failed connection
+        if (serverStats.has(currentServer)) {
+          const stats = serverStats.get(currentServer);
+          stats.failedConnections++;
+          stats.reliability = calculateReliability(stats);
+          serverStats.set(currentServer, stats);
+        }
+        
+        update(state => ({ ...state, error: `Connection error: ${currentServer}` }));
       };
+
+      // Connection timeout - force close and try next server
+      const connectionTimeout = setTimeout(() => {
+        if (ws && ws.readyState === WebSocket.CONNECTING) {
+          console.log(`Connection timeout for ${currentServer}, trying next server...`);
+          ws.close();
+        }
+      }, 10000); // 10 second connection timeout
+
+      // Clear timeout once connected
+      ws.onopen = (originalOnOpen => {
+        return function(...args) {
+          clearTimeout(connectionTimeout);
+          return originalOnOpen.apply(this, args);
+        };
+      })(ws.onopen);
+
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       update(state => ({ ...state, error: error.message }));
+      
+      // Try next server after short delay
+      reconnectTimeout = setTimeout(() => {
+        connect(retryCount + 1);
+      }, 2000);
     }
   }
 
@@ -123,7 +330,8 @@ ws = new WebSocket(wsUrl);
     });
   }
 
-  // Initialize session and connection
+  // Initialize session and connection with random server selection
+  initializeRandomStartServer();
   initializeSessionId();
   connect();
 
@@ -131,8 +339,58 @@ ws = new WebSocket(wsUrl);
     subscribe,
     send,
     connect,
-    getSessionId: () => sessionId
+    getSessionId: () => sessionId,
+    getCurrentServer: () => {
+      const state = get({ subscribe });
+      return state.currentServer;
+    },
+    getConnectionStats: () => {
+      const state = get({ subscribe });
+      return {
+        currentServer: state.currentServer,
+        serverIndex: state.serverIndex,
+        connectionAttempts: state.connectionAttempts,
+        availableServers: getServerList(),
+        serverStats: Array.from(serverStats.entries()).map(([server, stats]) => ({
+          server,
+          reliability: Math.round(stats.reliability * 100),
+          successfulConnections: stats.successfulConnections,
+          failedConnections: stats.failedConnections,
+          averageResponseTime: Math.round(stats.averageResponseTime),
+          lastConnectionTime: stats.lastConnectionTime
+        }))
+      };
+    },
+    forceReconnect: () => {
+      if (ws) {
+        ws.close();
+      }
+      currentServerIndex = 0; // Reset to first server
+      connectionAttempts = 0;
+      connect();
+    },
+    switchToBestServer: () => {
+      if (ws) {
+        ws.close();
+      }
+      currentServerIndex = selectBestServer(); // Choose best performing server
+      connectionAttempts = 0;
+      console.log('Switching to best performing server...');
+      connect();
+    },
+    resetServerStats: () => {
+      serverStats.clear();
+      initializeServerStats();
+      console.log('Server statistics reset');
+    }
   };
+
+  // Helper function to get current state
+  function get(store) {
+    let state;
+    store.subscribe(s => state = s)();
+    return state;
+  }
 }
 
 export const wsStore = createWebSocketStore();
