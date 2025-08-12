@@ -5,6 +5,12 @@
   "license": "MIT",
   "description": "Core business logic for ecKasse POS system",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./config/*": "./config/*",
+    "./application/*": "./application/*",
+    "./db/*": "./db/*"
+  },
   "engines": {
     "node": ">=20.0.0"
   }

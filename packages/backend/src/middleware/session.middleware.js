@@ -1,4 +1,4 @@
-const sessionManager = require('../services/session.service');
+const sessionManager = require('../../../core/application/session.service');
 const logger = require('../config/logger');
 
 /**

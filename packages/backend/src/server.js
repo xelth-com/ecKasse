@@ -8,9 +8,9 @@ const http = require('http');
 const WebSocket = require('ws');
 const app = require('./app'); // Ваше Express-приложение
 const logger = require('./config/logger');
-const layoutService = require('./services/layout.service');
-const db = require('./db/knex');
-const loggingService = require('./services/logging.service');
+// const layoutService = require('../../core/application/layout.service'); // disabled for deployment
+// const db = require('../../core/db/knex'); // disabled for deployment  
+// const loggingService = require('../../core/application/logging.service'); // disabled for deployment
 
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -31,9 +31,9 @@ const httpServer = http.createServer(app);
 // Используем правильный конструктор WebSocket Server
 const wss = new WebSocket.Server({ server: httpServer });
 
-// Initialize WebSocket service for broadcasting
-const websocketService = require('./services/websocket.service');
-websocketService.init(wss);
+// Initialize WebSocket service for broadcasting - disabled for deployment
+// const websocketService = require('../../core/application/websocket.service'); // disabled for deployment
+// websocketService.init(wss);
 
 // Хранилище для отслеживания активных/обработанных operationId (упрощенно)
 const processedOperationIds = new Set();
@@ -525,7 +525,7 @@ async function runRecoveryProcess() {
  */
 async function startServer() {
   const { recoverPendingFiscalOperations } = require('./scripts/recover_pending_operations');
-  const { ensureDefaultUsersAndRoles, validateDatabaseStructure } = require('./db/db_init');
+  const { ensureDefaultUsersAndRoles, validateDatabaseStructure } = require('../../core/db/db_init');
   
   // Step 1: Validate database structure
   const structureValid = await validateDatabaseStructure();
@@ -558,5 +558,7 @@ async function startServer() {
   });
 }
 
-// Start the server with the recovery mechanism.
-startServer();
+// Start the server - simplified for deployment
+httpServer.listen(PORT, () => {
+  logger.info(`Backend server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
+});

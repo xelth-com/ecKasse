@@ -1,0 +1,1 @@
+../../../../core/application/search.service.js

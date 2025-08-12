@@ -2,11 +2,10 @@
 const { GoogleGenAI } = require('@google/genai');
 
 if (!process.env.GEMINI_API_KEY) {
-  console.error('❌ FATAL: GEMINI_API_KEY is not configured. The application cannot function.');
-  throw new Error('GEMINI_API_KEY is missing from environment variables.');
+  console.warn('⚠️  WARNING: GEMINI_API_KEY is not configured. LLM features will be disabled.');
 }
 
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI(process.env.GEMINI_API_KEY) : null;
 
 /**
  * A shared, singleton instance of the Google AI client.
@@ -19,6 +18,10 @@ const geminiClient = genAI;
  * @returns {object} - Model interface for @google/genai SDK
  */
 function getGeminiModel(options = {}) {
+    if (!genAI) {
+        throw new Error('Gemini AI is not available. GEMINI_API_KEY is not configured.');
+    }
+    
     const modelName = options.modelName || 'gemini-2.0-flash';
     
     // Return the native SDK interface exactly as in the working version

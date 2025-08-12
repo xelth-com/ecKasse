@@ -1,0 +1,1 @@
+../../../../core/application/product.service.js

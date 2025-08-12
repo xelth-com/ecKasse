@@ -30,18 +30,27 @@ module.exports = {
     }
   },
   production: {
-    client: 'sqlite3',
-    connection: {
+    client: process.env.DB_CLIENT || 'sqlite3',
+    connection: process.env.DB_CLIENT === 'pg' ? {
+      host: process.env.PG_HOST || 'localhost',
+      port: process.env.PG_PORT || 5432,
+      user: process.env.PG_USERNAME,
+      password: process.env.PG_PASSWORD,
+      database: process.env.PG_DATABASE
+    } : {
       filename: process.env.DB_FILENAME ? path.resolve(__dirname, '../../../../', process.env.DB_FILENAME) : path.resolve(__dirname, 'eckasse_prod.sqlite3')
     },
-    useNullAsDefault: true,
+    useNullAsDefault: process.env.DB_CLIENT !== 'pg',
     migrations: {
       directory: path.resolve(__dirname, 'migrations')
     },
     seeds: {
       directory: path.resolve(__dirname, 'seeds')
     },
-    pool: {
+    pool: process.env.DB_CLIENT === 'pg' ? {
+      min: 2,
+      max: 10
+    } : {
       afterCreate: function(connection, done) {
         try {
           sqliteVec.load(connection);

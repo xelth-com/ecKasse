@@ -3,12 +3,12 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const logger = require('./config/logger'); // Путь к вашему логгеру
-const sessionMiddleware = require('./middleware/session.middleware');
+// const sessionMiddleware = require('./middleware/session.middleware');
 // const mainRoutes = require('./routes/index'); // THIS SHOULD BE COMMENTED OR REMOVED
-const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
-const systemRoutes = require('./routes/system.routes.js');
-const printerRoutes = require('./routes/printers.js');
-const menuRoutes = require('./routes/menu.routes.js'); // For menu file upload and import
+// const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong - disabled for deployment
+// const systemRoutes = require('./routes/system.routes.js'); // disabled for deployment
+// const printerRoutes = require('./routes/printers.js'); // disabled for deployment
+// const menuRoutes = require('./routes/menu.routes.js'); // disabled for deployment
 
 
 const app = express();
@@ -17,7 +17,7 @@ const app = express();
 app.use(cors()); // Включить CORS для всех маршрутов (настройте более строго для продакшена)
 app.use(express.json()); // Для парсинга application/json
 app.use(express.urlencoded({ extended: true })); // Для парсинга application/x-www-form-urlencoded
-app.use(sessionMiddleware); // Session management for demo mode
+// app.use(sessionMiddleware); // Session management for demo mode - disabled for production
 
 
 // Временное хранилище для operationId HTTP - должно быть синхронизировано или объединено с WebSocket
@@ -43,16 +43,16 @@ app.use((req, res, next) => {
 });
 
 // Раздача статических файлов для фронтенда
-const staticPath = path.join(__dirname, '../../client-desktop/src/renderer/dist');
+const staticPath = path.join(__dirname, '../../desktop/frontend/dist');
 app.use(express.static(staticPath));
 logger.info(`Serving static files from: ${staticPath}`);
 
-// Подключение маршрутов API
+// Подключение маршрутов API - all disabled for deployment due to refactoring issues
 // app.use('/api', mainRoutes); // Когда у вас будут роуты
-app.use('/api/llm', llmRoutes); // Mount the LLM routes
-app.use('/api/system', systemRoutes);
-app.use('/api/printers', printerRoutes);
-app.use('/api/menu', menuRoutes); // Mount the menu upload routes
+// app.use('/api/llm', llmRoutes); // Mount the LLM routes - disabled for deployment
+// app.use('/api/system', systemRoutes); // disabled for deployment
+// app.use('/api/printers', printerRoutes); // disabled for deployment
+// app.use('/api/menu', menuRoutes); // disabled for deployment
 
 // HTTP fallback endpoint for WebSocket commands
 app.post('/api/websocket-fallback', async (req, res) => {
