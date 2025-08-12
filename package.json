@@ -8,13 +8,13 @@
     "dev:backend": "npm run dev --workspace=@eckasse/backend",
     "migrate:backend": "npm run db:migrate:latest --workspace=@eckasse/backend",
     "seed:backend": "npm run db:seed:run --workspace=@eckasse/backend",
-    "dev:client:svelte": "npm run dev --workspace=@eckasse/renderer-ui",
+    "dev:client:svelte": "npm run dev --workspace=@eckasse/desktop-frontend",
     "dev:electron:wait-and-watch": "wait-on http://localhost:3030 && npm run dev:electron:watch --workspace=@eckasse/client-desktop",
     "build:client:desktop": "npm run build --workspace=@eckasse/client-desktop",
     "dist:client:desktop": "npm run dist --workspace=@eckasse/client-desktop",
-    "predev": "npm run build --workspace=@eckasse/renderer-ui",
+    "predev": "npm run build --workspace=@eckasse/desktop-frontend",
     "dev:desktop:full": "concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"npm:dev:electron:wait-and-watch\"",
-    "dev": "npm run predev && concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"wait-on /dist/index.html && npm run dev:electron:watch --workspace=@eckasse/client-desktop\"",
+    "dev": "npm run predev && concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"wait-on packages/desktop/frontend/dist/index.html && npm run dev:electron:watch --workspace=@eckasse/desktop\"",
     "lint:all": "npm run lint --workspaces --if-present",
     "format:all": "prettier --write \"packages/**/*.{js,json,md,css,html}\" \"shared/**/*.{js,json,md,css,html}\" \"*.{json,md}\"",
     "test:all": "npm run test --workspaces --if-present",
@@ -24,7 +24,8 @@
   },
   "workspaces": [
     "packages/*",
-    "packages/web/frontend",
+    "packages/desktop/frontend",
+    "packages/shared-frontend",
     "shared"
   ],
   "repository": {

@@ -1,22 +1,22 @@
 <script>
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { wsStore } from './lib/wsStore.js';
-  import { addLog } from './lib/logStore.js';
-  import { orderStore } from './lib/orderStore.js';
-  import { parkedOrdersStore } from './lib/parkedOrdersStore.js';
-  import { currentView as consoleView } from './lib/viewStore.js';
-  import { currentTime, timeStore } from './lib/timeStore.js';
-  import { toggleControlCenter } from './lib/controlCenterStore.js';
-  import UniversalButton from './lib/components/UniversalButton.svelte';
-  import Pinpad from './lib/components/Pinpad.svelte';
-  import ContextMenu from './lib/components/ContextMenu.svelte';
-  import ProductEditorModal from './lib/components/ProductEditorModal.svelte';
-  import { pinpadStore } from './lib/pinpadStore.js';
-  import { agentStore } from './lib/agentStore.js';
-  import { uiConstantsStore } from './lib/uiConstantsStore.js';
-  import BetrugerCapIconOutline from './lib/components/BetrugerCapIconOutline.svelte';
-  import { authStore } from './lib/authStore.js';
+  import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
+  import { addLog } from '@eckasse/shared-frontend/utils/logStore.js';
+  import { orderStore } from '@eckasse/shared-frontend/utils/orderStore.js';
+  import { parkedOrdersStore } from '@eckasse/shared-frontend/utils/parkedOrdersStore.js';
+  import { currentView as consoleView } from '@eckasse/shared-frontend/utils/viewStore.js';
+  import { currentTime, timeStore } from '@eckasse/shared-frontend/utils/timeStore.js';
+  import { toggleControlCenter } from '@eckasse/shared-frontend/utils/controlCenterStore.js';
+  import UniversalButton from '@eckasse/shared-frontend/components/UniversalButton.svelte';
+  import Pinpad from '@eckasse/shared-frontend/components/Pinpad.svelte';
+  import ContextMenu from '@eckasse/shared-frontend/components/ContextMenu.svelte';
+  import ProductEditorModal from '@eckasse/shared-frontend/components/ProductEditorModal.svelte';
+  import { pinpadStore } from '@eckasse/shared-frontend/utils/pinpadStore.js';
+  import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
+  import { uiConstantsStore } from '@eckasse/shared-frontend/utils/uiConstantsStore.js';
+  import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/BetrugerCapIconOutline.svelte';
+  import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
 
   let categories = [];
   let products = [];

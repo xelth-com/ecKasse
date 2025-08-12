@@ -1,6 +1,6 @@
 <script>
-  import { pinpadStore } from '../pinpadStore.js';
-  import { agentStore } from '../agentStore.js';
+  import { pinpadStore } from '../utils/pinpadStore.js';
+  import { agentStore } from '../utils/agentStore.js';
   
   export let onClose = () => {};
   export let minButtonSize = 160;

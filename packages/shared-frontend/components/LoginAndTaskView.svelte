@@ -1,10 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { authStore } from '../authStore.js';
-  import { recoveryStore } from '../recoveryStore.js';
-  import { currentTime } from '../timeStore.js';
-  import { addLog } from '../logStore.js';
-  import { wsStore } from '../wsStore.js';
+  import { authStore } from '../utils/authStore.js';
+  import { recoveryStore } from '../utils/recoveryStore.js';
+  import { currentTime } from '../utils/timeStore.js';
+  import { addLog } from '../utils/logStore.js';
+  import { wsStore } from '../utils/wsStore.js';
 
   let isDemoMode = false;
   let automationRun = false;

@@ -1,7 +1,7 @@
 import './app.css'
 import { mount } from 'svelte'
 import App from './App.svelte'
-import { addLog } from './lib/logStore.js';
+import { addLog } from '@eckasse/shared-frontend/utils/logStore.js';
 
 // --- Global Error Handling ---
 window.onerror = function (message, source, lineno, colno, error) {

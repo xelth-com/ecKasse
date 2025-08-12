@@ -1,17 +1,17 @@
 <script>
   import { afterUpdate, onMount, createEventDispatcher } from 'svelte';
-  import { logEntries, addLog } from './lib/logStore.js';
-  import { orderStore } from './lib/orderStore.js';
-  import { receiptsStore } from './lib/receiptsStore.js';
-  import { currentView } from './lib/viewStore.js';
-  import { pinpadStore } from './lib/pinpadStore.js';
-  import { uiConstantsStore } from './lib/uiConstantsStore.js';
-  import { agentStore } from './lib/agentStore.js';
-  import { wsStore } from './lib/wsStore.js';
-  import ReceiptFeed from './lib/components/ReceiptFeed.svelte';
-  import ParkedOrdersDisplay from './lib/components/ParkedOrdersDisplay.svelte';
-  import BetrugerCapIcon from './lib/components/BetrugerCapIcon.svelte';
-  import UniversalButton from './lib/components/UniversalButton.svelte';
+  import { logEntries, addLog } from '@eckasse/shared-frontend/utils/logStore.js';
+  import { orderStore } from '@eckasse/shared-frontend/utils/orderStore.js';
+  import { receiptsStore } from '@eckasse/shared-frontend/utils/receiptsStore.js';
+  import { currentView } from '@eckasse/shared-frontend/utils/viewStore.js';
+  import { pinpadStore } from '@eckasse/shared-frontend/utils/pinpadStore.js';
+  import { uiConstantsStore } from '@eckasse/shared-frontend/utils/uiConstantsStore.js';
+  import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
+  import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
+  import ReceiptFeed from '@eckasse/shared-frontend/components/ReceiptFeed.svelte';
+  import ParkedOrdersDisplay from '@eckasse/shared-frontend/components/ParkedOrdersDisplay.svelte';
+  import BetrugerCapIcon from '@eckasse/shared-frontend/components/BetrugerCapIcon.svelte';
+  import UniversalButton from '@eckasse/shared-frontend/components/UniversalButton.svelte';
   
   const dispatch = createEventDispatcher();
 

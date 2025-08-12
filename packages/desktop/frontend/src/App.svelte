@@ -1,11 +1,11 @@
 <script>
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
-  import LoginAndTaskView from './lib/components/LoginAndTaskView.svelte';
-  import ControlCenter from './lib/components/ControlCenter.svelte';
-  import NotificationDisplay from './lib/components/NotificationDisplay.svelte';
-  import { authStore } from './lib/authStore.js';
-  import { currentView } from './lib/viewStore.js';
+  import LoginAndTaskView from '@eckasse/shared-frontend/components/LoginAndTaskView.svelte';
+  import ControlCenter from '@eckasse/shared-frontend/components/ControlCenter.svelte';
+  import NotificationDisplay from '@eckasse/shared-frontend/components/NotificationDisplay.svelte';
+  import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
+  import { currentView } from '@eckasse/shared-frontend/utils/viewStore.js';
   
   let consoleViewComponent;
   let isAtBottom = false;

@@ -1,9 +1,9 @@
 <script>
   import { onMount, afterUpdate } from 'svelte';
-  import { receiptsStore } from '../receiptsStore.js';
-  import { addLog } from '../logStore.js';
-  import { wsStore } from '../wsStore.js';
-  import { notificationStore } from '../notificationStore.js';
+  import { receiptsStore } from '../utils/receiptsStore.js';
+  import { addLog } from '../utils/logStore.js';
+  import { wsStore } from '../utils/wsStore.js';
+  import { notificationStore } from '../utils/notificationStore.js';
 
   export let autoExpandLatest = false; // Prop to auto-expand latest receipt
   

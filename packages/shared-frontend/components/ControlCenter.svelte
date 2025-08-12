@@ -1,6 +1,6 @@
 <script>
-  import { controlCenterVisible, hideControlCenter } from '../controlCenterStore.js';
-  import { currentTime } from '../timeStore.js';
+  import { controlCenterVisible, hideControlCenter } from '../utils/controlCenterStore.js';
+  import { currentTime } from '../utils/timeStore.js';
   import MenuImporter from './MenuImporter.svelte';
   import { createEventDispatcher } from 'svelte';
   

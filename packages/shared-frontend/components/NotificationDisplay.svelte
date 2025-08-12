@@ -1,5 +1,5 @@
 <script>
-  import { notifications, dismiss } from '../notificationStore.js';
+  import { notifications, dismiss } from '../utils/notificationStore.js';
   import { fade, fly } from 'svelte/transition';
 
   // Subscribe to notifications store

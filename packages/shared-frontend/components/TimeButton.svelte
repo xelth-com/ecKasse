@@ -1,6 +1,6 @@
 <script>
-  import { currentTime, timeStore } from '../timeStore.js';
-  import { addLog } from '../logStore.js';
+  import { currentTime, timeStore } from '../utils/timeStore.js';
+  import { addLog } from '../utils/logStore.js';
 
   let showTimeSettings = false;
 

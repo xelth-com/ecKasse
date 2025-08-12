@@ -1,9 +1,9 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { agentStore } from '../agentStore.js';
-  import { currentView } from '../viewStore.js';
-  import { wsStore } from '../wsStore.js';
-  import { addLog } from '../logStore.js';
+  import { agentStore } from '../utils/agentStore.js';
+  import { currentView } from '../utils/viewStore.js';
+  import { wsStore } from '../utils/wsStore.js';
+  import { addLog } from '../utils/logStore.js';
   
   const dispatch = createEventDispatcher();
   

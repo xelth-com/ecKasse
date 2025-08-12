@@ -59,7 +59,11 @@
       "Bash(tree:*)",
       "Bash(touch:*)",
       "Bash(command -v:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(electron:*)",
+      "Bash(npx electron:*)"
     ],
     "deny": []
   }

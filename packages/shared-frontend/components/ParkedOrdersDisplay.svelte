@@ -1,11 +1,11 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { parkedOrdersStore } from '../parkedOrdersStore.js';
-  import { orderStore } from '../orderStore.js';
-  import { wsStore } from '../wsStore.js';
-  import { timeStore } from '../timeStore.js';
-  import { pinpadStore } from '../pinpadStore.js';
-  import { currentView as consoleView } from '../viewStore.js';
+  import { parkedOrdersStore } from '../utils/parkedOrdersStore.js';
+  import { orderStore } from '../utils/orderStore.js';
+  import { wsStore } from '../utils/wsStore.js';
+  import { timeStore } from '../utils/timeStore.js';
+  import { pinpadStore } from '../utils/pinpadStore.js';
+  import { currentView as consoleView } from '../utils/viewStore.js';
 
   let parkedOrders = [];
   let unsubscribe;
