@@ -5,8 +5,8 @@ const path = require('path');
 const logger = require('./config/logger'); // Путь к вашему логгеру
 // const sessionMiddleware = require('./middleware/session.middleware');
 // const mainRoutes = require('./routes/index'); // THIS SHOULD BE COMMENTED OR REMOVED
-// const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong - disabled for deployment
-// const systemRoutes = require('./routes/system.routes.js'); // disabled for deployment
+const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
+const systemRoutes = require('./routes/system.routes.js');
 // const printerRoutes = require('./routes/printers.js'); // disabled for deployment
 // const menuRoutes = require('./routes/menu.routes.js'); // disabled for deployment
 
@@ -49,8 +49,8 @@ logger.info(`Serving static files from: ${staticPath}`);
 
 // Подключение маршрутов API - all disabled for deployment due to refactoring issues
 // app.use('/api', mainRoutes); // Когда у вас будут роуты
-// app.use('/api/llm', llmRoutes); // Mount the LLM routes - disabled for deployment
-// app.use('/api/system', systemRoutes); // disabled for deployment
+app.use('/api/llm', llmRoutes); // Mount the LLM routes
+app.use('/api/system', systemRoutes);
 // app.use('/api/printers', printerRoutes); // disabled for deployment
 // app.use('/api/menu', menuRoutes); // disabled for deployment
 

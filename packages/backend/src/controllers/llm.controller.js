@@ -1,5 +1,5 @@
 // File: /packages/backend/src/controllers/llm.controller.js
-const llmService = require('../services/llm.service');
+const { llm } = require('../../../core');
 const logger = require('../config/logger');
 
 // In a real app, chat history would be stored per user/session
@@ -17,7 +17,7 @@ async function handleGeminiPing(req, res, next) {
   const currentHistory = history || globalChatHistory;
 
   try {
-    const geminiServiceResponse = await llmService.sendMessage(message, currentHistory, sessionId);
+    const geminiServiceResponse = await llm.service.sendMessage(message, currentHistory, sessionId);
     
     // Update global history (for next turn in this simple demo)
     // In a real app, manage this per session.

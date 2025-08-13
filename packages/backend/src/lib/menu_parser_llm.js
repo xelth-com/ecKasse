@@ -18,7 +18,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const winston = require('winston');
 const { v4: uuidv4 } = require('uuid');
-const { getGeminiModel } = require('../services/llm.provider');
+const { llm } = require('../../../core');
 
 class MenuParserLLM {
   constructor(options = {}) {
@@ -55,8 +55,8 @@ class MenuParserLLM {
 
   initializeLLMClients(options) {
     // Google Gemini - use centralized provider
-    this.gemini25Model = getGeminiModel({ modelName: 'gemini-2.5-flash' });
-    this.gemini20Model = getGeminiModel({ modelName: 'gemini-2.0-flash' });
+    this.gemini25Model = llm.provider.getGeminiModel({ modelName: 'gemini-2.5-flash' });
+    this.gemini20Model = llm.provider.getGeminiModel({ modelName: 'gemini-2.0-flash' });
     
     console.log('Using Gemini through centralized provider');
   }
@@ -279,8 +279,8 @@ class MenuParserLLM {
 
     // Try different models for best results using unified provider
     const models = [
-      getGeminiModel({ modelName: 'gemini-2.5-flash' }),
-      getGeminiModel({ modelName: 'gemini-2.0-flash' })
+      llm.provider.getGeminiModel({ modelName: 'gemini-2.5-flash' }),
+      llm.provider.getGeminiModel({ modelName: 'gemini-2.0-flash' })
     ].map((client, index) => ({
       name: index === 0 ? 'gemini-2.5-flash' : 'gemini-2.0-flash',
       client: client,

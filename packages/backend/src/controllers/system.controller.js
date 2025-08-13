@@ -7,7 +7,7 @@
  * @author ecKasse Development Team
  */
 
-const websocketService = require('../services/websocket.service');
+const websocketService = require('../../../core/application/websocket.service');
 const logger = require('../config/logger');
 
 const systemController = {

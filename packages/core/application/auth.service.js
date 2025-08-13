@@ -336,13 +336,25 @@ class AuthService {
      */
     async cleanupExpiredSessions() {
         try {
-            // Remove from database
-            const result = await db('user_sessions')
-                .where('expires_at', '<', new Date())
-                .orWhere('is_active', false)
-                .del();
+            // Check if database is available first
+            let result = 0;
+            try {
+                // Test database connection with a simple query
+                await db.raw('SELECT 1');
+                
+                // Remove from database
+                result = await db('user_sessions')
+                    .where('expires_at', '<', new Date())
+                    .orWhere('is_active', false)
+                    .del();
+            } catch (dbError) {
+                logger.warn({ 
+                    service: 'AuthService', 
+                    error: dbError.message 
+                }, 'Database unavailable during session cleanup, skipping database cleanup');
+            }
 
-            // Clean up memory cache
+            // Clean up memory cache (always do this regardless of database state)
             for (const [sessionId, session] of this.activeSessions.entries()) {
                 if (session.expiresAt <= Date.now()) {
                     this.activeSessions.delete(sessionId);

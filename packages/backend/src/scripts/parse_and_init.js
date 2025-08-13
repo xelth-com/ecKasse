@@ -16,12 +16,9 @@ require('dotenv').config({ path: '../../../.env' });
 const fs = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
-const db = require('../db/knex');
+const { db, services } = require('../../../core');
 const MenuParserLLM = require('../lib/menu_parser_llm');
-const { importFromOopMdf } = require('../services/import.service');
-const { enrichMdfData } = require('../services/enrichment.service');
-const layoutService = require('../services/layout.service');
-const logger = require('../config/logger');
+const logger = require('../../../core/config/logger');
 const chalk = require('chalk');
 
 // Standardized progress reporting function
@@ -80,39 +77,39 @@ async function main() {
 
     // === Step 3: Import Parsed Data ===
     reportStep(3, 6, 'Importing data and generating embeddings');
-    await importFromOopMdf(mdfData, progressCallback);
+    await services.import.importFromOopMdf(mdfData, progressCallback);
     reportStep(3, 6, 'Import completed', true);
     
     // === Step 4: Save "Original Menu" Layout ===
     reportStep(4, 6, 'Saving original menu layout');
     const originalCategories = await db('categories').select('*');
-    const originalLayout = await layoutService.saveLayout('Original Menu Layout', originalCategories, 'ORIGINAL_MENU');
-    await layoutService.activateLayout(originalLayout.id);
+    const originalLayout = await services.layout.saveLayout('Original Menu Layout', originalCategories, 'ORIGINAL_MENU');
+    await services.layout.activateLayout(originalLayout.id);
     reportStep(4, 6, 'Original layout saved and activated', true);
 
     // === Step 5: Enrich Data for "Smart" Layout ===
     reportStep(5, 6, 'Enriching data for AI optimization');
-    const enrichedData = await enrichMdfData(mdfData, progressCallback);
+    const enrichedData = await services.enrichment.enrichMdfData(mdfData, progressCallback);
     const enrichedCategories = enrichedData.company_details.branches[0].point_of_sale_devices[0].categories_for_this_pos;
     reportStep(5, 6, 'Data enrichment completed', true);
 
     // === Step 6: Save "AI Optimized" Layout ===
     reportStep(6, 6, 'Saving AI optimized layout');
-    const aiLayout = await layoutService.saveLayout('AI Optimized Layout', enrichedCategories, 'AI_OPTIMIZED');
+    const aiLayout = await services.layout.saveLayout('AI Optimized Layout', enrichedCategories, 'AI_OPTIMIZED');
     reportStep(6, 6, 'AI optimized layout saved', true);
     
     reportProgress('🎉 Menu import completed successfully!', true);
-    logger.info(chalk.green('\n🎉🎉🎉 Full initialization complete! The POS is ready.'));
+    // Log to file only, not stdout to avoid duplication
+    logger.info('Full initialization complete! The POS is ready.');
     
     // === Signal UI to refresh ===
     try {
       reportProgress('Refreshing user interface...');
       const port = process.env.BACKEND_PORT || 3030;
       await axios.post(`http://localhost:${port}/api/system/request-ui-refresh`);
-      console.log('PROGRESS: ✅ UI refresh signal sent successfully');
-      logger.info('✅ UI refresh signal sent to all connected clients');
+      reportProgress('UI refresh signal sent successfully', true);
     } catch (refreshError) {
-      console.log('PROGRESS: ⚠️ Failed to send UI refresh signal (clients may need manual refresh)');
+      reportProgress('Failed to send UI refresh signal (clients may need manual refresh)', false);
       logger.warn('Failed to send UI refresh signal:', refreshError.message);
     }
 

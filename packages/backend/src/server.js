@@ -27,9 +27,9 @@ const httpServer = http.createServer(app);
 // Используем правильный конструктор WebSocket Server
 const wss = new WebSocket.Server({ server: httpServer });
 
-// Initialize WebSocket service for broadcasting - disabled for deployment
-// const websocketService = require('../../core/application/websocket.service'); // disabled for deployment
-// websocketService.init(wss);
+// Initialize WebSocket service for broadcasting
+const websocketService = require('../../core/application/websocket.service');
+websocketService.init(wss);
 
 // Хранилище для отслеживания активных/обработанных operationId (упрощенно)
 const processedOperationIds = new Set();
@@ -499,7 +499,7 @@ async function startServer() {
   // }
   
   // Step 2: Ensure default users and roles exist (CRITICAL for preventing lockout)
-  // await dbInit.ensureDefaultUsersAndRoles(); // Temporarily disabled for testing
+  await dbInit.ensureDefaultUsersAndRoles();
   
   // Run recovery process for stale active transactions
   await runRecoveryProcess();

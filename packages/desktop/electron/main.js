@@ -1,6 +1,6 @@
 // packages/client-desktop/electron/main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const { spawn } = require('child_process');
+const { fork } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -301,7 +301,7 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
     validFiles.forEach(file => console.log(`  - ${path.basename(file.path)} (${file.size}MB)`));
     
     // Path to the parse_and_init.js script
-    const scriptPath = path.resolve(__dirname, '../../../backend/src/scripts/parse_and_init.js');
+    const scriptPath = path.resolve(__dirname, '../../../packages/backend/src/scripts/parse_and_init.js');
     
     // For now, process files sequentially (script accepts one file at a time)
     // TODO: Update script to handle multiple files in one run for better performance
@@ -317,10 +317,10 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
         `Processing file: ${path.basename(firstFile.path)}`);
     }
     
-    // Spawn the Node.js process for the first file
-    const childProcess = spawn('node', [scriptPath, firstFile.path], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      cwd: path.resolve(__dirname, '../../../backend')
+    // Fork the Node.js process for the first file
+    const childProcess = fork(scriptPath, [firstFile.path], {
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+      cwd: path.resolve(__dirname, '../../../packages/backend')
     });
     
     // Listen to stdout for progress messages
