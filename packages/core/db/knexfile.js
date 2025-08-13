@@ -1,6 +1,6 @@
 // C:\Users\xelth\eckasse\src\backend\db\knexfile.js
 const path = require('path');
-const sqliteVec = require('sqlite-vec');
+// const sqliteVec = require('sqlite-vec'); // Temporarily disabled
 require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') }); // Загрузка .env из корня проекта
 
 module.exports = {
@@ -16,18 +16,18 @@ module.exports = {
     seeds: {
       directory: path.resolve(__dirname, 'seeds')
     },
-    pool: {
-      afterCreate: function(connection, done) {
-        try {
-          sqliteVec.load(connection);
-          console.log('sqlite-vec extension loaded for migration');
-          done();
-        } catch (error) {
-          console.error('Failed to load sqlite-vec extension:', error);
-          done(error);
-        }
-      }
-    }
+    // pool: {
+    //   afterCreate: function(connection, done) {
+    //     try {
+    //       sqliteVec.load(connection);
+    //       console.log('sqlite-vec extension loaded for migration');
+    //       done();
+    //     } catch (error) {
+    //       console.error('Failed to load sqlite-vec extension:', error);
+    //       done(error);
+    //     }
+    //   }
+    // }
   },
   production: {
     client: process.env.DB_CLIENT || 'sqlite3',
@@ -51,16 +51,16 @@ module.exports = {
       min: 2,
       max: 10
     } : {
-      afterCreate: function(connection, done) {
-        try {
-          sqliteVec.load(connection);
-          console.log('sqlite-vec extension loaded for production');
-          done();
-        } catch (error) {
-          console.error('Failed to load sqlite-vec extension for production:', error);
-          done(error);
-        }
-      }
+      // afterCreate: function(connection, done) {
+      //   try {
+      //     sqliteVec.load(connection);
+      //     console.log('sqlite-vec extension loaded for production');
+      //     done();
+      //   } catch (error) {
+      //     console.error('Failed to load sqlite-vec extension for production:', error);
+      //     done(error);
+      //   }
+      // }
     }
   }
 };
