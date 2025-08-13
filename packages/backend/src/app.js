@@ -120,6 +120,12 @@ app.post('/api/websocket-fallback', async (req, res) => {
 });
 
 
+// System mode endpoint
+app.get('/api/system/mode', (req, res) => {
+  const mode = process.env.NODE_ENV === 'development' ? 'development' : 'production';
+  res.json({ mode });
+});
+
 // Пример простого маршрута для теста
 app.get('/api/ping', (req, res) => {
   const operationId = req.query.operationId; // Ожидаем operationId в query параметрах для GET

@@ -1,5 +1,5 @@
-const db = require('../db/knex');
-const loggingService = require('../services/logging.service');
+const db = require('../../../core/db/knex');
+const loggingService = require('../../../core/application/logging.service');
 const logger = require('../config/logger');
 
 /**

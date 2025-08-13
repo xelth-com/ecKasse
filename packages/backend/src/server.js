@@ -9,8 +9,8 @@ const WebSocket = require('ws');
 const app = require('./app'); // Ваше Express-приложение
 const logger = require('./config/logger');
 // const layoutService = require('../../core/application/layout.service'); // disabled for deployment
-// const db = require('../../core/db/knex'); // disabled for deployment  
-// const loggingService = require('../../core/application/logging.service'); // disabled for deployment
+const db = require('../../core/db/knex');  
+const loggingService = require('../../core/application/logging.service');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -558,7 +558,7 @@ async function startServer() {
   });
 }
 
-// Start the server - simplified for deployment
+// Start the server - simplified startup for now
 httpServer.listen(PORT, () => {
   logger.info(`Backend server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
 });
