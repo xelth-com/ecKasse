@@ -44,13 +44,13 @@ function checkFileSize(filePath) {
 }
 
 function createWindow() {
-  console.log('Creating Electron window...');
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -63,23 +63,6 @@ function createWindow() {
           protocol: 'file:',
           slashes: true,
         }));
-
-  console.log(`Loading URL: ${startUrl}`);
-  console.log(`Backend port: ${BACKEND_PORT}`);
-  console.log(`App packaged: ${app.isPackaged}`);
-  
-  // Add event listeners for debugging
-  mainWindow.webContents.on('did-start-loading', () => {
-    console.log('Started loading page...');
-  });
-  
-  mainWindow.webContents.on('did-finish-load', () => {
-    console.log('Finished loading page successfully!');
-  });
-  
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    console.error('Failed to load page:', errorCode, errorDescription, validatedURL);
-  });
 
   mainWindow.loadURL(startUrl);
 
@@ -107,7 +90,6 @@ function createWindow() {
 }
 
 app.on('ready', () => {
-  console.log('Electron app is ready, creating window...');
   createWindow();
   console.log(`Electron app ready. Backend serving at http://localhost:${BACKEND_PORT}`);
 });
