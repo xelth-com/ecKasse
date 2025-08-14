@@ -34,15 +34,16 @@ function reportStep(currentStep, totalSteps, description, isComplete = false) {
 }
 
 async function main() {
-  const filePath = process.argv[2];
-  if (!filePath) {
-    console.error(chalk.red('❌ Error: Please provide a path to the menu PDF file.'));
-    console.log(chalk.yellow('Usage: npm run setup:restaurant -- <path_to_pdf>'));
+  const filePaths = process.argv.slice(2);
+  if (filePaths.length === 0) {
+    console.error(chalk.red('❌ Error: Please provide path(s) to menu file(s).'));
+    console.log(chalk.yellow('Usage: npm run setup:restaurant -- <path_to_file1> [path_to_file2] ...'));
     process.exit(1);
   }
 
-  reportProgress(`Starting menu import from: ${path.basename(filePath)}`);
-  logger.info(`🚀 Starting full initialization from: ${filePath}`);
+  const fileNames = filePaths.map(filePath => path.basename(filePath)).join(', ');
+  reportProgress(`Starting menu import from ${filePaths.length} file(s): ${fileNames}`);
+  logger.info(`🚀 Starting full initialization from ${filePaths.length} file(s):`, filePaths);
 
   // Progress callback for detailed item tracking
   const progressCallback = (current, total, itemName) => {
@@ -55,10 +56,10 @@ async function main() {
 
   try {
     // === Step 1: Parse Menu ===
-    reportStep(1, 6, 'Parsing menu with AI');
+    reportStep(1, 6, `Parsing ${filePaths.length} menu file(s) with AI`);
     const parser = new MenuParserLLM();
-    const restaurantName = path.basename(filePath, path.extname(filePath)).replace(/menu|karte/i, '').trim();
-    const parsedResult = await parser.parseMenu(filePath, { restaurantName });
+    const restaurantName = path.basename(filePaths[0], path.extname(filePaths[0])).replace(/menu|karte/i, '').trim();
+    const parsedResult = await parser.parseMenu(filePaths, { restaurantName });
     const mdfData = parsedResult.configuration;
     reportStep(1, 6, 'Menu parsed successfully', true);
 

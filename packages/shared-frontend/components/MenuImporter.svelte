@@ -19,8 +19,8 @@
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
   const MAX_FILE_SIZE_DEMO = 10 * 1024 * 1024; // 10MB (demo mode)
   
-  // Check if in demo mode - you might want to get this from a store or API
-  const isDemoMode = true; // For now, assume demo mode
+  // Production mode only
+  const isDemoMode = false;
   
   // Determine execution environment
   const isElectron = typeof window !== 'undefined' && window.electronAPI;
@@ -272,75 +272,75 @@
       // Get backend URL - in web browser mode, use current location
       const backendUrl = `${window.location.protocol}//${window.location.host}`;
       
-      // Upload each file and start import
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const fileInfo = selectedFiles[i];
-        
-        agentStore.addMessage({
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          type: 'agent',
-          message: `Uploading file ${i + 1}/${selectedFiles.length}: ${fileInfo.name}`
+      // Upload all files in one request
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: `Uploading ${selectedFiles.length} files...`
+      });
+      
+      const formData = new FormData();
+      selectedFiles.forEach((fileInfo, index) => {
+        formData.append('menuFiles', fileInfo.file);
+      });
+      
+      // Track upload progress for all files
+      const xhr = new XMLHttpRequest();
+      
+      const uploadPromise = new Promise((resolve, reject) => {
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            agentStore.addMessage({
+              timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              type: 'agent',
+              message: `Uploading files: ${percent}%`
+            });
+          }
         });
         
-        const formData = new FormData();
-        formData.append('menuFile', fileInfo.file);
-        
-        // Track upload progress if possible
-        const xhr = new XMLHttpRequest();
-        
-        const uploadPromise = new Promise((resolve, reject) => {
-          xhr.upload.addEventListener('progress', (event) => {
-            if (event.lengthComputable) {
-              const percent = Math.round((event.loaded / event.total) * 100);
-              agentStore.addMessage({
-                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                type: 'agent',
-                message: `Uploading ${fileInfo.name}: ${percent}%`
-              });
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              resolve(result);
+            } catch (parseError) {
+              reject(new Error('Invalid response format'));
             }
-          });
-          
-          xhr.onload = function() {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const result = JSON.parse(xhr.responseText);
-                resolve(result);
-              } catch (parseError) {
-                reject(new Error('Invalid response format'));
-              }
-            } else {
-              try {
-                const errorResult = JSON.parse(xhr.responseText);
-                reject(new Error(errorResult.message || `HTTP ${xhr.status}`));
-              } catch (parseError) {
-                reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-              }
+          } else {
+            try {
+              const errorResult = JSON.parse(xhr.responseText);
+              reject(new Error(errorResult.message || `HTTP ${xhr.status}`));
+            } catch (parseError) {
+              reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
             }
-          };
-          
-          xhr.onerror = function() {
-            reject(new Error('Network error occurred'));
-          };
-          
-          xhr.open('POST', `${backendUrl}/api/menu/upload-and-import`);
-          xhr.send(formData);
-        });
+          }
+        };
         
-        const result = await uploadPromise;
+        xhr.onerror = function() {
+          reject(new Error('Network error occurred'));
+        };
         
-        if (!result.success) {
-          throw new Error(result.message || 'Upload failed');
-        }
-        
-        agentStore.addMessage({
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          type: 'agent',
-          message: `File ${fileInfo.name} uploaded successfully. Processing...`
-        });
-        
-        // Mark file as uploaded
-        fileInfo.uploaded = true;
+        xhr.open('POST', `${backendUrl}/api/menu/upload-and-import`);
+        xhr.send(formData);
+      });
+      
+      const result = await uploadPromise;
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Upload failed');
       }
+      
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: `All files uploaded successfully. Processing ${result.fileCount} files: ${result.filenames.join(', ')}`
+      });
+      
+      // Mark all files as uploaded
+      selectedFiles.forEach(fileInfo => {
+        fileInfo.uploaded = true;
+      });
       
       agentStore.addMessage({
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),

@@ -202,6 +202,30 @@ function createAuthStore() {
     // Reset to initial state
     reset() {
       set(initialState);
+    },
+
+    // Establish session from server auto-login (demo mode)
+    establishSession(sessionPayload) {
+      try {
+        const { user, session } = sessionPayload;
+        
+        update(state => ({
+          ...state,
+          isAuthenticated: true,
+          currentUser: user,
+          sessionId: session.sessionId,
+          loginState: 'authenticated',
+          isLoading: false,
+          error: null,
+          selectedUser: null
+        }));
+
+        addLog('SUCCESS', `Demo mode: Auto-authenticated as ${user.username}`);
+        return { success: true };
+      } catch (error) {
+        addLog('ERROR', `Failed to establish demo session: ${error.message}`);
+        return { success: false, error: error.message };
+      }
     }
   };
 }

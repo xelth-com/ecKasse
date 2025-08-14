@@ -2,6 +2,7 @@ import { writable } from 'svelte/store';
 import { wsStore } from './wsStore.js';
 import { addLog } from './logStore.js';
 import { notificationStore } from './notificationStore.js';
+import { authStore } from './authStore.js';
 
 function createOrderStore() {
 	const { subscribe, set, update } = writable({

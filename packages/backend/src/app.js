@@ -8,7 +8,10 @@ const logger = require('./config/logger'); // Путь к вашему логг�
 const llmRoutes = require('./routes/llm.routes.js'); // For Gemini Ping-Pong
 const systemRoutes = require('./routes/system.routes.js');
 // const printerRoutes = require('./routes/printers.js'); // disabled for deployment
-// const menuRoutes = require('./routes/menu.routes.js'); // disabled for deployment
+const menuRoutes = require('./routes/menu.routes.js'); // disabled for deployment
+
+// Import services for API endpoints
+const { services } = require('../../core');
 
 
 const app = express();
@@ -52,7 +55,18 @@ logger.info(`Serving static files from: ${staticPath}`);
 app.use('/api/llm', llmRoutes); // Mount the LLM routes
 app.use('/api/system', systemRoutes);
 // app.use('/api/printers', printerRoutes); // disabled for deployment
-// app.use('/api/menu', menuRoutes); // disabled for deployment
+app.use('/api/menu', menuRoutes); // disabled for deployment
+
+// Simple users API endpoint for login screen
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await services.auth.getLoginUsers();
+    res.json(users);
+  } catch (error) {
+    logger.error({ msg: 'Error fetching users', err: error });
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
 
 // HTTP fallback endpoint for WebSocket commands
 app.post('/api/websocket-fallback', async (req, res) => {
@@ -122,7 +136,7 @@ app.post('/api/websocket-fallback', async (req, res) => {
 
 // System mode endpoint
 app.get('/api/system/mode', (req, res) => {
-  const mode = process.env.NODE_ENV === 'development' ? 'development' : 'production';
+  const mode = process.env.APP_MODE || process.env.NODE_ENV || 'production';
   res.json({ mode });
 });
 

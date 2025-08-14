@@ -6,14 +6,11 @@
   import { addLog } from '../utils/logStore.js';
   import { wsStore } from '../utils/wsStore.js';
 
-  let isDemoMode = false;
-  let automationRun = false;
+  // Production mode only
   let usersFetched = false;
 
   onMount(() => {
     const unsubscribeWs = wsStore.subscribe(async (wsState) => {
-      if (isDemoMode) return;
-      
       // Handle UI refresh requests
       if (wsState.lastMessage && wsState.lastMessage.command === 'ui-refresh-request') {
         addLog('INFO', 'UI refresh requested - reloading application...');
@@ -30,43 +27,12 @@
       }
     });
 
-    (async () => {
-      try {
-        const response = await fetch('/api/system/mode');
-        if (!response.ok) throw new Error('Failed to fetch system mode');
-        const data = await response.json();
-        if (data.mode === 'demo') {
-          addLog('INFO', 'Demo mode detected. Starting automated login sequence.');
-          isDemoMode = true;
-        }
-      } catch (e) {
-        console.error("Could not fetch system mode, assuming production.", e);
-        addLog('WARN', 'Could not fetch system mode, assuming production.', { error: e.message });
-      }
-    })();
+    addLog('INFO', 'Production mode. Manual authentication required.');
     
     return () => {
       unsubscribeWs();
     };
   });
-
-  $: if (isDemoMode && !automationRun && !$authStore.isAuthenticated) {
-      automationRun = true; 
-      addLog('INFO', 'DEMO MODE: Attempting auto-login as admin...');
-      authStore.login('admin', '1234');
-  }
-
-  $: if (isDemoMode && $recoveryStore.status === 'awaiting_resolution') {
-      addLog('INFO', 'DEMO MODE: Auto-postponing pending transactions...');
-      $recoveryStore.pendingTransactions.forEach(tx => {
-          recoveryStore.resolveTransaction(tx.id, 'postpone', 1);
-      });
-  }
-
-  $: if (isDemoMode && $recoveryStore.status === 'awaiting_confirmation') {
-      addLog('INFO', 'DEMO MODE: Auto-confirming startup...');
-      recoveryStore.confirmNoPending();
-  }
 
   let pinInput = '';
 
@@ -118,7 +84,7 @@
 </script>
 
 
-{#if !isDemoMode}
+{#if true}
   <div class="modal-overlay">
     <div class="modal-content">
       <div class="time-confirmation-section">

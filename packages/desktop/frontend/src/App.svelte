@@ -1,14 +1,28 @@
 <script>
+  import { onMount } from 'svelte';
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
   import LoginAndTaskView from '@eckasse/shared-frontend/components/LoginAndTaskView.svelte';
   import ControlCenter from '@eckasse/shared-frontend/components/ControlCenter.svelte';
   import NotificationDisplay from '@eckasse/shared-frontend/components/NotificationDisplay.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
+  import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { currentView } from '@eckasse/shared-frontend/utils/viewStore.js';
   
   let consoleViewComponent;
   let isAtBottom = false;
+  
+  // Handle demo mode auto-login
+  onMount(() => {
+    const unsubscribe = wsStore.subscribe(wsState => {
+      if (wsState.lastMessage?.command === 'sessionEstablished') {
+        console.log('Demo mode: Received session established message');
+        authStore.establishSession(wsState.lastMessage.payload);
+      }
+    });
+    
+    return unsubscribe;
+  });
   
   // Handle scroll state changes from ConsoleView
   function handleScrollState(event) {

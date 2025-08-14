@@ -4,7 +4,7 @@ const logger = require('../config/logger');
 const systemController = require('../controllers/system.controller');
 
 router.get('/mode', (req, res) => {
-  const appMode = process.env.APP_MODE || 'production';
+  const appMode = 'production';
   logger.info({ service: 'System', function: 'getMode', mode: appMode });
   res.json({ mode: appMode });
 });

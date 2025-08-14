@@ -21,12 +21,10 @@ function createWebSocketStore() {
     'eck3.com'
   ];
 
-  // Fallback to current host if no servers configured or for development
+  // Always use current host for WebSocket connections
   const getServerList = () => {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return [window.location.host];
-    }
-    return servers.length > 0 ? servers : [window.location.host];
+    // Always use the current host to avoid cross-domain issues
+    return [window.location.host];
   };
 
   let ws = null;
@@ -35,7 +33,7 @@ function createWebSocketStore() {
   let connectionAttempts = 0;
   let reconnectTimeout = null;
   const pendingOperations = new Map();
-  const maxReconnectAttempts = servers.length * 2; // Try each server twice
+  const maxReconnectAttempts = 10; // Maximum reconnection attempts
 
   // Server performance tracking for smart selection
   const serverStats = new Map();
@@ -213,6 +211,13 @@ function createWebSocketStore() {
           // Update store with the last message
           update(state => ({ ...state, lastMessage: message }));
           
+          // Handle special UI refresh requests
+          if (message.command === 'ui-refresh-request') {
+            console.log('UI refresh request received, reloading page...');
+            window.location.reload();
+            return;
+          }
+          
           // Handle operation responses
           if (message.operationId && pendingOperations.has(message.operationId)) {
             const resolve = pendingOperations.get(message.operationId);
@@ -238,8 +243,8 @@ function createWebSocketStore() {
         
         update(state => ({ ...state, connected: false, isConnected: false }));
         
-        // Attempt reconnection to next server after delay
-        const delay = Math.min(1000 * Math.pow(2, Math.floor(retryCount / servers.length)), 30000); // Exponential backoff with max 30s
+        // Attempt reconnection after delay
+        const delay = Math.min(1000 * Math.pow(2, Math.floor(retryCount / 3)), 30000); // Exponential backoff with max 30s
         console.log(`Reconnecting in ${delay}ms to next server...`);
         
         reconnectTimeout = setTimeout(() => {
