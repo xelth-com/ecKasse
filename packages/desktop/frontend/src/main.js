@@ -24,6 +24,44 @@ window.addEventListener('unhandledrejection', event => {
   });
 });
 
+// --- DPI Scaling Correction for Web Browser ---
+function correctDPIScaling() {
+  const dpr = window.devicePixelRatio || 1;
+  const isElectron = navigator.userAgent.includes('Electron');
+  
+  // Always log to both console and internal logs for debugging
+  console.log('DPI Scaling Check:', { 
+    devicePixelRatio: dpr, 
+    isElectron, 
+    userAgent: navigator.userAgent.substring(0, 100) 
+  });
+  
+  // Only apply scaling correction in browsers (not Electron)
+  if (!isElectron && dpr > 1) {
+    const targetScale = 1 / dpr;
+    document.documentElement.style.zoom = targetScale;
+    
+    console.log('Applied DPI Scaling:', { targetScale, appliedZoom: document.documentElement.style.zoom });
+    addLog('INFO', 'DPI Scaling Correction Applied', {
+      devicePixelRatio: dpr,
+      appliedZoom: targetScale,
+      userAgent: navigator.userAgent.substring(0, 100)
+    });
+  } else if (isElectron) {
+    console.log('Electron detected - no scaling needed');
+    addLog('INFO', 'Running in Electron - No DPI correction needed', {
+      devicePixelRatio: dpr
+    });
+  } else {
+    console.log('Standard DPR - no scaling needed');
+    addLog('INFO', 'No DPI correction needed', {
+      devicePixelRatio: dpr
+    });
+  }
+}
+
+// Apply DPI correction on page load
+correctDPIScaling();
 
 const app = mount(App, {
   target: document.getElementById('app'),

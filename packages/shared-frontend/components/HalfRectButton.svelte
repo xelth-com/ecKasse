@@ -71,8 +71,8 @@
   .half-rect-text {
     color: white;
     font-weight: normal;
-    font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Helvetica Neue Condensed', 'Arial', sans-serif;
-    font-stretch: ultra-condensed;
+    font-family: Arial, Verdana, Helvetica, sans-serif;
+    font-stretch: normal;
     text-align: center;
     font-size: 16px;
     line-height: 1.2;

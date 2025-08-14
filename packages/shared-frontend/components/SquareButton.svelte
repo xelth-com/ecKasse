@@ -120,8 +120,8 @@
   
   .square-text {
     font-weight: normal;
-    font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Helvetica Neue Condensed', 'Arial', sans-serif;
-    font-stretch: ultra-condensed;
+    font-family: Arial, Verdana, Helvetica, sans-serif;
+    font-stretch: normal;
     /* Removed scaleX to fix text wrapping calculation */
     text-align: center;
     font-size: 19px; /* Increased by 20% from 16px */

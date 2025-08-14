@@ -31,4 +31,44 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  font-family: Arial, Verdana, Helvetica, sans-serif;
+}
+
+/* Override font families for consistent web/electron display */
+* {
+  font-family: inherit;
+}
+
+/* Specific overrides for buttons and text elements */
+.button-text,
+.universal-button .button-text,
+button,
+input,
+textarea,
+select {
+  font-family: Arial, Verdana, Helvetica, sans-serif !important;
+  font-stretch: normal !important;
+}
+
+/* Receipt and transaction text should use monospace for alignment */
+.receipt-item,
+.receipt-summary,
+.receipt-details,
+.item-row,
+.receipt-totals,
+.total-row {
+  font-family: 'Courier New', Monaco, 'Lucida Console', monospace !important;
+}
+
+/* Ensure no Times fonts are used anywhere */
+h1, h2, h3, h4, h5, h6 {
+  font-family: Arial, Verdana, Helvetica, sans-serif !important;
+}
+
+/* POS specific elements */
+.pinpad-grid button,
+.numpad-key,
+.alpha-key,
+.function-key {
+  font-family: Arial, Verdana, Helvetica, sans-serif !important;
 }
