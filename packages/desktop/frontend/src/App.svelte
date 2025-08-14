@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
-  import LoginAndTaskView from '@eckasse/shared-frontend/components/LoginAndTaskView.svelte';
   import ControlCenter from '@eckasse/shared-frontend/components/ControlCenter.svelte';
   import NotificationDisplay from '@eckasse/shared-frontend/components/NotificationDisplay.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
@@ -43,27 +42,20 @@
   }
 </script>
 
-{#if $authStore.isAuthenticated}
-  <main class="pos-grid">
-    <div class="grid-item-display">
-      <ConsoleView bind:this={consoleViewComponent} on:scrollstate={handleScrollState} />
-    </div>
-    <div class="grid-selection-area">
-      <SelectionArea {handleSmartAction} {isAtBottom} {consoleViewComponent} />
-    </div>
-  </main>
-  
-  <!-- Control Center overlay - renders above everything -->
-  <ControlCenter />
-  
-  <!-- Global notifications - renders above everything -->
-  <NotificationDisplay />
-{:else}
-  <LoginAndTaskView />
-  
-  <!-- Global notifications - always visible -->
-  <NotificationDisplay />
-{/if}
+<main class="pos-grid">
+  <div class="grid-item-display">
+    <ConsoleView bind:this={consoleViewComponent} on:scrollstate={handleScrollState} />
+  </div>
+  <div class="grid-selection-area">
+    <SelectionArea {handleSmartAction} {isAtBottom} {consoleViewComponent} />
+  </div>
+</main>
+
+<!-- Control Center overlay - renders above everything -->
+<ControlCenter />
+
+<!-- Global notifications - renders above everything -->
+<NotificationDisplay />
 
 <style>
   .pos-grid {

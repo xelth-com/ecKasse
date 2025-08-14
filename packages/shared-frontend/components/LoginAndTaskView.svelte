@@ -239,8 +239,8 @@
 
 
 <style>
-  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-  .modal-content { background-color: white; padding: 2rem; border-radius: 12px; width: 85%; max-width: 1000px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .modal-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; border-radius: 12px; }
+  .modal-content { background-color: white; padding: 1.5rem; border-radius: 12px; width: 450px; max-width: 90vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
   .time-confirmation-section, .auth-section { margin-bottom: 2rem; border-bottom: 2px solid #e9ecef; padding-bottom: 2rem; }
   .transactions-section, .welcome-section { margin-top: 1rem; }
   h2, h3 { margin-top: 0; color: #2c3e50; text-align: center; }

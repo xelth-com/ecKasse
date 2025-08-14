@@ -8,10 +8,11 @@ function createAgentStore() {
       {
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
-        message: 'Welcome to ecKasse AI Assistant. How can I help you today?'
+        message: 'Willkommen bei ecKasse!\n\n🔐 Bitte geben Sie Ihre PIN über das Tastenfeld ein.\n\n👥 Verfügbare Benutzer:\n• Admin (Vollzugriff)\n• Kassier (Kassenfunktionen)\n• Aushilfe (Grundfunktionen)\n\n⏰ Überprüfe Systemzeit und ausstehende Transaktionen...\n\n💡 Geben Sie einfach Ihre 4-6 stellige PIN ein - das System erkennt Sie automatisch.'
       }
     ],
-    draftMessage: null // Currently being typed message
+    draftMessage: null, // Currently being typed message
+    shouldActivatePinpad: true // Flag to activate pinpad on load
   });
 
   return {
@@ -143,6 +144,19 @@ function createAgentStore() {
           messages: [...store.messages, errorMessage]
         }));
       }
+    },
+    
+    // Method to check and clear pinpad activation flag
+    shouldActivatePinpadOnLoad() {
+      let shouldActivate = false;
+      update(store => {
+        shouldActivate = store.shouldActivatePinpad;
+        return {
+          ...store,
+          shouldActivatePinpad: false // Clear flag after checking
+        };
+      });
+      return shouldActivate;
     }
   };
 }

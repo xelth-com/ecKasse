@@ -72,6 +72,18 @@
         checkScrollPosition();
         hasInitializedScroll = true;
       }
+      
+      // Auto-activate pinpad if agent wants it and we're on agent view
+      if ($currentView === 'agent' && agentStore.shouldActivatePinpadOnLoad()) {
+        // Activate pinpad directly in numeric mode for PIN entry
+        // No need to create draftMessage for numeric mode
+        pinpadStore.activate(
+          'agent',          // mode
+          () => {},         // confirm callback (handled in pinpadStore)
+          () => {},         // cancel callback
+          'numeric'         // layout - start in numeric mode for PIN
+        );
+      }
     }, 200); // Longer timeout to ensure content is loaded
   });
 
@@ -445,14 +457,25 @@
               </div>
             {/each}
             
-            <!-- Draft message -->
-            {#if $agentStore.draftMessage && $pinpadStore.isActive}
+            <!-- Draft message for pinpad input -->
+            {#if $pinpadStore.isActive && $pinpadStore.mode === 'agent'}
               <div class="agent-message user draft">
                 <div class="message-header">
-                  <span class="message-timestamp">{$agentStore.draftMessage.timestamp}</span>
+                  <span class="message-timestamp">{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                   <span class="message-type">User</span>
                 </div>
-                <div class="message-content">{$agentStore.draftMessage.message}<span class="cursor">|</span></div>
+                <div class="message-content">
+                  {#if $pinpadStore.layout === 'numeric'}
+                    <!-- Show stars for numeric PIN input -->
+                    {'*'.repeat($pinpadStore.liveValue.length)}<span class="cursor">|</span>
+                  {:else if $pinpadStore.layout === 'alpha' && $agentStore.draftMessage}
+                    <!-- Show normal text for alpha inputs -->
+                    {$agentStore.draftMessage.message}<span class="cursor">|</span>
+                  {:else}
+                    <!-- Fallback -->
+                    <span class="cursor">|</span>
+                  {/if}
+                </div>
               </div>
             {/if}
           </div>

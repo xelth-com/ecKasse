@@ -63,8 +63,10 @@
       "Bash(git push:*)",
       "Bash(git fetch:*)",
       "Bash(electron:*)",
-      "Bash(npx electron:*)"
+      "Bash(npx electron:*)",
+      "Bash(git pull:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

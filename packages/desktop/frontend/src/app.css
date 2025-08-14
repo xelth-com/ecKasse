@@ -24,14 +24,36 @@ html {
   }
 }
 
-/* Global styles */
-body {
+/* Global reset and styles */
+html, body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
   min-width: 320px;
   min-height: 100vh;
   font-family: Arial, Verdana, Helvetica, sans-serif;
+}
+
+/* Emoji support for Electron - try multiple approaches */
+body, * {
+  font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  -webkit-font-feature-settings: "liga" on, "calt" on;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ensure the #app container fills the entire viewport */
+#app {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Override font families for consistent web/electron display */
@@ -46,7 +68,7 @@ button,
 input,
 textarea,
 select {
-  font-family: Arial, Verdana, Helvetica, sans-serif !important;
+  font-family: Arial, Verdana, Helvetica, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols", sans-serif !important;
   font-stretch: normal !important;
 }
 
@@ -62,7 +84,7 @@ select {
 
 /* Ensure no Times fonts are used anywhere */
 h1, h2, h3, h4, h5, h6 {
-  font-family: Arial, Verdana, Helvetica, sans-serif !important;
+  font-family: Arial, Verdana, Helvetica, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols", sans-serif !important;
 }
 
 /* POS specific elements */
@@ -70,5 +92,31 @@ h1, h2, h3, h4, h5, h6 {
 .numpad-key,
 .alpha-key,
 .function-key {
-  font-family: Arial, Verdana, Helvetica, sans-serif !important;
+  font-family: Arial, Verdana, Helvetica, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols", sans-serif !important;
 }
+
+/* Specific emoji rendering for better compatibility */
+.emoji {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol";
+  font-variant-emoji: emoji;
+  font-size: 1.2em;
+}
+
+/* Force emoji display - Linux specific */
+@font-face {
+  font-family: "EmojiFont";
+  src: url("data:font/truetype;charset=utf-8;base64,") format("truetype");
+  unicode-range: U+1F000-1F6FF, U+2600-26FF, U+2700-27BF;
+}
+
+/* Alternative approach - use text symbols if emojis fail */
+.emoji-fallback {
+  font-family: monospace;
+}
+
+/* Specific fixes for common emojis */
+.lock-emoji::before { content: "🔐"; }
+.user-emoji::before { content: "👤"; }
+.check-emoji::before { content: "✅"; }
+.warning-emoji::before { content: "⚠️"; }
+.info-emoji::before { content: "💡"; }

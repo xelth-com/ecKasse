@@ -265,6 +265,28 @@ async function handleWebSocketMessage(ws, rawMessage) {
     } else if (command === 'getLoginUsers') {
       responsePayload = await services.auth.getLoginUsers();
     
+    // System time check
+    } else if (command === 'systemTimeCheck') {
+      const { clientTime } = payload;
+      if (!clientTime) {
+        throw new Error('clientTime is required');
+      }
+      const serverTime = new Date();
+      const clientTimeObj = new Date(clientTime);
+      const timeDifferenceMs = serverTime.getTime() - clientTimeObj.getTime();
+      const timeDifferenceSeconds = Math.floor(timeDifferenceMs / 1000);
+      
+      responsePayload = {
+        serverTime: serverTime.toISOString(),
+        clientTime: clientTime,
+        timeDifferenceMs,
+        timeDifferenceSeconds
+      };
+    
+    // Get pending transactions
+    } else if (command === 'getPendingTransactions') {
+      responsePayload = await services.transactionManagement.getPendingTransactions();
+    
     // Pending transaction resolution
     } else if (command === 'resolvePendingTransaction') {
       const { transactionId, resolution, userId } = payload;

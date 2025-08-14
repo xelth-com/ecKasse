@@ -112,23 +112,26 @@
   function shortenUserName(fullName) {
     if (!fullName) return 'Login';
     
-    // Split by spaces and take first words
+    // Show "Angemeldet als" (logged in as) with shortened name
     const words = fullName.split(' ');
+    let shortName;
+    
     if (words.length === 1) {
       // Single word - take first 4 chars, split 2-2
       const word = words[0];
-      if (word.length <= 4) return word;
-      return word.substring(0, 2) + '<br>' + word.substring(2, 4);
+      if (word.length <= 4) {
+        shortName = word;
+      } else {
+        shortName = word.substring(0, 4);
+      }
+    } else {
+      // Multiple words - take first 3 chars from first word + first char from second
+      const firstWord = words[0];
+      const secondWord = words[1] || '';
+      shortName = firstWord.substring(0, 3) + (secondWord ? secondWord.charAt(0) : '');
     }
     
-    // Multiple words - take first 2-3 chars from each of first two words
-    const firstWord = words[0];
-    const secondWord = words[1] || '';
-    
-    const firstPart = firstWord.substring(0, 3);
-    const secondPart = secondWord.substring(0, 3);
-    
-    return firstPart + '<br>' + secondPart;
+    return '✓ ' + shortName;
   }
 
   function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
@@ -374,6 +377,14 @@
     if (gridCells.length > 0 && $orderStore) {
       // This will trigger re-rendering of payment buttons when order state changes
       gridCells = [...gridCells];
+    }
+  }
+  
+  // Force grid content update when auth state changes (for user button reactivity)
+  $: {
+    if (gridCells.length > 0 && $authStore) {
+      // This will trigger re-rendering of user button when auth state changes
+      updateGridContent();
     }
   }
   
@@ -887,13 +898,48 @@
     toggleControlCenter();
   }
 
-  function handleUserButtonClick() {
+  async function handleUserButtonClick() {
     if ($authStore.isAuthenticated) {
-      addLog('INFO', 'User logout requested');
-      authStore.logout();
+      const user = $authStore.currentUser;
+      const message = `👤 **${user.full_name}** (${user.role})\n\n🔐 **Status:** Erfolgreich angemeldet\n💡 **Tipp:** Lange drücken zum Abmelden`;
+      
+      // Import agentStore dynamically to avoid circular dependency
+      const { agentStore } = await import('@eckasse/shared-frontend/utils/agentStore.js');
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: message
+      });
+      
+      addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
     } else {
       addLog('INFO', 'Login requested');
       // The login view should already be visible since user is not authenticated
+    }
+  }
+  
+  async function handleUserButtonLongPress() {
+    if ($authStore.isAuthenticated) {
+      addLog('INFO', 'User logout requested');
+      await authStore.logout();
+      
+      // After logout, show welcome message and activate pinpad
+      const { agentStore } = await import('@eckasse/shared-frontend/utils/agentStore.js');
+      
+      // Clear existing messages
+      agentStore.clearMessages();
+      
+      // Add welcome message
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: 'Willkommen bei ecKasse!\n\n🔐 Bitte geben Sie Ihre PIN über das Tastenfeld ein.\n\n👥 Verfügbare Benutzer:\n• Admin (Vollzugriff)\n• Kassier (Kassenfunktionen)\n• Aushilfe (Grundfunktionen)\n\n⏰ Überprüfe Systemzeit und ausstehende Transaktionen...\n\n💡 Geben Sie einfach Ihre 4-6 stellige PIN ein - das System erkennt Sie automatisch.'
+      });
+      
+      // Activate pinpad for PIN entry
+      pinpadStore.activate('agent', null, null, 'numeric');
+      
+      addLog('INFO', 'User logged out successfully - returning to login');
     }
   }
 
@@ -1051,6 +1097,13 @@
 
   function handleSecondaryAction(event) {
     const { data, mouseX, mouseY } = event.detail;
+    
+    // Handle user button long press for logout
+    if (data && data.isUserButton && data.authenticated) {
+      handleUserButtonLongPress();
+      return;
+    }
+    
     if (data && !data.isBackButton) {
       contextMenuItem = data;
       contextMenuX = mouseX;
@@ -1212,10 +1265,11 @@
       const userLabel = currentUser ? shortenUserName(currentUser.full_name) : 'Login';
       return {
         label: userLabel,
+        data: { isUserButton: true, authenticated: !!currentUser },
         onClick: handleUserButtonClick,
         active: true,
-        color: currentUser ? '#2c3e50' : '#6c757d',
-        textColor: '#666',
+        color: currentUser ? '#28a745' : '#6c757d',
+        textColor: currentUser ? 'white' : '#666',
         customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
       };
     }

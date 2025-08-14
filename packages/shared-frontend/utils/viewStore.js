@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 
-export const currentView = writable('order');
+export const currentView = writable('agent');
 
 // Dynamic view cycle that adapts based on the current view
 export const viewCycle = derived(currentView, ($currentView) => {
