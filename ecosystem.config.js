@@ -1,7 +1,8 @@
 module.exports = {
   apps: [{
-    name: 'eckasse-com',
-    script: './packages/backend/src/server.js',
+    name: 'eckasse-desktop-server',
+    script: 'npm',
+    args: 'run start:server --workspace=@eckasse/desktop',
     cwd: '/var/www/eckasse.com',
     watch: false,
     exec_mode: 'fork',

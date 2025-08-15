@@ -8,6 +8,7 @@
     "dev:electron:watch": "electron electron/main.js",
     "dev": "concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:server\" \"wait-on http://localhost:3030 && npm run dev:electron:watch\"",
     "dev:server": "node server/start.js",
+    "start:server": "node server/start.js",
     "start": "npm run dev", 
     "dev:backend": "npm run dev --workspace=@eckasse/backend",
 
