@@ -54,6 +54,7 @@ module.exports = {
     hiero: hieroService,
     system: systemService,
     category: categoryService,
+    llm: llmService,
   },
   
   // LLM

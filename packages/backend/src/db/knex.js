@@ -1,1 +1,0 @@
-../../../core/db/knex.js

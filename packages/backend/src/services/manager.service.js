@@ -1,1 +1,0 @@
-../../../../core/application/manager.service.js

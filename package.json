@@ -5,7 +5,7 @@
   "description": "LLM-Powered Open Source POS System by Betruger. This is the monorepo root.",
   "scripts": {
     "start:backend": "npm start --workspace=@eckasse/backend",
-    "dev:backend": "npm run dev --workspace=@eckasse/backend",
+    "dev:backend": "npm run dev:server --workspace=@eckasse/desktop",
     "migrate:backend": "npm run db:migrate:latest --workspace=@eckasse/backend",
     "seed:backend": "npm run db:seed:run --workspace=@eckasse/backend",
     "dev:client:svelte": "npm run dev --workspace=@eckasse/desktop-frontend",
