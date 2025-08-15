@@ -1,7 +1,27 @@
 #!/bin/bash
 
-# ecKasse Production Deployment Script
-# Run this script on your server in the /var/www/eckasse.com directory
+# =============================================================================
+# ecKasse Production Deployment Script (Core and Adapters Architecture)
+# =============================================================================
+#
+# PRODUCTION WEB SERVER DEPLOYMENT
+# This script deploys the ecKasse POS system to production environment.
+#
+# DATABASE: PostgreSQL (NOT SQLite)
+# The production environment uses PostgreSQL database.
+#
+# REQUIRED ENVIRONMENT VARIABLES in .env.production:
+# - NODE_ENV=production
+# - DB_CLIENT=pg
+# - PG_HOST=<postgresql_host>
+# - PG_PORT=<postgresql_port> (default: 5432)
+# - PG_USERNAME=<postgresql_username>
+# - PG_PASSWORD=<postgresql_password>
+# - PG_DATABASE=<postgresql_database_name>
+# - GEMINI_API_KEY=<google_gemini_api_key>
+#
+# USAGE: Run this script on your server in the /var/www/eckasse.com directory
+# =============================================================================
 
 set -e  # Exit on any error
 
@@ -32,13 +52,13 @@ fi
 echo "📦 Installing dependencies..."
 npm install
 
-# Build the frontend
-echo "🏗️ Building frontend..."
-npm run build --workspace=@eckasse/renderer-ui
+# Build the desktop frontend (Svelte)
+echo "🏗️ Building desktop frontend..."
+npm run build --workspace=@eckasse/desktop-frontend
 
-# Run database migrations
+# Run database migrations using PostgreSQL
 echo "🗄️ Running database migrations..."
-npm run migrate:backend
+NODE_ENV=production npx knex migrate:latest --knexfile ./packages/core/db/knexfile.js
 
 # Install PM2 globally if not already installed
 if ! command -v pm2 &> /dev/null; then
@@ -48,11 +68,11 @@ fi
 
 # Stop existing PM2 processes for ecKasse
 echo "🛑 Stopping existing PM2 processes..."
-pm2 delete eckasse-backend || true
+pm2 delete eckasse-desktop-server || true
 
-# Start the backend with PM2
-echo "🚀 Starting ecKasse backend with PM2..."
-pm2 start npm --name "eckasse-backend" -- run start:backend
+# Start the application using ecosystem.config.js
+echo "🚀 Starting ecKasse desktop server with PM2..."
+pm2 start ecosystem.config.js --env production
 
 # Save PM2 configuration
 pm2 save
@@ -68,14 +88,14 @@ pm2 list
 
 echo ""
 echo "📝 Recent logs:"
-pm2 logs eckasse-backend --lines 10 --nostream
+pm2 logs eckasse-desktop-server --lines 10 --nostream
 
 echo ""
 echo "🌐 Your application should now be available at: https://eckasse.com"
 echo "📝 Don't forget to add your GEMINI_API_KEY to the .env file!"
 echo ""
 echo "Useful commands:"
-echo "  pm2 list                    - Show all processes"
-echo "  pm2 logs eckasse-backend    - Show logs"
-echo "  pm2 restart eckasse-backend - Restart the application"
-echo "  pm2 stop eckasse-backend    - Stop the application"
+echo "  pm2 list                         - Show all processes"
+echo "  pm2 logs eckasse-desktop-server  - Show logs"
+echo "  pm2 restart eckasse-desktop-server - Restart the application"
+echo "  pm2 stop eckasse-desktop-server  - Stop the application"

@@ -269,9 +269,12 @@ async function runRecoveryProcess() {
   }
 }
 
+// Global variable to store initialization result
+let initializationResult = { isFirstRun: false };
+
 async function startServer() {
-  // Ensure default users and roles exist
-  await dbInit.ensureDefaultUsersAndRoles();
+  // Ensure default users and roles exist and capture result
+  initializationResult = await dbInit.ensureDefaultUsersAndRoles();
   
   // Run recovery process for stale active transactions
   await runRecoveryProcess();
@@ -365,6 +368,27 @@ async function startServer() {
       clientId: ws.id,
       serverTime: new Date().toISOString()
     }));
+
+    // Check if this was the first run and send admin credentials if needed
+    if (initializationResult.isFirstRun && initializationResult.defaultUser) {
+      const firstRunMessage = {
+        command: 'firstRunAdminCreated',
+        payload: {
+          username: initializationResult.defaultUser.username,
+          password: initializationResult.defaultUser.password,
+          message: `Willkommen! Admin-Benutzer '${initializationResult.defaultUser.username}' wurde erstellt mit PIN: ${initializationResult.defaultUser.password}`
+        },
+        timestamp: new Date().toISOString(),
+        clientId: ws.id
+      };
+      
+      ws.send(JSON.stringify(firstRunMessage));
+      logger.info({ 
+        msg: 'Sent first run admin credentials to client', 
+        clientId: ws.id,
+        username: initializationResult.defaultUser.username 
+      });
+    }
 
     // Send pending recovery transactions to newly connected client
     (async () => {

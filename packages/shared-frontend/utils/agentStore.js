@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { authStore } from './authStore.js';
+import { wsStore } from './wsStore.js';
 
 function createAgentStore() {
   const { subscribe, set, update } = writable({
@@ -13,6 +14,23 @@ function createAgentStore() {
     ],
     draftMessage: null, // Currently being typed message
     shouldActivatePinpad: true // Flag to activate pinpad on load
+  });
+
+  // Subscribe to WebSocket messages for first run admin creation
+  wsStore.subscribe((wsState) => {
+    if (wsState.lastMessage && wsState.lastMessage.command === 'firstRunAdminCreated') {
+      const firstRunPayload = wsState.lastMessage.payload;
+      
+      // Replace the initial welcome message with the first run admin info
+      update(store => ({
+        ...store,
+        messages: [{
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: firstRunPayload.message || `Willkommen! Admin-Benutzer '${firstRunPayload.username}' wurde erstellt mit PIN: ${firstRunPayload.password}`
+        }]
+      }));
+    }
   });
 
   return {

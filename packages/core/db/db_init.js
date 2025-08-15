@@ -21,10 +21,12 @@ const logger = require('../config/logger');
  * Ensures that default users and roles exist in the database.
  * This function is called during server startup to prevent user lockout scenarios.
  * 
- * @returns {Promise<void>}
+ * @returns {Promise<{isFirstRun: boolean, defaultUser?: {username: string, password: string}}>}
  */
 async function ensureDefaultUsersAndRoles() {
   logger.info('Starting database initialization check...');
+  
+  let initResult = { isFirstRun: false };
   
   try {
     await db.transaction(async (trx) => {
@@ -152,6 +154,15 @@ async function ensureDefaultUsersAndRoles() {
             note: 'Default admin user created on system initialization'
           })
         });
+        
+        // Mark this as first run with default user created
+        initResult = {
+          isFirstRun: true,
+          defaultUser: {
+            username: 'admin',
+            password: '1234'
+          }
+        };
         
         logger.warn('⚠️  DEFAULT ADMIN USER CREATED', {
           username: 'admin',
@@ -326,6 +337,7 @@ async function ensureDefaultUsersAndRoles() {
     });
     
     logger.info('✅ Database initialization completed successfully');
+    return initResult;
     
   } catch (error) {
     logger.error('❌ Database initialization failed', {
