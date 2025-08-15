@@ -64,7 +64,8 @@
       "Bash(git fetch:*)",
       "Bash(electron:*)",
       "Bash(npx electron:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

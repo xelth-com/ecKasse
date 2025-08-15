@@ -38,11 +38,17 @@ fi
 
 echo "📁 Working in: $(pwd)"
 
-# Copy the production environment file
+# Set up production environment file conditionally
 echo "📋 Setting up production environment..."
 if [ -f ".env.production" ]; then
-    cp .env.production .env
-    echo "✅ Copied .env.production to .env"
+    if [ ! -f ".env" ]; then
+        cp .env.production .env
+        echo "✅ Created .env from .env.production template"
+        echo "⚠️  WARNING: Please add your secrets (GEMINI_API_KEY, database passwords) to the .env file!"
+    else
+        echo "✅ .env file already exists, preserving existing configuration"
+        echo "ℹ️  If you need to update the .env template, compare with .env.production manually"
+    fi
 else
     echo "❌ Error: .env.production file not found. Please create it first."
     exit 1

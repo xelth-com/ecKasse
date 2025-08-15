@@ -5,13 +5,9 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') });
 
 module.exports = {
   development: {
-    client: process.env.DB_CLIENT || 'pg',
+    client: 'sqlite3',
     connection: {
-      host: process.env.PG_HOST || 'localhost',
-      port: process.env.PG_PORT || 5432,
-      user: process.env.PG_USERNAME,
-      password: process.env.PG_PASSWORD,
-      database: process.env.PG_DATABASE
+      filename: process.env.DB_FILENAME || path.resolve(__dirname, 'eckasse_dev.sqlite3')
     },
     migrations: {
       directory: path.resolve(__dirname, 'migrations')
@@ -19,10 +15,7 @@ module.exports = {
     seeds: {
       directory: path.resolve(__dirname, 'seeds')
     },
-    pool: {
-      min: 2,
-      max: 10
-    }
+    useNullAsDefault: true
   },
   production: {
     client: 'pg',
