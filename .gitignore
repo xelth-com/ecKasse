@@ -157,3 +157,7 @@ ideasHistory.md
 packages/web/
 LICENSE-COMMERCIAL
 LICENSE-EUPL-BACKUP.md
+
+# Snapshot directories
+.ecksnapshot_index/
+snapshots/
