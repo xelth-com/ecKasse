@@ -2,8 +2,16 @@ const { exec } = require('child_process');
 const os = require('os');
 const tcpPing = require('tcp-ping');
 const { Address4 } = require('ip-address');
-const usb = require('usb');
-const USB = require('@node-escpos/usb-adapter');
+// USB support - only load in non-production environments (desktop/development)
+let usb, USB;
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    usb = require('usb');
+    USB = require('@node-escpos/usb-adapter');
+  } catch (error) {
+    console.log('[SystemTools] USB modules not available - USB printer support disabled');
+  }
+}
 
 /**
  * Known USB printer devices by vendor/product ID combinations.
@@ -374,6 +382,11 @@ const systemTools = {
    */
   findAndConfigureUSBPrinter: async (printerModules) => {
     console.log('[SystemTools] Starting USB printer discovery...');
+    
+    if (!usb || !USB) {
+      console.log('[SystemTools] USB support not available in this environment');
+      return null;
+    }
     
     try {
       // Get list of connected USB devices
