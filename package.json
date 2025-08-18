@@ -26,7 +26,8 @@
     "packages/*",
     "packages/desktop/frontend",
     "packages/shared-frontend",
-    "shared"
+    "shared",
+    "packages/web"
   ],
   "repository": {
     "type": "git",

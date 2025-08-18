@@ -70,7 +70,8 @@
       "Bash(if [ -f \"*.sqlite*\" ])",
       "Bash(then echo \"DB: SQLite (dev)\")",
       "Bash(pm2 list:*)",
-      "Bash([ -f package.json ])"
+      "Bash([ -f package.json ])",
+      "Bash(NODE_ENV=production npx knex migrate:latest --knexfile packages/core/db/knexfile.js)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

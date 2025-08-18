@@ -17,6 +17,7 @@
   "dependencies": {
     "@hashgraph/sdk": "^2.70.0",
     "ip-address": "^10.0.1",
+    "sqlite3": "^5.1.7",
     "tcp-ping": "^0.1.1"
   }
 }

@@ -20,7 +20,7 @@
 
   let categories = [];
   let products = [];
-  let status = 'Initializing...';
+  let status = 'Connecting to backend...';
   let isConnected = false;
   let currentView = 'categories'; // 'categories' or 'products'
   let selectedCategory = null;
@@ -770,22 +770,25 @@
 
   let resizeObserver;
   let containerElement;
+  let debounceTimer;
   
   onMount(() => {
     addLog('INFO', 'SelectionArea mounted, setting up resize observer');
     if (containerElement) {
       resizeObserver = new ResizeObserver(entries => {
-        for (let entry of entries) {
-          const newWidth = entry.contentRect.width;
-          const newHeight = entry.contentRect.height;
-          
-          // Only rebuild if dimensions actually changed
-          if (containerWidth !== newWidth || containerHeight !== newHeight) {
-            containerWidth = newWidth;
-            containerHeight = newHeight;
-            rebuildGridAndContent();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          for (let entry of entries) {
+            const newWidth = entry.contentRect.width;
+            const newHeight = entry.contentRect.height;
+            
+            if (containerWidth !== newWidth || containerHeight !== newHeight) {
+              containerWidth = newWidth;
+              containerHeight = newHeight;
+              rebuildGridAndContent();
+            }
           }
-        }
+        }, 150);
       });
       resizeObserver.observe(containerElement);
       
@@ -798,8 +801,18 @@
     return () => resizeObserver?.disconnect();
   });
 
+  // Reactive WebSocket connection handling with race condition fix
+  let initialLoadDone = false;
   wsStore.subscribe(state => {
     isConnected = state.isConnected;
+    
+    // Only fetch initial data once when connection is established
+    if (isConnected && !initialLoadDone) {
+      status = 'Loading categories...';
+      wsStore.send({ command: 'getCategories' });
+      initialLoadDone = true;
+    }
+
     if (state.lastMessage?.command === 'getCategoriesResponse') {
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
         categories = state.lastMessage.payload;
@@ -812,23 +825,15 @@
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
         products = state.lastMessage.payload;
         currentView = 'products';
-        status = ''; // Always clear status on successful response, even for empty categories
+        status = '';
       } else {
         status = 'Error: Could not load products from backend.';
       }
     }
   });
 
-  onMount(() => {
-    setTimeout(() => {
-      if (isConnected) {
-        status = 'Loading categories...';
-        wsStore.send({ command: 'getCategories' });
-      } else {
-        status = 'Error: Not connected to backend.';
-      }
-    }, 500);
-  });
+  // Race condition fix: removed setTimeout-based data fetch from onMount
+  // Categories are now loaded reactively when WebSocket connects
 
   // Handle auto-collapse completion event
   onMount(() => {

@@ -1,8 +1,8 @@
 module.exports = {
   apps: [{
-    name: 'eckasse-desktop-server',
+    name: 'eckasse-web-server',
     script: 'npm',
-    args: 'run dev:backend',
+    args: 'start --workspace=@eckasse/web',
     cwd: '/var/www/eckasse.com',
     watch: false,
     env_production: {

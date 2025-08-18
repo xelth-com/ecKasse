@@ -54,6 +54,19 @@ function createWindow() {
     },
   });
 
+  // Crash and Hang Diagnostics
+  mainWindow.webContents.on('unresponsive', () => {
+    console.log('!!! RENDERER PROCESS HANG DETECTED !!!');
+    dialog.showErrorBox('Application Unresponsive', 'The application has become unresponsive. You might need to restart it.');
+  });
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('!!! RENDERER PROCESS GONE !!!', details);
+    dialog.showErrorBox('Application Error', `The application's renderer process has crashed. Reason: ${details.reason}.`);
+    mainWindow = null;
+    app.quit();
+  });
+
   const startUrl =
     process.env.ELECTRON_START_URL ||
     (!app.isPackaged
@@ -68,20 +81,6 @@ function createWindow() {
 
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
-    
-    // Suppress DevTools Autofill errors
-    mainWindow.webContents.once('devtools-opened', () => {
-      mainWindow.webContents.devToolsWebContents.executeJavaScript(`
-        const originalError = console.error;
-        console.error = function(...args) {
-          const message = args.join(' ');
-          if (message.includes('Autofill.enable') || message.includes('Autofill.setAddresses')) {
-            return; // Skip autofill errors
-          }
-          originalError.apply(console, args);
-        };
-      `);
-    });
   }
 
   mainWindow.on('closed', () => {

@@ -12,83 +12,8 @@
   let consoleViewComponent;
   let isAtBottom = false;
   
-  // --- DPI Scaling Correction using Transform Scale for Web Browser ---
-  function correctDPIScaling() {
-    const dpr = window.devicePixelRatio || 1;
-    const isElectron = navigator.userAgent.includes('Electron');
-    
-    // Always log to both console and internal logs for debugging
-    console.log('DPI Scaling Check:', { 
-      devicePixelRatio: dpr, 
-      isElectron, 
-      userAgent: navigator.userAgent.substring(0, 100) 
-    });
-    
-    // Remove any existing DPI compensation in all cases (Electron or Browser)
-    const existingStyle = document.getElementById('dpi-compensation');
-    if (existingStyle) {
-      existingStyle.remove();
-      console.log('Removed existing DPI compensation style');
-    }
-    
-    // Reset any zoom on html element
-    document.documentElement.style.zoom = '';
-    
-    // Only apply scaling correction in browsers (not Electron)
-    if (!isElectron && dpr > 1) {
-      const targetScale = 1 / dpr;
-      const compensationSize = dpr * 100;
-      
-      // Create compensation style using transform: scale instead of zoom
-      const compensationStyle = document.createElement('style');
-      compensationStyle.id = 'dpi-compensation';
-      compensationStyle.textContent = `
-        body {
-          transform: scale(${targetScale}) !important;
-          transform-origin: top left !important;
-          width: ${compensationSize}% !important;
-          height: ${compensationSize}% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: hidden !important;
-        }
-      `;
-      document.head.appendChild(compensationStyle);
-      
-      console.log('Applied DPI Scaling with Transform Scale:', { 
-        targetScale,
-        compensationSize: `${compensationSize}%`,
-        method: 'transform: scale()'
-      });
-      addLog('INFO', 'DPI Scaling Correction with Transform Scale Applied', {
-        devicePixelRatio: dpr,
-        appliedScale: targetScale,
-        compensationSize: `${compensationSize}%`,
-        method: 'transform: scale()',
-        userAgent: navigator.userAgent.substring(0, 100)
-      });
-    } else if (isElectron) {
-      console.log('Electron detected - no scaling needed');
-      addLog('INFO', 'Running in Electron - No DPI correction needed', {
-        devicePixelRatio: dpr
-      });
-    } else {
-      console.log('Standard DPR - no scaling needed');
-      addLog('INFO', 'No DPI correction needed', {
-        devicePixelRatio: dpr
-      });
-    }
-  }
-  
-  // Handle demo mode auto-login and DPI scaling
+  // Handle demo mode auto-login
   onMount(() => {
-    // Apply DPI scaling after component is mounted
-    correctDPIScaling();
-    
-    // Add resize listener for DPI scaling
-    const resizeHandler = () => correctDPIScaling();
-    window.addEventListener('resize', resizeHandler);
-    
     const unsubscribe = wsStore.subscribe(wsState => {
       if (wsState.lastMessage?.command === 'sessionEstablished') {
         console.log('Demo mode: Received session established message');
@@ -98,7 +23,6 @@
     
     // Cleanup function
     return () => {
-      window.removeEventListener('resize', resizeHandler);
       unsubscribe();
     };
   });
@@ -131,10 +55,10 @@
   </div>
 </main>
 
-<!-- Control Center overlay - renders above everything -->
+
 <ControlCenter />
 
-<!-- Global notifications - renders above everything -->
+
 <NotificationDisplay />
 
 <style>
