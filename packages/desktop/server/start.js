@@ -90,7 +90,10 @@ async function handleWebSocketMessage(ws, rawMessage) {
             .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
             .select('active_transaction_items.*', 'items.display_names')
             .where('active_transaction_items.active_transaction_id', responsePayload.id);
-          responsePayload.items = items;
+          responsePayload.items = items.map(item => ({
+            ...item,
+            display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+          }));
       }
       responseCommand = 'orderUpdated';
     } else if (command === 'addItemToTransaction') {
@@ -101,7 +104,10 @@ async function handleWebSocketMessage(ws, rawMessage) {
             .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
             .select('active_transaction_items.*', 'items.display_names')
             .where('active_transaction_items.active_transaction_id', responsePayload.id);
-          responsePayload.items = items;
+          responsePayload.items = items.map(item => ({
+            ...item,
+            display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+          }));
       }
       responseCommand = 'orderUpdated';
     } else if (command === 'finishTransaction') {
@@ -121,16 +127,45 @@ async function handleWebSocketMessage(ws, rawMessage) {
       responsePayload = await services.printer.reprintReceipt(transactionId);
       responseCommand = 'reprintResult';
     } else if (command === 'getCategories') {
-      responsePayload = await db('categories').select('*');
+      const categories = await db('categories').select('*');
+      responsePayload = categories.map(category => ({
+        ...category,
+        category_names: typeof category.category_names === 'object' ? JSON.stringify(category.category_names || {}) : category.category_names,
+        audit_trail: typeof category.audit_trail === 'object' ? JSON.stringify(category.audit_trail || {}) : category.audit_trail
+      }));
     } else if (command === 'getItemsByCategory') {
       const { categoryId } = payload;
       if (!categoryId) {
         throw new Error('categoryId is required');
       }
-      responsePayload = await services.product.getProductsByCategoryId(categoryId);
+      const items = await services.product.getProductsByCategoryId(categoryId);
+      responsePayload = items.map(item => ({
+        ...item,
+        display_names: typeof item.display_names === 'object' ? JSON.stringify(item.display_names || {}) : item.display_names,
+        pricing_schedules: typeof item.pricing_schedules === 'object' ? JSON.stringify(item.pricing_schedules || []) : item.pricing_schedules,
+        availability_schedule: typeof item.availability_schedule === 'object' ? JSON.stringify(item.availability_schedule || {}) : item.availability_schedule,
+        additional_item_attributes: typeof item.additional_item_attributes === 'object' ? JSON.stringify(item.additional_item_attributes || {}) : item.additional_item_attributes,
+        item_flags: typeof item.item_flags === 'object' ? JSON.stringify(item.item_flags || {}) : item.item_flags,
+        audit_trail: typeof item.audit_trail === 'object' ? JSON.stringify(item.audit_trail || {}) : item.audit_trail
+      }));
     } else if (command === 'getRecentReceipts') {
       const { limit } = payload || {};
-      responsePayload = await services.reporting.getRecentTransactions(limit);
+      const result = await services.reporting.getRecentTransactions(limit);
+      if (result.success) {
+        responsePayload = {
+          ...result,
+          transactions: result.transactions.map(tx => ({
+            ...tx,
+            metadata: typeof tx.metadata === 'object' && tx.metadata !== null ? JSON.stringify(tx.metadata) : tx.metadata,
+            items: tx.items.map(item => ({
+              ...item,
+              display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+            }))
+          }))
+        };
+      } else {
+        responsePayload = result;
+      }
     } else if (command === 'logClientEvent') {
       const { level, message, context } = payload;
       services.logging.logSystemEvent(level, message, { ...context, source: 'frontend', clientId: ws.id });
