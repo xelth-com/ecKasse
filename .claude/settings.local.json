@@ -71,7 +71,22 @@
       "Bash(then echo \"DB: SQLite (dev)\")",
       "Bash(pm2 list:*)",
       "Bash([ -f package.json ])",
-      "Bash(NODE_ENV=production npx knex migrate:latest --knexfile packages/core/db/knexfile.js)"
+      "Bash(NODE_ENV=production npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
+      "Bash(pm2 restart:*)",
+      "Bash(pm2 status:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(psql:*)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT username, full_name FROM users;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, role_name, can_manage_users FROM roles;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, username, full_name, is_active FROM users;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, role_name, permissions FROM roles WHERE role_name = ''admin'';\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT user_preferences, audit_trail FROM users WHERE username = ''admin'';\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT role_display_names, permissions, audit_trail FROM roles WHERE id = 1;\")",
+      "Bash(pm2 startOrGracefulReload:*)",
+      "Bash(pm2 stop:*)",
+      "Bash(pm2 delete:*)",
+      "Bash(pm2 start:*)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"DELETE FROM users WHERE username = ''admin'' AND full_name = ''System Administrator'';\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
