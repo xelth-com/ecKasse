@@ -14,9 +14,9 @@ class AuthService {
     }
 
     /**
-     * Authenticate user with username and password
-     * @param {string} username - User's username
-     * @param {string} password - User's password
+     * Authenticate user with username and password, or PIN-only login
+     * @param {string} username - User's username (null for PIN-only login)
+     * @param {string} password - User's password/PIN
      * @param {string} ipAddress - Client IP address
      * @param {string} userAgent - Client user agent
      * @returns {Object} Authentication result with session token or error
@@ -25,42 +25,77 @@ class AuthService {
         logger.info({ 
             service: 'AuthService', 
             function: 'authenticateUser', 
-            username, 
+            username: username || 'PIN-only', 
             ipAddress 
         }, 'Attempting user authentication');
 
         try {
-            // Get user with role information
-            const user = await db('users')
-                .select([
-                    'users.*',
-                    'roles.role_name',
-                    'roles.permissions',
-                    'roles.can_approve_changes',
-                    'roles.can_manage_users'
-                ])
-                .join('roles', 'users.role_id', 'roles.id')
-                .where('users.username', username)
-                .where('users.is_active', true)
-                .first();
+            let user = null;
 
-            if (!user) {
-                await this.logFailedAttempt(username, ipAddress, 'user_not_found');
-                throw new Error('Invalid credentials');
-            }
+            if (username) {
+                // Traditional username-based lookup (more efficient)
+                user = await db('users')
+                    .select([
+                        'users.*',
+                        'roles.role_name',
+                        'roles.permissions',
+                        'roles.can_approve_changes',
+                        'roles.can_manage_users'
+                    ])
+                    .join('roles', 'users.role_id', 'roles.id')
+                    .where('users.username', username)
+                    .where('users.is_active', true)
+                    .first();
 
-            // Check if user is locked
-            if (user.locked_until && new Date(user.locked_until) > new Date()) {
-                const lockTimeRemaining = Math.ceil((new Date(user.locked_until) - new Date()) / 1000 / 60);
-                throw new Error(`Account locked. Try again in ${lockTimeRemaining} minutes.`);
-            }
+                if (!user) {
+                    await this.logFailedAttempt(username, ipAddress, 'user_not_found');
+                    throw new Error('Invalid credentials');
+                }
 
-            // Verify password
-            const passwordValid = await bcrypt.compare(password, user.password_hash);
-            
-            if (!passwordValid) {
-                await this.handleFailedLogin(user.id, ipAddress);
-                throw new Error('Invalid credentials');
+                // Check if user is locked
+                if (user.locked_until && new Date(user.locked_until) > new Date()) {
+                    const lockTimeRemaining = Math.ceil((new Date(user.locked_until) - new Date()) / 1000 / 60);
+                    throw new Error(`Account locked. Try again in ${lockTimeRemaining} minutes.`);
+                }
+
+                // Verify password
+                const passwordValid = await bcrypt.compare(password, user.password_hash);
+                
+                if (!passwordValid) {
+                    await this.handleFailedLogin(user.id, ipAddress);
+                    throw new Error('Invalid credentials');
+                }
+            } else {
+                // PIN-only login: fetch all active users and check PIN against each
+                const users = await db('users')
+                    .select([
+                        'users.*',
+                        'roles.role_name',
+                        'roles.permissions',
+                        'roles.can_approve_changes',
+                        'roles.can_manage_users'
+                    ])
+                    .join('roles', 'users.role_id', 'roles.id')
+                    .where('users.is_active', true);
+
+                for (const candidateUser of users) {
+                    // Skip locked users
+                    if (candidateUser.locked_until && new Date(candidateUser.locked_until) > new Date()) {
+                        continue;
+                    }
+
+                    // Check if PIN matches this user's password
+                    const pinValid = await bcrypt.compare(password, candidateUser.password_hash);
+                    if (pinValid) {
+                        user = candidateUser;
+                        break;
+                    }
+                }
+
+                if (!user) {
+                    await this.logFailedAttempt('PIN-only', ipAddress, 'invalid_pin');
+                    throw new Error('Invalid PIN');
+                }
             }
 
             // Reset failed login attempts on successful login
@@ -81,7 +116,8 @@ class AuthService {
                 userId: user.id, 
                 username: user.username, 
                 role: user.role_name,
-                sessionId: sessionData.sessionId
+                sessionId: sessionData.sessionId,
+                loginType: username ? 'username' : 'PIN-only'
             }, 'User authenticated successfully');
 
             return {
@@ -92,7 +128,7 @@ class AuthService {
                     full_name: user.full_name,
                     email: user.email,
                     role: user.role_name,
-                    permissions: JSON.parse(user.permissions),
+                    permissions: Array.isArray(user.permissions) ? user.permissions : (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions),
                     storno_daily_limit: parseFloat(user.storno_daily_limit),
                     storno_emergency_limit: parseFloat(user.storno_emergency_limit),
                     storno_used_today: parseFloat(user.storno_used_today),
@@ -108,7 +144,7 @@ class AuthService {
             logger.error({ 
                 service: 'AuthService', 
                 function: 'authenticateUser', 
-                username, 
+                username: username || 'PIN-only', 
                 error: error.message 
             }, 'Authentication failed');
             
@@ -145,7 +181,7 @@ class AuthService {
             userId: user.id,
             username: user.username,
             role: user.role_name,
-            permissions: JSON.parse(user.permissions),
+            permissions: Array.isArray(user.permissions) ? user.permissions : (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions),
             expiresAt: expiresAt.getTime(),
             ipAddress,
             userAgent
@@ -200,7 +236,7 @@ class AuthService {
             userId: dbSession.user_id,
             username: dbSession.username,
             role: dbSession.role_name,
-            permissions: JSON.parse(dbSession.permissions),
+            permissions: Array.isArray(dbSession.permissions) ? dbSession.permissions : (typeof dbSession.permissions === 'string' ? JSON.parse(dbSession.permissions) : dbSession.permissions),
             expiresAt: new Date(dbSession.expires_at).getTime(),
             ipAddress: dbSession.ip_address,
             userAgent: dbSession.user_agent
@@ -412,7 +448,7 @@ class AuthService {
             full_name: user.full_name,
             email: user.email,
             role: user.role_name,
-            permissions: JSON.parse(user.permissions),
+            permissions: Array.isArray(user.permissions) ? user.permissions : (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions),
             storno_daily_limit: parseFloat(user.storno_daily_limit),
             storno_emergency_limit: parseFloat(user.storno_emergency_limit),
             storno_used_today: parseFloat(user.storno_used_today),

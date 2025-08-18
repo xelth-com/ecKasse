@@ -98,7 +98,10 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT column_name FROM information_schema.columns WHERE table_name = ''users'';\")",
       "Bash(NODE_ENV=production node packages/core/scripts/reset_admin_pin.js)",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"CREATE EXTENSION IF NOT EXISTS vector;\")",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"CREATE TABLE IF NOT EXISTS item_embeddings (item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE, item_embedding TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"CREATE TABLE IF NOT EXISTS item_embeddings (item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE, item_embedding TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, username, full_name FROM users WHERE is_active = true;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, role_name, permissions, length(permissions), left(permissions, 10) FROM roles WHERE id = 1;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, role_name, permissions::text FROM roles WHERE id = 1;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -173,68 +173,57 @@ function createPinpadStore() {
                     const { authStore } = await import('./authStore.js');
                     
                     try {
-                        // First fetch available users
-                        await authStore.fetchUsers();
-                        let authState;
-                        authStore.subscribe(state => authState = state)();
+                        // Use PIN-only login by passing null as username
+                        const loginResult = await authStore.login(null, value);
                         
-                        // Try to login with each user until one succeeds
-                        for (const user of authState.users) {
-                            try {
-                                const loginResult = await authStore.login(user.username, value);
-                                if (loginResult.success) {
-                                    // Login successful - send success message to agent
-                                    const { agentStore } = await import('./agentStore.js');
-                                    
-                                    // Get current user info
-                                    let currentAuthState;
-                                    authStore.subscribe(state => currentAuthState = state)();
-                                    
-                                    const welcomeMessage = `✅ Erfolgreich angemeldet als ${currentAuthState.currentUser.full_name}!\n\n⏰ Überprüfe Systemzeit...\n🔍 Prüfe ausstehende Transaktionen...\n\nBitte warten Sie einen Moment...`;
-                                    
-                                    agentStore.addMessage({
-                                        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                                        type: 'agent',
-                                        message: welcomeMessage
-                                    });
-                                    
-                                    // Check for system issues asynchronously
-                                    setTimeout(async () => {
-                                        await this.checkSystemStatus(currentAuthState.currentUser, agentStore);
-                                    }, 1000);
-                                    
-                                    // Clear input and deactivate pinpad
-                                    update(state => ({
-                                        ...state,
-                                        liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
-                                        errorMessage: null
-                                    }));
-                                    
-                                    // Deactivate pinpad after successful login
-                                    this.deactivate();
-                                    return;
-                                }
-                            } catch (userError) {
-                                // Try next user
-                                continue;
-                            }
+                        if (loginResult.success) {
+                            // Login successful - send success message to agent
+                            const { agentStore } = await import('./agentStore.js');
+                            
+                            // Get current user info
+                            let currentAuthState;
+                            authStore.subscribe(state => currentAuthState = state)();
+                            
+                            const welcomeMessage = `✅ Erfolgreich angemeldet als ${currentAuthState.currentUser.full_name}!\n\n⏰ Überprüfe Systemzeit...\n🔍 Prüfe ausstehende Transaktionen...\n\nBitte warten Sie einen Moment...`;
+                            
+                            agentStore.addMessage({
+                                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                                type: 'agent',
+                                message: welcomeMessage
+                            });
+                            
+                            // Check for system issues asynchronously
+                            setTimeout(async () => {
+                                await this.checkSystemStatus(currentAuthState.currentUser, agentStore);
+                            }, 1000);
+                            
+                            // Clear input and deactivate pinpad
+                            update(state => ({
+                                ...state,
+                                liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
+                                errorMessage: null
+                            }));
+                            
+                            // Deactivate pinpad after successful login
+                            this.deactivate();
+                            return;
+                        } else {
+                            // Login failed - send error message to agent
+                            const { agentStore } = await import('./agentStore.js');
+                            agentStore.addMessage({
+                                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                                type: 'agent',
+                                message: '❌ Ungültige PIN-Eingabe!\n\nBitte überprüfen Sie Ihre PIN und versuchen Sie es erneut. Sie können eine 4-6 stellige PIN über das Tastenfeld eingeben.'
+                            });
+                            
+                            // Clear input but keep pinpad active for retry
+                            update(state => ({
+                                ...state,
+                                liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
+                                errorMessage: null
+                            }));
+                            return;
                         }
-                        
-                        // If no user matched, send error message to agent
-                        const { agentStore } = await import('./agentStore.js');
-                        agentStore.addMessage({
-                            timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                            type: 'agent',
-                            message: '❌ Ungültige PIN-Eingabe!\n\nBitte überprüfen Sie Ihre PIN und versuchen Sie es erneut. Sie können eine 4-6 stellige PIN über das Tastenfeld eingeben.'
-                        });
-                        
-                        // Clear input but keep pinpad active for retry
-                        update(state => ({
-                            ...state,
-                            liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
-                            errorMessage: null
-                        }));
-                        return;
                         
                     } catch (error) {
                         console.log('Direct login failed, falling back to agent message');

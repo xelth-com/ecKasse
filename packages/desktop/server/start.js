@@ -174,8 +174,8 @@ async function handleWebSocketMessage(ws, rawMessage) {
     // Authentication commands
     } else if (command === 'login') {
       const { username, password, ipAddress, userAgent } = payload;
-      if (!username || !password) {
-        throw new Error('Username and password are required');
+      if (!password) {
+        throw new Error('Password is required');
       }
       responsePayload = await services.auth.authenticateUser(
         username, 
