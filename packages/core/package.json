@@ -13,5 +13,10 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.70.0",
+    "ip-address": "^10.0.1",
+    "tcp-ping": "^0.1.1"
   }
 }

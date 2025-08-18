@@ -67,8 +67,13 @@
   },
   "dependencies": {
     "@google/genai": "^1.8.0",
+    "@hashgraph/sdk": "^2.70.0",
+    "bcrypt": "^6.0.0",
+    "ip-address": "^10.0.1",
     "knex": "^3.1.0",
     "pg": "^8.16.3",
+    "pino": "^9.9.0",
+    "tcp-ping": "^0.1.1",
     "ws": "^8.18.2"
   }
 }
