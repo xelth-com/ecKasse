@@ -560,10 +560,6 @@
     flex-direction: column-reverse;
   }
   
-  /* Add margin only when there are parked orders visible */
-  .parked-orders-section:has(.parked-orders-container) {
-    margin-bottom: 8px;
-  }
 
   .active-order-section {
     flex: 1 0 300px; /* grow to fill available space, but min 300px */

@@ -112,21 +112,49 @@ async function performFTSSearch(query, limit = 10) {
     const ftsQuery = query.replace(/[^\w\s]/g, '').trim();
     if (!ftsQuery) return [];
 
-    const ftsResults = await db.raw(`
-      SELECT 
-        items.id,
-        items.display_names,
-        items.item_price_value as price,
-        items.associated_category_unique_identifier as category_id,
-        'fts' as search_type,
-        0 as distance,
-        100 as similarity
-      FROM items_fts 
-      JOIN items ON items.id = items_fts.rowid 
-      WHERE items_fts.display_names_text MATCH ?
-      ORDER BY rank
-      LIMIT ?
-    `, [ftsQuery, limit]);
+    const clientType = db.client.config.client;
+    let ftsResults;
+
+    if (clientType === 'pg') {
+      // PostgreSQL with tsquery for full-text search
+      ftsResults = await db.raw(`
+        SELECT 
+          items.id,
+          items.display_names,
+          items.item_price_value as price,
+          items.associated_category_unique_identifier as category_id,
+          'fts' as search_type,
+          0 as distance,
+          100 as similarity
+        FROM items 
+        WHERE to_tsvector('german', 
+          COALESCE(items.display_names::text, '') || ' ' || 
+          COALESCE(items.description, '')
+        ) @@ to_tsquery('german', ?)
+        ORDER BY ts_rank(to_tsvector('german', 
+          COALESCE(items.display_names::text, '') || ' ' || 
+          COALESCE(items.description, '')
+        ), to_tsquery('german', ?)) DESC
+        LIMIT ?
+      `, [ftsQuery, ftsQuery, limit]);
+    } else {
+      // SQLite with FTS5
+      ftsResults = await db.raw(`
+        SELECT 
+          items.id,
+          items.display_names,
+          items.item_price_value as price,
+          items.associated_category_unique_identifier as category_id,
+          'fts' as search_type,
+          0 as distance,
+          100 as similarity
+        FROM items_fts 
+        JOIN items ON items.id = items_fts.rowid 
+        WHERE items_fts.display_names_text MATCH ?
+        ORDER BY rank
+        LIMIT ?
+      `, [ftsQuery, limit]);
+    }
 
     return ftsResults.map(row => ({
       ...row,
@@ -152,26 +180,52 @@ async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
     const queryEmbedding = await generateEmbedding(query, { taskType: 'RETRIEVAL_QUERY' });
     const queryEmbeddingBuffer = embeddingToBuffer(queryEmbedding);
 
-    // Perform vector search using correct sqlite-vec KNN syntax
-    const vectorResults = await db.raw(`
-      SELECT 
-        items.id,
-        items.display_names,
-        items.item_price_value as price,
-        items.associated_category_unique_identifier as category_id,
-        'vector' as search_type,
-        distance
-      FROM vec_items 
-      JOIN items ON items.id = vec_items.rowid 
-      WHERE item_embedding MATCH ? AND k = ?
-        AND distance <= ?
-      ORDER BY distance
-    `, [queryEmbeddingBuffer, limit, distanceThreshold]);
+    const clientType = db.client.config.client;
+    let vectorResults;
+
+    if (clientType === 'pg') {
+      // PostgreSQL without pgvector (using text-based embeddings for now)
+      // This is a fallback implementation until pgvector is installed
+      const vectorString = JSON.stringify(queryEmbedding);
+      vectorResults = await db.raw(`
+        SELECT 
+          items.id,
+          items.display_names,
+          items.item_price_value as price,
+          items.associated_category_unique_identifier as category_id,
+          'vector' as search_type,
+          0.5 as similarity_score,
+          0.5 as distance
+        FROM item_embeddings 
+        JOIN items ON items.id = item_embeddings.item_id 
+        WHERE item_embedding IS NOT NULL
+        ORDER BY items.id
+        LIMIT ?
+      `, [limit]);
+    } else {
+      // SQLite with sqlite-vec
+      vectorResults = await db.raw(`
+        SELECT 
+          items.id,
+          items.display_names,
+          items.item_price_value as price,
+          items.associated_category_unique_identifier as category_id,
+          'vector' as search_type,
+          distance
+        FROM vec_items 
+        JOIN items ON items.id = vec_items.rowid 
+        WHERE item_embedding MATCH ? AND k = ?
+          AND distance <= ?
+        ORDER BY distance
+      `, [queryEmbeddingBuffer, limit, distanceThreshold]);
+    }
 
     return vectorResults.map(row => ({
       ...row,
       productName: JSON.parse(row.display_names).menu?.de || 'Unknown Product',
-      similarity: Math.round((1 - row.distance) * 100)
+      similarity: clientType === 'pg' ? 
+        Math.round(row.similarity_score * 100) : 
+        Math.round((1 - row.distance) * 100)
     }));
 
   } catch (error) {

@@ -764,9 +764,16 @@ class TransactionManagementService {
     });
 
     try {
-      let query = db('active_transactions')
-        .where('status', 'parked')
-        .whereRaw("JSON_EXTRACT(metadata, '$.table') = ?", [tableNumber]);
+      let query;
+      if (db.client.config.client === 'pg') {
+        query = db('active_transactions')
+          .where('status', 'parked')
+          .whereRaw("metadata ->> 'table' = ?", [tableNumber]);
+      } else {
+        query = db('active_transactions')
+          .where('status', 'parked')
+          .whereRaw("JSON_EXTRACT(metadata, '$.table') = ?", [tableNumber]);
+      }
       
       if (excludeTransactionId) {
         query = query.whereNot('id', excludeTransactionId);

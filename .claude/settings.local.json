@@ -86,7 +86,19 @@
       "Bash(pm2 stop:*)",
       "Bash(pm2 delete:*)",
       "Bash(pm2 start:*)",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"DELETE FROM users WHERE username = ''admin'' AND full_name = ''System Administrator'';\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"DELETE FROM users WHERE username = ''admin'' AND full_name = ''System Administrator'';\")",
+      "Bash(./deploy-server.sh:*)",
+      "Bash(pm2 reload:*)",
+      "Bash(nginx:*)",
+      "Bash(systemctl reload:*)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, username, full_name, is_active FROM users WHERE username = ''admin'';\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, category_names FROM categories;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names, associated_category_unique_identifier FROM items LIMIT 3;\")",
+      "Bash(kill:*)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT column_name FROM information_schema.columns WHERE table_name = ''users'';\")",
+      "Bash(NODE_ENV=production node packages/core/scripts/reset_admin_pin.js)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"CREATE EXTENSION IF NOT EXISTS vector;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"CREATE TABLE IF NOT EXISTS item_embeddings (item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE, item_embedding TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

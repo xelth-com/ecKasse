@@ -883,7 +883,7 @@
     const productData = event.detail.data;
     if (productData && productData.id) {
       // Always call addItem - it will handle initialization automatically
-      orderStore.addItem(productData.id, 1, 1);
+      orderStore.addItem(productData.id, 1);
     }
   }
 
@@ -1001,7 +1001,7 @@
       // Есть активный заказ с товарами и столом - паркуем БЕЗ обновления времени
       addLog('INFO', `Collapsing order with table ${hasTable} without time update`);
       try {
-        await orderStore.parkCurrentOrder(hasTable, 1, false); // updateTimestamp = false
+        await orderStore.parkCurrentOrder(hasTable, false); // updateTimestamp = false
         addLog('SUCCESS', 'Order collapsed successfully');
         await parkedOrdersStore.refresh();
       } catch (error) {
@@ -1057,7 +1057,7 @@
       // Нет активного заказа - инициализируем новый неинициализированный заказ для ввода стола
       addLog('INFO', 'No active order - initializing new order for table entry');
       try {
-        await orderStore.initializeOrder(1, {});
+        await orderStore.initializeOrder({});
         addLog('INFO', 'Order initialized, activating pinpad for table number entry');
         pinpadStore.activateTableEntry();
       } catch (error) {

@@ -20,9 +20,16 @@ async function createProduct(productData, initiator = { type: 'system', id: null
             // Step 1: Find the category ID by searching for matching categoryName
             logger.info({ categoryName, type: typeof categoryName }, 'Looking up category');
             
-            const category = await trx('categories')
-                .whereRaw("JSON_EXTRACT(category_names, '$.de') = ?", [categoryName])
-                .first();
+            let category;
+            if (trx.client.config.client === 'pg') {
+                category = await trx('categories')
+                    .whereRaw("category_names ->> 'de' = ?", [categoryName])
+                    .first();
+            } else {
+                category = await trx('categories')
+                    .whereRaw("JSON_EXTRACT(category_names, '$.de') = ?", [categoryName])
+                    .first();
+            }
 
             if (!category) {
                 throw new Error(`Category '${categoryName}' not found. Available categories should be queried first.`);
@@ -77,11 +84,22 @@ async function createProduct(productData, initiator = { type: 'system', id: null
             const embedding = await generateEmbedding(embeddingText);
             const embeddingBuffer = embeddingToBuffer(embedding);
 
-            // Step 8: Insert the vector into vec_items table with the same rowid as the item ID
-            await trx.raw(`
-                INSERT INTO vec_items(rowid, item_embedding) 
-                VALUES (?, ?)
-            `, [newItemId, embeddingBuffer]);
+            // Step 8: Insert the vector into database (conditional on database type)
+            const clientType = trx.client.config.client;
+            if (clientType === 'pg') {
+                // PostgreSQL: Insert into item_embeddings table as JSON (fallback without pgvector)
+                const vectorString = JSON.stringify(embedding);
+                await trx.raw(`
+                    INSERT INTO item_embeddings(item_id, item_embedding) 
+                    VALUES (?, ?)
+                `, [newItemId, vectorString]);
+            } else {
+                // SQLite: Insert into vec_items virtual table
+                await trx.raw(`
+                    INSERT INTO vec_items(rowid, item_embedding) 
+                    VALUES (?, ?)
+                `, [newItemId, embeddingBuffer]);
+            }
 
             logger.info({ newItemId }, 'Vector embedding inserted into vec_items table');
 
@@ -242,9 +260,16 @@ async function applyProductUpdateDirectly(trx, id, updates, userSession, current
     
     // Handle category update
     if (updates.categoryName) {
-        const newCategory = await trx('categories')
-            .whereRaw("JSON_EXTRACT(category_names, '$.de') = ?", [updates.categoryName])
-            .first();
+        let newCategory;
+        if (trx.client.config.client === 'pg') {
+            newCategory = await trx('categories')
+                .whereRaw("category_names ->> 'de' = ?", [updates.categoryName])
+                .first();
+        } else {
+            newCategory = await trx('categories')
+                .whereRaw("JSON_EXTRACT(category_names, '$.de') = ?", [updates.categoryName])
+                .first();
+        }
         
         if (!newCategory) {
             throw new Error(`Category '${updates.categoryName}' not found`);

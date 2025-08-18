@@ -225,6 +225,20 @@ async function handleWebSocketMessage(ws, rawMessage) {
         timeDifferenceMs,
         timeDifferenceSeconds
       };
+    } else if (command === 'getParkedTransactions') {
+      responsePayload = await services.transactionManagement.getParkedTransactions();
+    } else if (command === 'parkTransaction') {
+      const { transactionId, tableNumber } = payload;
+      responsePayload = await services.transactionManagement.parkTransaction(transactionId, tableNumber);
+    } else if (command === 'activateTransaction') {
+      const { transactionId } = payload;
+      responsePayload = await services.transactionManagement.activateTransaction(transactionId);
+    } else if (command === 'checkTableAvailability') {
+      const { tableNumber } = payload;
+      responsePayload = await services.transactionManagement.checkTableAvailability(tableNumber);
+    } else if (command === 'updateTransactionMetadata') {
+      const { transactionId, metadata } = payload;
+      responsePayload = await services.transactionManagement.updateTransactionMetadata(transactionId, metadata);
     } else {
       status = 'error';
       responsePayload = { message: 'Unknown command', originalCommand: command };

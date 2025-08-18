@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { wsStore } from './wsStore.js';
 import { addLog } from './logStore.js';
 import { notificationStore } from './notificationStore.js';
@@ -120,10 +120,21 @@ function createOrderStore() {
 		}
 	});
 
-	async function initializeOrder(userId = 1, metadata = {}) {
+	// Helper function to get authenticated user ID
+	function getAuthenticatedUserId() {
+		const currentUser = get(authStore)?.currentUser;
+		if (!currentUser?.id) {
+			throw new Error('User must be authenticated to perform this action');
+		}
+		return currentUser.id;
+	}
+
+	async function initializeOrder(metadata = {}) {
 		if (initializationPromise) {
 			return initializationPromise;
 		}
+
+		const userId = getAuthenticatedUserId();
 
 		update(s => ({ ...s, status: 'initializing' }));
 		addLog('INFO', 'Initializing new order...');
@@ -150,7 +161,8 @@ function createOrderStore() {
 		return initializationPromise;
 	}
 
-	async function addItem(itemId, quantity = 1, userId = 1) {
+	async function addItem(itemId, quantity = 1) {
+		const userId = getAuthenticatedUserId();
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
 
@@ -193,7 +205,8 @@ function createOrderStore() {
 		addLog('ERROR', 'Cannot add item: invalid order state.');
 	}
 
-	async function finishOrder(paymentData, userId = 1) {
+	async function finishOrder(paymentData) {
+		const userId = getAuthenticatedUserId();
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
 
@@ -213,7 +226,8 @@ function createOrderStore() {
 		});
 	}
 
-	async function parkCurrentOrder(tableIdentifier, userId = 1, updateTimestamp = true) {
+	async function parkCurrentOrder(tableIdentifier, updateTimestamp = true) {
+		const userId = getAuthenticatedUserId();
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
 
@@ -268,7 +282,8 @@ function createOrderStore() {
 	}
 
 
-	async function assignTableNumber(tableNumber, userId = 1) {
+	async function assignTableNumber(tableNumber) {
+		const userId = getAuthenticatedUserId();
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
 

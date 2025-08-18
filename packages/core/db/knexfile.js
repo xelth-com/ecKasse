@@ -21,9 +21,9 @@ module.exports = {
     client: 'pg',
     connection: {
       host: process.env.PG_HOST || 'localhost',
-      port: process.env.PG_PORT || 5432,
+      port: parseInt(process.env.PG_PORT) || 5432,
       user: process.env.PG_USERNAME,
-      password: process.env.PG_PASSWORD,
+      password: String(process.env.PG_PASSWORD),
       database: process.env.PG_DATABASE
     },
     migrations: {
