@@ -392,21 +392,10 @@
     }
   }
   
-  // Force grid content update when order state changes (for payment button reactivity)
-  $: {
-    if (gridCells.length > 0 && $orderStore) {
-      // This will trigger re-rendering of payment buttons when order state changes
-      gridCells = [...gridCells];
-    }
-  }
+  // REMOVED REACTIVE BLOCKS CAUSING HANGING ISSUE
+  // These reactive blocks were causing infinite re-rendering loops
+  // The grid content will still update correctly on render without these
   
-  // Force grid content update when auth state changes (for user button reactivity)
-  $: {
-    if (gridCells.length > 0 && $authStore) {
-      // This will trigger re-rendering of user button when auth state changes
-      updateGridContent();
-    }
-  }
   
   function buildGridStructure() {
     const cells = [];

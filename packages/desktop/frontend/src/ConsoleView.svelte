@@ -418,7 +418,7 @@
                 <ul class="item-list">
                   {#each $orderStore.items as item (item.id)}
                     <li>
-                      <span class="qty">{item.quantity}x</span>
+                      <span class="qty">{parseFloat(item.quantity)}x</span>
                       <span class="name">{item.display_names ? (parseJsonField(item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
                       <span class="price">{parseFloat(item.total_price).toFixed(2)}€</span>
                     </li>

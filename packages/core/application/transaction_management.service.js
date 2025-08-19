@@ -1,5 +1,6 @@
 const logger = require('../config/logger');
 const crypto = require('crypto');
+const { parseJsonIfNeeded } = require('../utils/db-helper');
 
 class TransactionManagementService {
   constructor(transactionRepository, productRepository, loggingService, printerService) {
@@ -135,7 +136,7 @@ class TransactionManagementService {
       processData: processData,
       payment_type: paymentData.type,
       final_amount: updateResult.totalAmount,
-      metadata: transaction.metadata || {}
+      metadata: parseJsonIfNeeded(transaction.metadata) || {}
     };
     // Diagnostic Log: Log payload before sending
     logger.info({ fiscalPayload, operation: 'finishTransaction' }, 'Preparing to send payload to logFiscalEvent');
@@ -177,7 +178,7 @@ class TransactionManagementService {
   async parkTransaction(transactionId, tableIdentifier, userId, updateTimestamp = true) {
     const transaction = await this.transactionRepository.findActiveById(transactionId);
     if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found`);
-    const metadata = transaction.metadata || {};
+    const metadata = parseJsonIfNeeded(transaction.metadata) || {};
     metadata.table = tableIdentifier;
     const updateData = { status: 'parked', metadata: JSON.stringify(metadata) };
     if (updateTimestamp) updateData.updated_at = new Date().toISOString();
@@ -209,6 +210,11 @@ class TransactionManagementService {
   }
 
   async checkTableNumberInUse(tableNumber, excludeTransactionId = null) {
+    return this.transactionRepository.isTableInUse(tableNumber, excludeTransactionId);
+  }
+
+  async checkTableAvailability(tableNumber, excludeTransactionId = null) {
+    logger.info({ service: 'TransactionManagementService', function: 'checkTableAvailability', tableNumber, excludeTransactionId });
     return this.transactionRepository.isTableInUse(tableNumber, excludeTransactionId);
   }
 }

@@ -143,7 +143,7 @@
               <div class="items-list">
                 {#each receipt.items as item (item.id)}
                   <div class="item-row">
-                    <span class="item-qty">{item.quantity}x</span>
+                    <span class="item-qty">{parseFloat(item.quantity)}x</span>
                     <span class="item-name">{getItemName(item)}</span>
                     <span class="item-price">{formatCurrency(item.total_price)}</span>
                   </div>
