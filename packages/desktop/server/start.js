@@ -66,200 +66,236 @@ async function handleWebSocketMessage(ws, rawMessage) {
     processedOperationIds.delete(operationId);
   }, OPERATION_ID_TTL);
 
-  // Command processing
-  let responsePayload;
-  let status = 'success';
-  let responseCommand = command + 'Response';
-
+  // Global try-catch for all command processing to ensure robust error handling
   try {
-    if (command === 'ping_ws') {
-      responsePayload = { message: 'pong_ws', receivedPayload: payload };
-    } else if (command === 'listLayouts') {
-      responsePayload = await services.layout.listLayouts();
-    } else if (command === 'activateLayout') {
-      await services.layout.activateLayout(payload.id);
-      responsePayload = { success: true, message: `Layout ${payload.id} activated.` };
-    } else if (command === 'saveLayout') {
-      const categories = await db('categories').select('*');
-      responsePayload = await services.layout.saveLayout(payload.name, categories);
-    } else if (command === 'findOrCreateActiveTransaction') {
-      const { criteria, userId } = payload;
-      responsePayload = await services.transactionManagement.findOrCreateActiveTransaction(criteria, userId);
-      if (responsePayload && responsePayload.id) {
-          const items = await db('active_transaction_items')
-            .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-            .select('active_transaction_items.*', 'items.display_names')
-            .where('active_transaction_items.active_transaction_id', responsePayload.id);
-          responsePayload.items = items.map(item => ({
-            ...item,
-            display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
-          }));
-      }
-      responseCommand = 'orderUpdated';
-    } else if (command === 'addItemToTransaction') {
-      const { transactionId, itemId, quantity, userId } = payload;
-      responsePayload = await services.transactionManagement.addItemToTransaction(transactionId, itemId, quantity, userId);
-      if (responsePayload && responsePayload.id) {
-          const items = await db('active_transaction_items')
-            .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-            .select('active_transaction_items.*', 'items.display_names')
-            .where('active_transaction_items.active_transaction_id', responsePayload.id);
-          responsePayload.items = items.map(item => ({
-            ...item,
-            display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
-          }));
-      }
-      responseCommand = 'orderUpdated';
-    } else if (command === 'finishTransaction') {
-      const { transactionId, paymentData, userId } = payload;
-      const result = await services.transactionManagement.finishTransaction(transactionId, paymentData, userId);
-      
-      responsePayload = {
-        ...result,
-        printStatus: result.printStatus || { status: 'unknown' }
-      };
-      responseCommand = 'transactionFinished';
-    } else if (command === 'reprintReceipt') {
-      const { transactionId } = payload;
-      if (!transactionId) {
-        throw new Error('transactionId is required for reprint');
-      }
-      responsePayload = await services.printer.reprintReceipt(transactionId);
-      responseCommand = 'reprintResult';
-    } else if (command === 'getCategories') {
-      const categories = await db('categories').select('*');
-      responsePayload = categories.map(category => ({
-        ...category,
-        category_names: typeof category.category_names === 'object' ? JSON.stringify(category.category_names || {}) : category.category_names,
-        audit_trail: typeof category.audit_trail === 'object' ? JSON.stringify(category.audit_trail || {}) : category.audit_trail
-      }));
-    } else if (command === 'getItemsByCategory') {
-      const { categoryId } = payload;
-      if (!categoryId) {
-        throw new Error('categoryId is required');
-      }
-      const items = await services.product.getProductsByCategoryId(categoryId);
-      responsePayload = items.map(item => ({
-        ...item,
-        display_names: typeof item.display_names === 'object' ? JSON.stringify(item.display_names || {}) : item.display_names,
-        pricing_schedules: typeof item.pricing_schedules === 'object' ? JSON.stringify(item.pricing_schedules || []) : item.pricing_schedules,
-        availability_schedule: typeof item.availability_schedule === 'object' ? JSON.stringify(item.availability_schedule || {}) : item.availability_schedule,
-        additional_item_attributes: typeof item.additional_item_attributes === 'object' ? JSON.stringify(item.additional_item_attributes || {}) : item.additional_item_attributes,
-        item_flags: typeof item.item_flags === 'object' ? JSON.stringify(item.item_flags || {}) : item.item_flags,
-        audit_trail: typeof item.audit_trail === 'object' ? JSON.stringify(item.audit_trail || {}) : item.audit_trail
-      }));
-    } else if (command === 'getRecentReceipts') {
-      const { limit } = payload || {};
-      const result = await services.reporting.getRecentTransactions(limit);
-      if (result.success) {
-        responsePayload = {
-          ...result,
-          transactions: result.transactions.map(tx => ({
-            ...tx,
-            metadata: typeof tx.metadata === 'object' && tx.metadata !== null ? JSON.stringify(tx.metadata) : tx.metadata,
-            items: tx.items.map(item => ({
+    // Command processing
+    let responsePayload;
+    let status = 'success';
+    let responseCommand = command + 'Response';
+
+    try {
+      if (command === 'ping_ws') {
+        responsePayload = { message: 'pong_ws', receivedPayload: payload };
+      } else if (command === 'listLayouts') {
+        responsePayload = await services.layout.listLayouts();
+      } else if (command === 'activateLayout') {
+        await services.layout.activateLayout(payload.id);
+        responsePayload = { success: true, message: `Layout ${payload.id} activated.` };
+      } else if (command === 'saveLayout') {
+        const categories = await db('categories').select('*');
+        responsePayload = await services.layout.saveLayout(payload.name, categories);
+      } else if (command === 'findOrCreateActiveTransaction') {
+        const { criteria, userId } = payload;
+        responsePayload = await services.transactionManagement.findOrCreateActiveTransaction(criteria, userId);
+        if (responsePayload && responsePayload.id) {
+            const items = await db('active_transaction_items')
+              .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+              .select('active_transaction_items.*', 'items.display_names')
+              .where('active_transaction_items.active_transaction_id', responsePayload.id);
+            responsePayload.items = items.map(item => ({
               ...item,
               display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
-            }))
-          }))
+            }));
+        }
+        responseCommand = 'orderUpdated';
+      } else if (command === 'addItemToTransaction') {
+        const { transactionId, itemId, quantity, userId } = payload;
+        responsePayload = await services.transactionManagement.addItemToTransaction(transactionId, itemId, quantity, userId);
+        if (responsePayload && responsePayload.id) {
+            const items = await db('active_transaction_items')
+              .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+              .select('active_transaction_items.*', 'items.display_names')
+              .where('active_transaction_items.active_transaction_id', responsePayload.id);
+            responsePayload.items = items.map(item => ({
+              ...item,
+              display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+            }));
+        }
+        responseCommand = 'orderUpdated';
+      } else if (command === 'finishTransaction') {
+        const { transactionId, paymentData, userId } = payload;
+        const result = await services.transactionManagement.finishTransaction(transactionId, paymentData, userId);
+        
+        responsePayload = {
+          ...result,
+          printStatus: result.printStatus || { status: 'unknown' }
         };
-      } else {
-        responsePayload = result;
-      }
-    } else if (command === 'logClientEvent') {
-      const { level, message, context } = payload;
-      services.logging.logSystemEvent(level, message, { ...context, source: 'frontend', clientId: ws.id });
-      return; // Fire-and-forget logs
-    
-    // Authentication commands
-    } else if (command === 'login') {
-      const { username, password, ipAddress, userAgent } = payload;
-      if (!password) {
-        throw new Error('Password is required');
-      }
-      responsePayload = await services.auth.authenticateUser(
-        username, 
-        password, 
-        ipAddress || 'unknown', 
-        userAgent || 'unknown'
-      );
-    } else if (command === 'logout') {
-      const { sessionId } = payload;
-      if (!sessionId) {
-        throw new Error('SessionId is required');
-      }
-      const result = await services.auth.logout(sessionId);
-      responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
-    } else if (command === 'getCurrentUser') {
-      const { sessionId } = payload;
-      if (!sessionId) {
-        throw new Error('SessionId is required');
-      }
-      const user = await services.auth.getCurrentUser(sessionId);
-      responsePayload = user ? { success: true, user } : { success: false, error: 'Invalid session' };
-    
-    // Product management with permissions
-    } else if (command === 'updateProduct') {
-      const { productId, updates, sessionId } = payload;
-      if (!productId || !updates || !sessionId) {
-        throw new Error('ProductId, updates, and sessionId are required');
-      }
-      responsePayload = await services.product.updateExistingProduct(productId, updates, sessionId);
-    
-    // Additional commands truncated for brevity - add remaining as needed
-    } else if (command === 'getLoginUsers') {
-      responsePayload = await services.auth.getLoginUsers();
-    } else if (command === 'systemTimeCheck') {
-      const { clientTime } = payload;
-      if (!clientTime) {
-        throw new Error('clientTime is required');
-      }
-      const serverTime = new Date();
-      const clientTimeObj = new Date(clientTime);
-      const timeDifferenceMs = serverTime.getTime() - clientTimeObj.getTime();
-      const timeDifferenceSeconds = Math.floor(timeDifferenceMs / 1000);
+        responseCommand = 'transactionFinished';
+      } else if (command === 'reprintReceipt') {
+        const { transactionId } = payload;
+        if (!transactionId) {
+          throw new Error('transactionId is required for reprint');
+        }
+        responsePayload = await services.printer.reprintReceipt(transactionId);
+        responseCommand = 'reprintResult';
+      } else if (command === 'getCategories') {
+        const categories = await db('categories').select('*');
+        // Ensure all JSON fields are properly stringified to handle database dialect differences
+        responsePayload = categories.map(category => ({
+          ...category,
+          category_names: typeof category.category_names === 'string' ? category.category_names : JSON.stringify(category.category_names || {}),
+          audit_trail: typeof category.audit_trail === 'string' ? category.audit_trail : JSON.stringify(category.audit_trail || {})
+        }));
+      } else if (command === 'getItemsByCategory') {
+        const { categoryId } = payload;
+        if (!categoryId) {
+          throw new Error('categoryId is required');
+        }
+        const items = await services.product.getProductsByCategoryId(categoryId);
+        responsePayload = items.map(item => ({
+          ...item,
+          display_names: typeof item.display_names === 'object' ? JSON.stringify(item.display_names || {}) : item.display_names,
+          pricing_schedules: typeof item.pricing_schedules === 'object' ? JSON.stringify(item.pricing_schedules || []) : item.pricing_schedules,
+          availability_schedule: typeof item.availability_schedule === 'object' ? JSON.stringify(item.availability_schedule || {}) : item.availability_schedule,
+          additional_item_attributes: typeof item.additional_item_attributes === 'object' ? JSON.stringify(item.additional_item_attributes || {}) : item.additional_item_attributes,
+          item_flags: typeof item.item_flags === 'object' ? JSON.stringify(item.item_flags || {}) : item.item_flags,
+          audit_trail: typeof item.audit_trail === 'object' ? JSON.stringify(item.audit_trail || {}) : item.audit_trail
+        }));
+      } else if (command === 'getRecentReceipts') {
+        const { limit } = payload || {};
+        const result = await services.reporting.getRecentTransactions(limit);
+        if (result.success) {
+          responsePayload = {
+            ...result,
+            transactions: result.transactions.map(tx => ({
+              ...tx,
+              metadata: typeof tx.metadata === 'object' && tx.metadata !== null ? JSON.stringify(tx.metadata) : tx.metadata,
+              items: tx.items.map(item => ({
+                ...item,
+                display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+              }))
+            }))
+          };
+        } else {
+          responsePayload = result;
+        }
+      } else if (command === 'logClientEvent') {
+        const { level, message, context } = payload;
+        services.logging.logSystemEvent(level, message, { ...context, source: 'frontend', clientId: ws.id });
+        return; // Fire-and-forget logs
       
-      responsePayload = {
-        serverTime: serverTime.toISOString(),
-        clientTime: clientTime,
-        timeDifferenceMs,
-        timeDifferenceSeconds
-      };
-    } else if (command === 'getParkedTransactions') {
-      responsePayload = await services.transactionManagement.getParkedTransactions();
-    } else if (command === 'parkTransaction') {
-      const { transactionId, tableNumber } = payload;
-      responsePayload = await services.transactionManagement.parkTransaction(transactionId, tableNumber);
-    } else if (command === 'activateTransaction') {
-      const { transactionId } = payload;
-      responsePayload = await services.transactionManagement.activateTransaction(transactionId);
-    } else if (command === 'checkTableAvailability') {
-      const { tableNumber } = payload;
-      responsePayload = await services.transactionManagement.checkTableAvailability(tableNumber);
-    } else if (command === 'updateTransactionMetadata') {
-      const { transactionId, metadata } = payload;
-      responsePayload = await services.transactionManagement.updateTransactionMetadata(transactionId, metadata);
-    } else {
+      // Authentication commands
+      } else if (command === 'login') {
+        const { username, password, ipAddress, userAgent } = payload;
+        if (!password) {
+          throw new Error('Password is required');
+        }
+        responsePayload = await services.auth.authenticateUser(
+          username, 
+          password, 
+          ipAddress || 'unknown', 
+          userAgent || 'unknown'
+        );
+      } else if (command === 'logout') {
+        const { sessionId } = payload;
+        if (!sessionId) {
+          throw new Error('SessionId is required');
+        }
+        const result = await services.auth.logout(sessionId);
+        responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
+      } else if (command === 'getCurrentUser') {
+        const { sessionId } = payload;
+        if (!sessionId) {
+          throw new Error('SessionId is required');
+        }
+        const user = await services.auth.getCurrentUser(sessionId);
+        responsePayload = user ? { success: true, user } : { success: false, error: 'Invalid session' };
+      
+      // Product management with permissions
+      } else if (command === 'updateProduct') {
+        const { productId, updates, sessionId } = payload;
+        if (!productId || !updates || !sessionId) {
+          throw new Error('ProductId, updates, and sessionId are required');
+        }
+        responsePayload = await services.product.updateExistingProduct(productId, updates, sessionId);
+      
+      // Additional commands truncated for brevity - add remaining as needed
+      } else if (command === 'getLoginUsers') {
+        responsePayload = await services.auth.getLoginUsers();
+      } else if (command === 'systemTimeCheck') {
+        const { clientTime } = payload;
+        if (!clientTime) {
+          throw new Error('clientTime is required');
+        }
+        const serverTime = new Date();
+        const clientTimeObj = new Date(clientTime);
+        const timeDifferenceMs = serverTime.getTime() - clientTimeObj.getTime();
+        const timeDifferenceSeconds = Math.floor(timeDifferenceMs / 1000);
+        
+        responsePayload = {
+          serverTime: serverTime.toISOString(),
+          clientTime: clientTime,
+          timeDifferenceMs,
+          timeDifferenceSeconds
+        };
+      } else if (command === 'getParkedTransactions') {
+        responsePayload = await services.transactionManagement.getParkedTransactions();
+      } else if (command === 'parkTransaction') {
+        const { transactionId, tableNumber } = payload;
+        responsePayload = await services.transactionManagement.parkTransaction(transactionId, tableNumber);
+      } else if (command === 'activateTransaction') {
+        const { transactionId } = payload;
+        responsePayload = await services.transactionManagement.activateTransaction(transactionId);
+      } else if (command === 'checkTableAvailability') {
+        const { tableNumber } = payload;
+        responsePayload = await services.transactionManagement.checkTableAvailability(tableNumber);
+      } else if (command === 'updateTransactionMetadata') {
+        const { transactionId, metadata } = payload;
+        responsePayload = await services.transactionManagement.updateTransactionMetadata(transactionId, metadata);
+      } else {
+        status = 'error';
+        responsePayload = { message: 'Unknown command', originalCommand: command };
+        logger.warn({ msg: 'Unknown WebSocket command', command, operationId, clientId: ws.id });
+      }
+    } catch (error) {
       status = 'error';
-      responsePayload = { message: 'Unknown command', originalCommand: command };
-      logger.warn({ msg: 'Unknown WebSocket command', command, operationId, clientId: ws.id });
+      responsePayload = { message: 'Command execution failed', error: error.message };
+      logger.error({ msg: 'WebSocket command execution error', command, operationId, clientId: ws.id, error: error.message, stack: error.stack });
     }
-  } catch (error) {
-    status = 'error';
-    responsePayload = { message: 'Command execution failed', error: error.message };
-    logger.error({ msg: 'WebSocket command execution error', command, operationId, clientId: ws.id, error: error.message });
-  }
 
-  const response = { 
-    operationId, 
-    command: responseCommand, 
-    status, 
-    payload: responsePayload, 
-    channel: 'websocket',
-    serverTime: new Date().toISOString()
-  };
-  ws.send(JSON.stringify(response));
-  logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
+    const response = { 
+      operationId, 
+      command: responseCommand, 
+      status, 
+      payload: responsePayload, 
+      channel: 'websocket',
+      serverTime: new Date().toISOString()
+    };
+    ws.send(JSON.stringify(response));
+    logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
+
+  } catch (globalError) {
+    // Global error handler - ensures we always send a response even if there's an unexpected error
+    logger.error({ 
+      msg: 'Critical WebSocket handler error', 
+      command, 
+      operationId, 
+      clientId: ws.id, 
+      error: globalError.message, 
+      stack: globalError.stack 
+    });
+    
+    try {
+      const errorResponse = {
+        operationId,
+        command: command + 'Response',
+        status: 'error',
+        payload: { 
+          message: 'Critical server error occurred', 
+          error: globalError.message 
+        },
+        channel: 'websocket',
+        serverTime: new Date().toISOString()
+      };
+      ws.send(JSON.stringify(errorResponse));
+    } catch (sendError) {
+      logger.error({ 
+        msg: 'Failed to send error response to WebSocket client', 
+        clientId: ws.id, 
+        sendError: sendError.message 
+      });
+    }
+  }
 }
 
 async function getCompanyAndBranchInfo() {
