@@ -1,6 +1,11 @@
 // File: /packages/backend/src/db/migrations/20250706150000_create_fts_table.js
 
 exports.up = function(knex) {
+  // This migration is only for SQLite - skip for PostgreSQL
+  if (knex.client.config.client !== 'sqlite3') {
+    return Promise.resolve();
+  }
+  
   return knex.schema.raw(`
     -- Создаем виртуальную FTS5 таблицу для индексации названий товаров
     -- Создаем отдельную таблицу, не связанную с content= для лучшего контроля
@@ -51,5 +56,10 @@ exports.up = function(knex) {
 };
 
 exports.down = function(knex) {
+  // This migration is only for SQLite - skip for PostgreSQL
+  if (knex.client.config.client !== 'sqlite3') {
+    return Promise.resolve();
+  }
+  
   return knex.schema.dropTableIfExists('items_fts');
 };

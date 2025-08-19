@@ -107,7 +107,12 @@
       "Bash(service postgresql:*)",
       "Bash(sudo systemctl start:*)",
       "Bash(sudo service:*)",
-      "Bash(/tmp/update_wsl_host.sh:*)"
+      "Bash(/tmp/update_wsl_host.sh:*)",
+      "Bash(ping:*)",
+      "Bash(nc:*)",
+      "Bash(ip route:*)",
+      "Bash(NODE_ENV=development npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
+      "Bash(NODE_ENV=development npx knex seed:run --knexfile packages/core/db/knexfile.js)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

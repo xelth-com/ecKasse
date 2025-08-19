@@ -1,6 +1,6 @@
 const path = require('path');
 // const sqliteVec = require('sqlite-vec'); // Temporarily disabled
-require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 module.exports = {
   development: process.env.DB_CLIENT === 'pg' ? {
