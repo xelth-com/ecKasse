@@ -4,12 +4,16 @@
 
 const { ProductRepository } = require('./ProductRepository');
 const { TransactionRepository } = require('./TransactionRepository');
+const { AuthRepository } = require('./AuthRepository');
+const { ReportingRepository } = require('./ReportingRepository');
 
 class SQLiteAdapter {
   constructor(db) {
     this.db = db;
     this.productRepository = new ProductRepository(db);
     this.transactionRepository = new TransactionRepository(db);
+    this.authRepository = new AuthRepository(db);
+    this.reportingRepository = new ReportingRepository(db);
   }
 
   getProductRepository() {
@@ -18,6 +22,14 @@ class SQLiteAdapter {
 
   getTransactionRepository() {
     return this.transactionRepository;
+  }
+
+  getAuthRepository() {
+    return this.authRepository;
+  }
+
+  getReportingRepository() {
+    return this.reportingRepository;
   }
 
   async disconnect() {

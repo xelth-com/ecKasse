@@ -2,7 +2,7 @@
 // Provides access to all core business logic and utilities
 
 // Application services
-const authService = require('./application/auth.service');
+const { AuthService } = require('./application/auth.service');
 const layoutService = require('./application/layout.service');
 const loggingService = require('./application/logging.service');
 const { ProductService } = require('./application/product.service');
@@ -10,7 +10,7 @@ const transactionService = require('./application/transaction.service');
 const TransactionManagementService = require('./application/transaction_management.service');
 const sessionService = require('./application/session.service');
 const websocketService = require('./application/websocket.service');
-const reportingService = require('./application/reporting.service');
+const { ReportingService } = require('./application/reporting.service');
 const managerService = require('./application/manager.service');
 const printerService = require('./application/printer_service');
 const searchService = require('./application/search.service');
@@ -32,17 +32,13 @@ const db = require('./db/knex');
 const dbInit = require('./db/db_init');
 
 module.exports = {
-  // Services
+  // Services - refactored services (AuthService, ProductService, etc.) will be instantiated with DI in start.js
   services: {
-    auth: authService,
     layout: layoutService,
     logging: loggingService,
-    ProductService: ProductService,
     transaction: transactionService,
-    transactionManagement: null, // This will be instantiated with dependency injection
     session: sessionService,
     websocket: websocketService,
-    reporting: reportingService,
     manager: managerService,
     printer: printerService,
     search: searchService,
@@ -67,8 +63,8 @@ module.exports = {
   db,
   dbInit,
   
-  // Individual service exports for direct require
-  authService,
+  // Individual service classes for direct require
+  AuthService,
   layoutService,
   loggingService,
   ProductService,
@@ -76,7 +72,7 @@ module.exports = {
   TransactionManagementService,
   sessionService,
   websocketService,
-  reportingService,
+  ReportingService,
   managerService,
   printerService,
   searchService,

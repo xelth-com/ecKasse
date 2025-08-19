@@ -7,7 +7,7 @@ const WebSocket = require('ws');
 const { DesktopServer } = require('./app');
 
 // Import core business logic and database adapters
-const { services, db, dbInit, ProductService, TransactionManagementService } = require('../../core');
+const { services, db, dbInit, ProductService, TransactionManagementService, AuthService, ReportingService } = require('../../core');
 const { SQLiteAdapter } = require('../../adapters/database/sqlite');
 const logger = require('../../core/config/logger');
 
@@ -123,15 +123,30 @@ async function startServer() {
   );
   logger.info('TransactionManagementService instantiated with TransactionRepository');
   
-  // 5. Create services object with instantiated services
+  // 5. Instantiate AuthService and ReportingService with their repositories
+  const authRepository = sqliteAdapter.getAuthRepository();
+  const authService = new AuthService(authRepository);
+  // Start session cleanup interval for AuthService
+  setInterval(() => {
+    authService.cleanupExpiredSessions();
+  }, 60 * 60 * 1000); // Every hour
+  logger.info('AuthService instantiated with AuthRepository');
+  
+  const reportingRepository = sqliteAdapter.getReportingRepository();
+  const reportingService = new ReportingService(reportingRepository);
+  logger.info('ReportingService instantiated with ReportingRepository');
+  
+  // 6. Create services object with instantiated services
   const instantiatedServices = {
     ...services,
     product: productService,  // Replace the old product service with the new class instance
-    transactionManagement: transactionManagementService  // Replace the old transaction service with the new class instance
+    transactionManagement: transactionManagementService,  // Replace the old transaction service with the new class instance
+    auth: authService,  // Use the new AuthService instance
+    reporting: reportingService  // Use the new ReportingService instance
   };
   
-  // 6. Pass the instantiated services to DesktopServer
-  const desktopServer = new DesktopServer(instantiatedServices);
+  // 7. Pass the instantiated services to DesktopServer
+  const desktopServer = new DesktopServer(instantiatedServices, authService, reportingService);
   const app = await desktopServer.initialize();
   logger.info('DesktopServer initialized with dependency-injected services');
   
@@ -157,7 +172,7 @@ async function startServer() {
       try {
         logger.info({ msg: 'eckasse.com domain: Auto-authenticating client', clientId: ws.id });
         
-        const authResult = await instantiatedServices.auth.authenticateUser(
+        const authResult = await authService.authenticateUser(
           'admin', 
           '1234', 
           req.socket.remoteAddress || 'eckasse.com-client', 
@@ -303,7 +318,7 @@ async function startServer() {
   // Start the server
   httpServer.listen(PORT, () => {
     logger.info(`Desktop server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
-    logger.info(`Repository pattern implementation active - ProductService and TransactionManagementService using repository pattern`);
+    logger.info(`Repository pattern implementation complete - All core services (ProductService, TransactionManagementService, AuthService, ReportingService) using repository pattern`);
   });
 }
 

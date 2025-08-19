@@ -12,9 +12,11 @@ const logger = require('../../core/config/logger');
 const llmRoutes = require('./routes/llm.routes');
 
 class DesktopServer {
-  constructor(services) {
+  constructor(services, authService, reportingService) {
     this.app = express();
     this.services = services;
+    this.authService = authService;
+    this.reportingService = reportingService;
     this.processedHttpOperationIds = new Set();
     this.HTTP_OPERATION_ID_TTL = 60000;
     this.processedOperationIds = new Set();
@@ -61,7 +63,7 @@ class DesktopServer {
     // Simple users API endpoint for login screen
     this.app.get('/api/users', async (req, res) => {
       try {
-        const users = await this.services.auth.getLoginUsers();
+        const users = await this.authService.getLoginUsers();
         res.json(users);
       } catch (error) {
         logger.error({ msg: 'Error fetching users', err: error });
@@ -359,7 +361,7 @@ class DesktopServer {
           }));
         } else if (command === 'getRecentReceipts') {
           const { limit } = payload || {};
-          const result = await this.services.reporting.getRecentTransactions(limit);
+          const result = await this.reportingService.getRecentTransactions(limit);
           if (result.success) {
             responsePayload = {
               ...result,
@@ -386,7 +388,7 @@ class DesktopServer {
           if (!password) {
             throw new Error('Password is required');
           }
-          responsePayload = await this.services.auth.authenticateUser(
+          responsePayload = await this.authService.authenticateUser(
             username, 
             password, 
             ipAddress || 'unknown', 
@@ -397,14 +399,14 @@ class DesktopServer {
           if (!sessionId) {
             throw new Error('SessionId is required');
           }
-          const result = await this.services.auth.logout(sessionId);
+          const result = await this.authService.logout(sessionId);
           responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
         } else if (command === 'getCurrentUser') {
           const { sessionId } = payload;
           if (!sessionId) {
             throw new Error('SessionId is required');
           }
-          const user = await this.services.auth.getCurrentUser(sessionId);
+          const user = await this.authService.getCurrentUser(sessionId);
           responsePayload = user ? { success: true, user } : { success: false, error: 'Invalid session' };
         
         // Product management with permissions
@@ -416,7 +418,7 @@ class DesktopServer {
           responsePayload = await this.services.product.updateExistingProduct(productId, updates, sessionId);
         
         } else if (command === 'getLoginUsers') {
-          responsePayload = await this.services.auth.getLoginUsers();
+          responsePayload = await this.authService.getLoginUsers();
         } else if (command === 'systemTimeCheck') {
           const { clientTime } = payload;
           if (!clientTime) {

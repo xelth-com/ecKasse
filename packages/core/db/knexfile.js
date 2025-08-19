@@ -20,7 +20,12 @@ module.exports = {
     },
     pool: {
       min: 2,
-      max: 10
+      max: 10,
+      acquireTimeoutMillis: 5000,
+      createTimeoutMillis: 3000,
+      destroyTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000,
+      reapIntervalMillis: 1000
     }
   } : {
     client: 'sqlite3',
@@ -52,7 +57,12 @@ module.exports = {
     },
     pool: {
       min: 2,
-      max: 10
+      max: 10,
+      acquireTimeoutMillis: 5000,
+      createTimeoutMillis: 3000,
+      destroyTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000,
+      reapIntervalMillis: 1000
     }
   }
 };

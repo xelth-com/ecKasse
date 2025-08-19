@@ -1,14 +1,14 @@
 // Authentication and user management service
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const db = require('../db/knex');
 const logger = require('../config/logger');
 
 /**
  * AuthService handles user authentication, session management, and permission checking
  */
 class AuthService {
-    constructor() {
+    constructor(authRepository) {
+        this.authRepository = authRepository;
         this.activeSessions = new Map(); // In-memory session store
         this.sessionTimeout = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
     }
@@ -61,18 +61,7 @@ class AuthService {
 
             if (username) {
                 // Traditional username-based lookup (more efficient)
-                user = await db('users')
-                    .select([
-                        'users.*',
-                        'roles.role_name',
-                        'roles.permissions',
-                        'roles.can_approve_changes',
-                        'roles.can_manage_users'
-                    ])
-                    .join('roles', 'users.role_id', 'roles.id')
-                    .where('users.username', username)
-                    .where('users.is_active', true)
-                    .first();
+                user = await this.authRepository.findUserByUsernameWithRole(username);
 
                 if (!user) {
                     await this.logFailedAttempt(username, ipAddress, 'user_not_found');
@@ -94,16 +83,7 @@ class AuthService {
                 }
             } else {
                 // PIN-only login: fetch all active users and check PIN against each
-                const users = await db('users')
-                    .select([
-                        'users.*',
-                        'roles.role_name',
-                        'roles.permissions',
-                        'roles.can_approve_changes',
-                        'roles.can_manage_users'
-                    ])
-                    .join('roles', 'users.role_id', 'roles.id')
-                    .where('users.is_active', true);
+                const users = await this.authRepository.findActiveUsersWithRolesByPin();
 
                 for (const candidateUser of users) {
                     // Skip locked users
@@ -132,12 +112,10 @@ class AuthService {
             const sessionData = await this.createSession(user, ipAddress, userAgent);
 
             // Update last login
-            await db('users')
-                .where('id', user.id)
-                .update({
-                    last_login_at: new Date(),
-                    last_login_ip: ipAddress
-                });
+            await this.authRepository.updateUser(user.id, {
+                last_login_at: new Date(),
+                last_login_ip: ipAddress
+            });
 
             logger.info({ 
                 userId: user.id, 
@@ -194,7 +172,7 @@ class AuthService {
         const expiresAt = new Date(Date.now() + this.sessionTimeout);
 
         // Store session in database
-        await db('user_sessions').insert({
+        await this.authRepository.createSession({
             session_id: sessionId,
             user_id: user.id,
             expires_at: expiresAt,
@@ -236,21 +214,7 @@ class AuthService {
         }
 
         // Check database if not in memory or expired
-        const dbSession = await db('user_sessions')
-            .select([
-                'user_sessions.*',
-                'users.username',
-                'users.is_active',
-                'roles.role_name',
-                'roles.permissions'
-            ])
-            .join('users', 'user_sessions.user_id', 'users.id')
-            .join('roles', 'users.role_id', 'roles.id')
-            .where('user_sessions.session_id', sessionId)
-            .where('user_sessions.is_active', true)
-            .where('user_sessions.expires_at', '>', new Date())
-            .where('users.is_active', true)
-            .first();
+        const dbSession = await this.authRepository.findValidSessionById(sessionId);
 
         if (!dbSession) {
             // Clean up invalid session from memory
@@ -322,9 +286,7 @@ class AuthService {
             this.activeSessions.delete(sessionId);
 
             // Deactivate in database
-            await db('user_sessions')
-                .where('session_id', sessionId)
-                .update({ is_active: false });
+            await this.authRepository.invalidateSession(sessionId);
 
             logger.info({ sessionId }, 'User logged out successfully');
             return true;
@@ -340,7 +302,7 @@ class AuthService {
      * @param {string} ipAddress - IP address of failed attempt
      */
     async handleFailedLogin(userId, ipAddress) {
-        const user = await db('users').where('id', userId).first();
+        const user = await this.authRepository.findUserWithRoleById(userId);
         const newFailedAttempts = (user.failed_login_attempts || 0) + 1;
         const maxAttempts = 5; // Configurable
 
@@ -359,7 +321,7 @@ class AuthService {
             }, 'User account locked due to failed login attempts');
         }
 
-        await db('users').where('id', userId).update(updateData);
+        await this.authRepository.updateUser(userId, updateData);
         await this.logFailedAttempt(user.username, ipAddress, 'invalid_password');
     }
 
@@ -368,12 +330,10 @@ class AuthService {
      * @param {number} userId - User ID
      */
     async resetFailedAttempts(userId) {
-        await db('users')
-            .where('id', userId)
-            .update({ 
-                failed_login_attempts: 0, 
-                locked_until: null 
-            });
+        await this.authRepository.updateUser(userId, { 
+            failed_login_attempts: 0, 
+            locked_until: null 
+        });
     }
 
     /**
@@ -402,14 +362,8 @@ class AuthService {
             // Check if database is available first
             let result = 0;
             try {
-                // Test database connection with a simple query
-                await db.raw('SELECT 1');
-                
                 // Remove from database
-                result = await db('user_sessions')
-                    .where('expires_at', '<', new Date())
-                    .orWhere('is_active', false)
-                    .del();
+                result = await this.authRepository.deleteExpiredSessions();
             } catch (dbError) {
                 logger.warn({ 
                     service: 'AuthService', 
@@ -447,25 +401,7 @@ class AuthService {
         const session = await this.validateSession(sessionId);
         if (!session) return null;
 
-        const user = await db('users')
-            .select([
-                'users.id',
-                'users.username',
-                'users.full_name',
-                'users.email',
-                'users.storno_daily_limit',
-                'users.storno_emergency_limit',
-                'users.storno_used_today',
-                'users.trust_score',
-                'roles.role_name',
-                'roles.permissions',
-                'roles.can_approve_changes',
-                'roles.can_manage_users'
-            ])
-            .join('roles', 'users.role_id', 'roles.id')
-            .where('users.id', session.userId)
-            .where('users.is_active', true)
-            .first();
+        const user = await this.authRepository.findUserWithRoleById(session.userId);
 
         if (!user) return null;
 
@@ -491,14 +427,7 @@ class AuthService {
      */
     async getLoginUsers() {
         try {
-            const users = await db('users')
-                .select([
-                    'users.id',
-                    'users.username',
-                    'users.full_name'
-                ])
-                .where('users.is_active', true)
-                .orderBy('users.full_name', 'asc');
+            const users = await this.authRepository.getLoginUsers();
 
             logger.info({ 
                 service: 'AuthService', 
@@ -519,12 +448,4 @@ class AuthService {
     }
 }
 
-// Create singleton instance
-const authService = new AuthService();
-
-// Clean up expired sessions every hour
-setInterval(() => {
-    authService.cleanupExpiredSessions();
-}, 60 * 60 * 1000);
-
-module.exports = authService;
+module.exports = { AuthService };
