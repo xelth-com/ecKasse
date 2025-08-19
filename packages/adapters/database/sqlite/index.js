@@ -2,20 +2,22 @@
 // This adapter provides database access for the desktop application
 // Uses SQLite database with Knex.js for query building
 
+const { ProductRepository } = require('./ProductRepository');
+
 class SQLiteAdapter {
-  constructor(config) {
-    this.config = config;
-    this.knex = null;
+  constructor(db) {
+    this.db = db;
+    this.productRepository = new ProductRepository(db);
   }
 
-  async connect() {
-    // TODO: Initialize SQLite connection
-    console.log('SQLite adapter connecting...');
+  getProductRepository() {
+    return this.productRepository;
   }
 
   async disconnect() {
-    // TODO: Close SQLite connection
-    console.log('SQLite adapter disconnecting...');
+    if (this.db) {
+      await this.db.destroy();
+    }
   }
 }
 

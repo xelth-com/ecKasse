@@ -5,7 +5,7 @@
 const authService = require('./application/auth.service');
 const layoutService = require('./application/layout.service');
 const loggingService = require('./application/logging.service');
-const productService = require('./application/product.service');
+const { ProductService } = require('./application/product.service');
 const transactionService = require('./application/transaction.service');
 const transactionManagementService = require('./application/transaction_management.service');
 const sessionService = require('./application/session.service');
@@ -37,7 +37,7 @@ module.exports = {
     auth: authService,
     layout: layoutService,
     logging: loggingService,
-    product: productService,
+    ProductService: ProductService,
     transaction: transactionService,
     transactionManagement: transactionManagementService,
     session: sessionService,
@@ -71,7 +71,7 @@ module.exports = {
   authService,
   layoutService,
   loggingService,
-  productService,
+  ProductService,
   transactionService,
   transactionManagementService,
   sessionService,

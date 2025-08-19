@@ -6,18 +6,19 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 
-// Import core business logic
-const { services, db } = require('../../core');
 const logger = require('../../core/config/logger');
 
 // Import routes
 const llmRoutes = require('./routes/llm.routes');
 
 class DesktopServer {
-  constructor() {
+  constructor(services) {
     this.app = express();
+    this.services = services;
     this.processedHttpOperationIds = new Set();
     this.HTTP_OPERATION_ID_TTL = 60000;
+    this.processedOperationIds = new Set();
+    this.OPERATION_ID_TTL = 60000;
   }
 
   async initialize() {
@@ -60,7 +61,7 @@ class DesktopServer {
     // Simple users API endpoint for login screen
     this.app.get('/api/users', async (req, res) => {
       try {
-        const users = await services.auth.getLoginUsers();
+        const users = await this.services.auth.getLoginUsers();
         res.json(users);
       } catch (error) {
         logger.error({ msg: 'Error fetching users', err: error });
@@ -98,13 +99,13 @@ class DesktopServer {
 
       try {
         if (command === 'getParkedTransactions') {
-          responsePayload = await services.transactionManagement.getParkedTransactions();
+          responsePayload = await this.services.transactionManagement.getParkedTransactions();
         } else if (command === 'activateTransaction') {
           const { transactionId, userId, updateTimestamp } = payload;
           if (!transactionId || !userId) {
             throw new Error('TransactionId and userId are required');
           }
-          responsePayload = await services.transactionManagement.activateTransaction(transactionId, userId, updateTimestamp);
+          responsePayload = await this.services.transactionManagement.activateTransaction(transactionId, userId, updateTimestamp);
           responseCommand = 'orderUpdated';
         } else {
           status = 'error';
@@ -199,6 +200,316 @@ class DesktopServer {
         },
       });
     });
+  }
+
+  // Helper function to parse JSON fields consistently across database types
+  parseJsonField(field) {
+    if (typeof field === 'object' && field !== null) {
+      return field;
+    }
+    if (typeof field === 'string') {
+      try {
+        return JSON.parse(field);
+      } catch (error) {
+        return field;
+      }
+    }
+    return field;
+  }
+
+  async handleWebSocketMessage(ws, rawMessage, db) {
+    let parsedMessage;
+    try {
+      parsedMessage = JSON.parse(rawMessage.toString());
+      
+      if (parsedMessage.command === 'getCategories') {
+        console.log('🔍 [Backend] RECEIVED getCategories command:', parsedMessage);
+        logger.info({ 
+          msg: '🔍 getCategories command received', 
+          type: 'websocket_request', 
+          direction: 'in', 
+          data: parsedMessage, 
+          clientId: ws.id || 'unknown' 
+        });
+      } else {
+        logger.info({ type: 'websocket_request', direction: 'in', data: parsedMessage, clientId: ws.id || 'unknown' });
+      }
+    } catch (error) {
+      logger.error({ msg: 'Invalid WebSocket message format (not JSON)', raw: rawMessage.toString(), clientId: ws.id, err: error });
+      ws.send(JSON.stringify({ error: 'Invalid message format. Expected JSON.', operationId: null }));
+      return;
+    }
+
+    const { operationId, command, payload } = parsedMessage;
+    
+    if (command === 'getCategories') {
+      console.log('🔍 [Backend] Processing getCategories command with operationId:', operationId);
+    }
+
+    if (!operationId) {
+      logger.warn({ msg: 'WebSocket message without operationId', data: parsedMessage, clientId: ws.id });
+      ws.send(JSON.stringify({ error: 'operationId is required', operationId: null }));
+      return;
+    }
+
+    if (this.processedOperationIds.has(operationId)) {
+      logger.info({ msg: 'Duplicate WebSocket operationId received, ignoring.', operationId, clientId: ws.id });
+      const response = {
+        operationId,
+        status: 'already_processed',
+        message: `Operation ${operationId} was already processed or is in progress.`,
+        channel: 'websocket'
+      };
+      ws.send(JSON.stringify(response));
+      logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
+      return;
+    }
+
+    this.processedOperationIds.add(operationId);
+    setTimeout(() => {
+      this.processedOperationIds.delete(operationId);
+    }, this.OPERATION_ID_TTL);
+
+    try {
+      let responsePayload;
+      let status = 'success';
+      let responseCommand = command + 'Response';
+
+      try {
+        if (command === 'ping_ws') {
+          responsePayload = { message: 'pong_ws', receivedPayload: payload };
+        } else if (command === 'listLayouts') {
+          responsePayload = await this.services.layout.listLayouts();
+        } else if (command === 'activateLayout') {
+          await this.services.layout.activateLayout(payload.id);
+          responsePayload = { success: true, message: `Layout ${payload.id} activated.` };
+        } else if (command === 'saveLayout') {
+          const categories = await db('categories').select('*');
+          responsePayload = await this.services.layout.saveLayout(payload.name, categories);
+        } else if (command === 'findOrCreateActiveTransaction') {
+          const { criteria, userId } = payload;
+          responsePayload = await this.services.transactionManagement.findOrCreateActiveTransaction(criteria, userId);
+          if (responsePayload && responsePayload.id) {
+              const items = await db('active_transaction_items')
+                .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+                .select('active_transaction_items.*', 'items.display_names')
+                .where('active_transaction_items.active_transaction_id', responsePayload.id);
+              responsePayload.items = items.map(item => ({
+                ...item,
+                display_names: this.parseJsonField(item.display_names)
+              }));
+          }
+          responseCommand = 'orderUpdated';
+        } else if (command === 'addItemToTransaction') {
+          const { transactionId, itemId, quantity, userId } = payload;
+          responsePayload = await this.services.transactionManagement.addItemToTransaction(transactionId, itemId, quantity, userId);
+          if (responsePayload && responsePayload.id) {
+              const items = await db('active_transaction_items')
+                .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+                .select('active_transaction_items.*', 'items.display_names')
+                .where('active_transaction_items.active_transaction_id', responsePayload.id);
+              responsePayload.items = items.map(item => ({
+                ...item,
+                display_names: this.parseJsonField(item.display_names)
+              }));
+          }
+          responseCommand = 'orderUpdated';
+        } else if (command === 'finishTransaction') {
+          const { transactionId, paymentData, userId } = payload;
+          const result = await this.services.transactionManagement.finishTransaction(transactionId, paymentData, userId);
+          
+          responsePayload = {
+            ...result,
+            printStatus: result.printStatus || { status: 'unknown' }
+          };
+          responseCommand = 'transactionFinished';
+        } else if (command === 'reprintReceipt') {
+          const { transactionId } = payload;
+          if (!transactionId) {
+            throw new Error('transactionId is required for reprint');
+          }
+          responsePayload = await this.services.printer.reprintReceipt(transactionId);
+          responseCommand = 'reprintResult';
+        } else if (command === 'getCategories') {
+          console.log('🔍 [Backend] Executing getCategories - fetching from database...');
+          const categories = await db('categories').select('*');
+          console.log('🔍 [Backend] Raw categories from DB:', categories.length, 'items');
+          
+          responsePayload = categories.map(category => ({
+            ...category,
+            category_names: this.parseJsonField(category.category_names),
+            audit_trail: this.parseJsonField(category.audit_trail)
+          }));
+          
+          console.log('🔍 [Backend] getCategories processed successfully - prepared', responsePayload.length, 'categories for response');
+        } else if (command === 'getItemsByCategory') {
+          const { categoryId } = payload;
+          if (!categoryId) {
+            throw new Error('categoryId is required');
+          }
+          const items = await this.services.product.getProductsByCategoryId(categoryId);
+          responsePayload = items.map(item => ({
+            ...item,
+            display_names: this.parseJsonField(item.display_names),
+            pricing_schedules: this.parseJsonField(item.pricing_schedules),
+            availability_schedule: this.parseJsonField(item.availability_schedule),
+            additional_item_attributes: this.parseJsonField(item.additional_item_attributes),
+            item_flags: this.parseJsonField(item.item_flags),
+            audit_trail: this.parseJsonField(item.audit_trail)
+          }));
+        } else if (command === 'getRecentReceipts') {
+          const { limit } = payload || {};
+          const result = await this.services.reporting.getRecentTransactions(limit);
+          if (result.success) {
+            responsePayload = {
+              ...result,
+              transactions: result.transactions.map(tx => ({
+                ...tx,
+                metadata: this.parseJsonField(tx.metadata),
+                items: tx.items.map(item => ({
+                  ...item,
+                  display_names: this.parseJsonField(item.display_names)
+                }))
+              }))
+            };
+          } else {
+            responsePayload = result;
+          }
+        } else if (command === 'logClientEvent') {
+          const { level, message, context } = payload;
+          this.services.logging.logSystemEvent(level, message, { ...context, source: 'frontend', clientId: ws.id });
+          return;
+        
+        // Authentication commands
+        } else if (command === 'login') {
+          const { username, password, ipAddress, userAgent } = payload;
+          if (!password) {
+            throw new Error('Password is required');
+          }
+          responsePayload = await this.services.auth.authenticateUser(
+            username, 
+            password, 
+            ipAddress || 'unknown', 
+            userAgent || 'unknown'
+          );
+        } else if (command === 'logout') {
+          const { sessionId } = payload;
+          if (!sessionId) {
+            throw new Error('SessionId is required');
+          }
+          const result = await this.services.auth.logout(sessionId);
+          responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
+        } else if (command === 'getCurrentUser') {
+          const { sessionId } = payload;
+          if (!sessionId) {
+            throw new Error('SessionId is required');
+          }
+          const user = await this.services.auth.getCurrentUser(sessionId);
+          responsePayload = user ? { success: true, user } : { success: false, error: 'Invalid session' };
+        
+        // Product management with permissions
+        } else if (command === 'updateProduct') {
+          const { productId, updates, sessionId } = payload;
+          if (!productId || !updates || !sessionId) {
+            throw new Error('ProductId, updates, and sessionId are required');
+          }
+          responsePayload = await this.services.product.updateExistingProduct(productId, updates, sessionId);
+        
+        } else if (command === 'getLoginUsers') {
+          responsePayload = await this.services.auth.getLoginUsers();
+        } else if (command === 'systemTimeCheck') {
+          const { clientTime } = payload;
+          if (!clientTime) {
+            throw new Error('clientTime is required');
+          }
+          const serverTime = new Date();
+          const clientTimeObj = new Date(clientTime);
+          const timeDifferenceMs = serverTime.getTime() - clientTimeObj.getTime();
+          const timeDifferenceSeconds = Math.floor(timeDifferenceMs / 1000);
+          
+          responsePayload = {
+            serverTime: serverTime.toISOString(),
+            clientTime: clientTime,
+            timeDifferenceMs,
+            timeDifferenceSeconds
+          };
+        } else if (command === 'getParkedTransactions') {
+          responsePayload = await this.services.transactionManagement.getParkedTransactions();
+        } else if (command === 'parkTransaction') {
+          const { transactionId, tableNumber } = payload;
+          responsePayload = await this.services.transactionManagement.parkTransaction(transactionId, tableNumber);
+        } else if (command === 'activateTransaction') {
+          const { transactionId } = payload;
+          responsePayload = await this.services.transactionManagement.activateTransaction(transactionId);
+        } else if (command === 'checkTableAvailability') {
+          const { tableNumber } = payload;
+          responsePayload = await this.services.transactionManagement.checkTableAvailability(tableNumber);
+        } else if (command === 'updateTransactionMetadata') {
+          const { transactionId, metadata } = payload;
+          responsePayload = await this.services.transactionManagement.updateTransactionMetadata(transactionId, metadata);
+        } else {
+          status = 'error';
+          responsePayload = { message: 'Unknown command', originalCommand: command };
+          logger.warn({ msg: 'Unknown WebSocket command', command, operationId, clientId: ws.id });
+        }
+      } catch (error) {
+        status = 'error';
+        responsePayload = { message: 'Command execution failed', error: error.message };
+        logger.error({ msg: 'WebSocket command execution error', command, operationId, clientId: ws.id, error: error.message, stack: error.stack });
+      }
+
+      const response = { 
+        operationId, 
+        command: responseCommand, 
+        status, 
+        payload: responsePayload, 
+        channel: 'websocket',
+        serverTime: new Date().toISOString()
+      };
+      
+      if (responseCommand === 'getCategoriesResponse') {
+        console.log('🔍 [Backend] SENDING getCategoriesResponse:', {
+          operationId,
+          status,
+          payloadLength: Array.isArray(responsePayload) ? responsePayload.length : 'not array',
+          responseCommand
+        });
+      }
+      
+      ws.send(JSON.stringify(response));
+      logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
+
+    } catch (globalError) {
+      logger.error({ 
+        msg: 'Critical WebSocket handler error', 
+        command, 
+        operationId, 
+        clientId: ws.id, 
+        error: globalError.message, 
+        stack: globalError.stack 
+      });
+      
+      try {
+        const errorResponse = {
+          operationId,
+          command: command + 'Response',
+          status: 'error',
+          payload: { 
+            message: 'Critical server error occurred', 
+            error: globalError.message 
+          },
+          channel: 'websocket',
+          serverTime: new Date().toISOString()
+        };
+        ws.send(JSON.stringify(errorResponse));
+      } catch (sendError) {
+        logger.error({ 
+          msg: 'Failed to send error response to WebSocket client', 
+          clientId: ws.id, 
+          sendError: sendError.message 
+        });
+      }
+    }
   }
 }
 

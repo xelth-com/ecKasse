@@ -1,14 +1,14 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
-// Desktop server entry point
-// Migrated from packages/backendOld/src/server.js
+// Desktop server entry point - Dependency Injection Container
 const http = require('http');
 const WebSocket = require('ws');
-const { DesktopServer } = require('./app'); // Desktop-specific Express app
+const { DesktopServer } = require('./app');
 
-// Import core business logic and services
-const { services, db, dbInit } = require('../../core');
+// Import core business logic and database adapters
+const { services, db, dbInit, ProductService } = require('../../core');
+const { SQLiteAdapter } = require('../../adapters/database/sqlite');
 const logger = require('../../core/config/logger');
 
 const PORT = process.env.BACKEND_PORT || 3030;
@@ -24,334 +24,7 @@ if (semver.major(currentVersion) < 20) {
   console.log(`[INFO] Node.js version ${currentVersion} is compatible.`);
 }
 
-// Storage for tracking processed operationIds
-const processedOperationIds = new Set();
-const OPERATION_ID_TTL = 60000; // 1 minute TTL
-
-// Helper function to parse JSON fields consistently across database types
-// PostgreSQL returns JSONB as objects, SQLite returns them as strings
-function parseJsonField(field) {
-  // If it's already an object (from PostgreSQL), return as-is
-  if (typeof field === 'object' && field !== null) {
-    return field;
-  }
-  // If it's a string (from SQLite), try to parse it
-  if (typeof field === 'string') {
-    try {
-      return JSON.parse(field);
-    } catch (error) {
-      // If parsing fails, return the original string
-      return field;
-    }
-  }
-  // For null, undefined, or other types, return as-is
-  return field;
-}
-
-async function handleWebSocketMessage(ws, rawMessage) {
-  let parsedMessage;
-  try {
-    parsedMessage = JSON.parse(rawMessage.toString());
-    
-    // DEBUG: Специальное логирование для getCategories
-    if (parsedMessage.command === 'getCategories') {
-      console.log('🔍 [Backend] RECEIVED getCategories command:', parsedMessage);
-      logger.info({ 
-        msg: '🔍 getCategories command received', 
-        type: 'websocket_request', 
-        direction: 'in', 
-        data: parsedMessage, 
-        clientId: ws.id || 'unknown' 
-      });
-    } else {
-      logger.info({ type: 'websocket_request', direction: 'in', data: parsedMessage, clientId: ws.id || 'unknown' });
-    }
-  } catch (error) {
-    logger.error({ msg: 'Invalid WebSocket message format (not JSON)', raw: rawMessage.toString(), clientId: ws.id, err: error });
-    ws.send(JSON.stringify({ error: 'Invalid message format. Expected JSON.', operationId: null }));
-    return;
-  }
-
-  const { operationId, command, payload } = parsedMessage;
-  
-  // DEBUG: Дополнительное логирование для getCategories
-  if (command === 'getCategories') {
-    console.log('🔍 [Backend] Processing getCategories command with operationId:', operationId);
-  }
-
-  if (!operationId) {
-    logger.warn({ msg: 'WebSocket message without operationId', data: parsedMessage, clientId: ws.id });
-    ws.send(JSON.stringify({ error: 'operationId is required', operationId: null }));
-    return;
-  }
-
-  if (processedOperationIds.has(operationId)) {
-    logger.info({ msg: 'Duplicate WebSocket operationId received, ignoring.', operationId, clientId: ws.id });
-    const response = {
-      operationId,
-      status: 'already_processed',
-      message: `Operation ${operationId} was already processed or is in progress.`,
-      channel: 'websocket'
-    };
-    ws.send(JSON.stringify(response));
-    logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
-    return;
-  }
-
-  // Mark operation as processing
-  processedOperationIds.add(operationId);
-  setTimeout(() => {
-    processedOperationIds.delete(operationId);
-  }, OPERATION_ID_TTL);
-
-  // Global try-catch for all command processing to ensure robust error handling
-  try {
-    // Command processing
-    let responsePayload;
-    let status = 'success';
-    let responseCommand = command + 'Response';
-
-    try {
-      if (command === 'ping_ws') {
-        responsePayload = { message: 'pong_ws', receivedPayload: payload };
-      } else if (command === 'listLayouts') {
-        responsePayload = await services.layout.listLayouts();
-      } else if (command === 'activateLayout') {
-        await services.layout.activateLayout(payload.id);
-        responsePayload = { success: true, message: `Layout ${payload.id} activated.` };
-      } else if (command === 'saveLayout') {
-        const categories = await db('categories').select('*');
-        responsePayload = await services.layout.saveLayout(payload.name, categories);
-      } else if (command === 'findOrCreateActiveTransaction') {
-        const { criteria, userId } = payload;
-        responsePayload = await services.transactionManagement.findOrCreateActiveTransaction(criteria, userId);
-        if (responsePayload && responsePayload.id) {
-            const items = await db('active_transaction_items')
-              .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-              .select('active_transaction_items.*', 'items.display_names')
-              .where('active_transaction_items.active_transaction_id', responsePayload.id);
-            responsePayload.items = items.map(item => ({
-              ...item,
-              display_names: parseJsonField(item.display_names)
-            }));
-        }
-        responseCommand = 'orderUpdated';
-      } else if (command === 'addItemToTransaction') {
-        const { transactionId, itemId, quantity, userId } = payload;
-        responsePayload = await services.transactionManagement.addItemToTransaction(transactionId, itemId, quantity, userId);
-        if (responsePayload && responsePayload.id) {
-            const items = await db('active_transaction_items')
-              .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-              .select('active_transaction_items.*', 'items.display_names')
-              .where('active_transaction_items.active_transaction_id', responsePayload.id);
-            responsePayload.items = items.map(item => ({
-              ...item,
-              display_names: parseJsonField(item.display_names)
-            }));
-        }
-        responseCommand = 'orderUpdated';
-      } else if (command === 'finishTransaction') {
-        const { transactionId, paymentData, userId } = payload;
-        const result = await services.transactionManagement.finishTransaction(transactionId, paymentData, userId);
-        
-        responsePayload = {
-          ...result,
-          printStatus: result.printStatus || { status: 'unknown' }
-        };
-        responseCommand = 'transactionFinished';
-      } else if (command === 'reprintReceipt') {
-        const { transactionId } = payload;
-        if (!transactionId) {
-          throw new Error('transactionId is required for reprint');
-        }
-        responsePayload = await services.printer.reprintReceipt(transactionId);
-        responseCommand = 'reprintResult';
-      } else if (command === 'getCategories') {
-        console.log('🔍 [Backend] Executing getCategories - fetching from database...');
-        const categories = await db('categories').select('*');
-        console.log('🔍 [Backend] Raw categories from DB:', categories.length, 'items');
-        
-        // Use parseJsonField helper to ensure consistent object types across database types
-        responsePayload = categories.map(category => ({
-          ...category,
-          category_names: parseJsonField(category.category_names),
-          audit_trail: parseJsonField(category.audit_trail)
-        }));
-        
-        console.log('🔍 [Backend] getCategories processed successfully - prepared', responsePayload.length, 'categories for response');
-      } else if (command === 'getItemsByCategory') {
-        const { categoryId } = payload;
-        if (!categoryId) {
-          throw new Error('categoryId is required');
-        }
-        const items = await services.product.getProductsByCategoryId(categoryId);
-        responsePayload = items.map(item => ({
-          ...item,
-          display_names: parseJsonField(item.display_names),
-          pricing_schedules: parseJsonField(item.pricing_schedules),
-          availability_schedule: parseJsonField(item.availability_schedule),
-          additional_item_attributes: parseJsonField(item.additional_item_attributes),
-          item_flags: parseJsonField(item.item_flags),
-          audit_trail: parseJsonField(item.audit_trail)
-        }));
-      } else if (command === 'getRecentReceipts') {
-        const { limit } = payload || {};
-        const result = await services.reporting.getRecentTransactions(limit);
-        if (result.success) {
-          responsePayload = {
-            ...result,
-            transactions: result.transactions.map(tx => ({
-              ...tx,
-              metadata: parseJsonField(tx.metadata),
-              items: tx.items.map(item => ({
-                ...item,
-                display_names: parseJsonField(item.display_names)
-              }))
-            }))
-          };
-        } else {
-          responsePayload = result;
-        }
-      } else if (command === 'logClientEvent') {
-        const { level, message, context } = payload;
-        services.logging.logSystemEvent(level, message, { ...context, source: 'frontend', clientId: ws.id });
-        return; // Fire-and-forget logs
-      
-      // Authentication commands
-      } else if (command === 'login') {
-        const { username, password, ipAddress, userAgent } = payload;
-        if (!password) {
-          throw new Error('Password is required');
-        }
-        responsePayload = await services.auth.authenticateUser(
-          username, 
-          password, 
-          ipAddress || 'unknown', 
-          userAgent || 'unknown'
-        );
-      } else if (command === 'logout') {
-        const { sessionId } = payload;
-        if (!sessionId) {
-          throw new Error('SessionId is required');
-        }
-        const result = await services.auth.logout(sessionId);
-        responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
-      } else if (command === 'getCurrentUser') {
-        const { sessionId } = payload;
-        if (!sessionId) {
-          throw new Error('SessionId is required');
-        }
-        const user = await services.auth.getCurrentUser(sessionId);
-        responsePayload = user ? { success: true, user } : { success: false, error: 'Invalid session' };
-      
-      // Product management with permissions
-      } else if (command === 'updateProduct') {
-        const { productId, updates, sessionId } = payload;
-        if (!productId || !updates || !sessionId) {
-          throw new Error('ProductId, updates, and sessionId are required');
-        }
-        responsePayload = await services.product.updateExistingProduct(productId, updates, sessionId);
-      
-      // Additional commands truncated for brevity - add remaining as needed
-      } else if (command === 'getLoginUsers') {
-        responsePayload = await services.auth.getLoginUsers();
-      } else if (command === 'systemTimeCheck') {
-        const { clientTime } = payload;
-        if (!clientTime) {
-          throw new Error('clientTime is required');
-        }
-        const serverTime = new Date();
-        const clientTimeObj = new Date(clientTime);
-        const timeDifferenceMs = serverTime.getTime() - clientTimeObj.getTime();
-        const timeDifferenceSeconds = Math.floor(timeDifferenceMs / 1000);
-        
-        responsePayload = {
-          serverTime: serverTime.toISOString(),
-          clientTime: clientTime,
-          timeDifferenceMs,
-          timeDifferenceSeconds
-        };
-      } else if (command === 'getParkedTransactions') {
-        responsePayload = await services.transactionManagement.getParkedTransactions();
-      } else if (command === 'parkTransaction') {
-        const { transactionId, tableNumber } = payload;
-        responsePayload = await services.transactionManagement.parkTransaction(transactionId, tableNumber);
-      } else if (command === 'activateTransaction') {
-        const { transactionId } = payload;
-        responsePayload = await services.transactionManagement.activateTransaction(transactionId);
-      } else if (command === 'checkTableAvailability') {
-        const { tableNumber } = payload;
-        responsePayload = await services.transactionManagement.checkTableAvailability(tableNumber);
-      } else if (command === 'updateTransactionMetadata') {
-        const { transactionId, metadata } = payload;
-        responsePayload = await services.transactionManagement.updateTransactionMetadata(transactionId, metadata);
-      } else {
-        status = 'error';
-        responsePayload = { message: 'Unknown command', originalCommand: command };
-        logger.warn({ msg: 'Unknown WebSocket command', command, operationId, clientId: ws.id });
-      }
-    } catch (error) {
-      status = 'error';
-      responsePayload = { message: 'Command execution failed', error: error.message };
-      logger.error({ msg: 'WebSocket command execution error', command, operationId, clientId: ws.id, error: error.message, stack: error.stack });
-    }
-
-    const response = { 
-      operationId, 
-      command: responseCommand, 
-      status, 
-      payload: responsePayload, 
-      channel: 'websocket',
-      serverTime: new Date().toISOString()
-    };
-    
-    // DEBUG: Специальное логирование для getCategories ответа
-    if (responseCommand === 'getCategoriesResponse') {
-      console.log('🔍 [Backend] SENDING getCategoriesResponse:', {
-        operationId,
-        status,
-        payloadLength: Array.isArray(responsePayload) ? responsePayload.length : 'not array',
-        responseCommand
-      });
-    }
-    
-    ws.send(JSON.stringify(response));
-    logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
-
-  } catch (globalError) {
-    // Global error handler - ensures we always send a response even if there's an unexpected error
-    logger.error({ 
-      msg: 'Critical WebSocket handler error', 
-      command, 
-      operationId, 
-      clientId: ws.id, 
-      error: globalError.message, 
-      stack: globalError.stack 
-    });
-    
-    try {
-      const errorResponse = {
-        operationId,
-        command: command + 'Response',
-        status: 'error',
-        payload: { 
-          message: 'Critical server error occurred', 
-          error: globalError.message 
-        },
-        channel: 'websocket',
-        serverTime: new Date().toISOString()
-      };
-      ws.send(JSON.stringify(errorResponse));
-    } catch (sendError) {
-      logger.error({ 
-        msg: 'Failed to send error response to WebSocket client', 
-        clientId: ws.id, 
-        sendError: sendError.message 
-      });
-    }
-  }
-}
-
+// Helper function to get company and branch info
 async function getCompanyAndBranchInfo() {
   try {
     const companyData = await db('companies').first() || {};
@@ -426,9 +99,32 @@ async function startServer() {
     logger.warn('Failed to initialize printer service:', error.message);
   }
 
-  // Create desktop server instance
-  const desktopServer = new DesktopServer();
+  // ============ DEPENDENCY INJECTION CONTAINER ============
+  
+  // 1. Initialize database connection (already done via core/db/knex)
+  logger.info('Database connection established via core package');
+  
+  // 2. Instantiate SQLite adapter with database connection
+  const sqliteAdapter = new SQLiteAdapter(db);
+  logger.info('SQLite adapter instantiated');
+  
+  // 3. Instantiate ProductService with repository from adapter
+  const productRepository = sqliteAdapter.getProductRepository();
+  const productService = new ProductService(productRepository, db);
+  logger.info('ProductService instantiated with ProductRepository');
+  
+  // 4. Create services object with instantiated services
+  const instantiatedServices = {
+    ...services,
+    product: productService  // Replace the old product service with the new class instance
+  };
+  
+  // 5. Pass the instantiated services to DesktopServer
+  const desktopServer = new DesktopServer(instantiatedServices);
   const app = await desktopServer.initialize();
+  logger.info('DesktopServer initialized with dependency-injected services');
+  
+  // ============ END DEPENDENCY INJECTION ============
   
   // Create HTTP server
   const httpServer = http.createServer(app);
@@ -450,7 +146,7 @@ async function startServer() {
       try {
         logger.info({ msg: 'eckasse.com domain: Auto-authenticating client', clientId: ws.id });
         
-        const authResult = await services.auth.authenticateUser(
+        const authResult = await instantiatedServices.auth.authenticateUser(
           'admin', 
           '1234', 
           req.socket.remoteAddress || 'eckasse.com-client', 
@@ -491,7 +187,7 @@ async function startServer() {
     }
 
     ws.on('message', (message) => {
-      handleWebSocketMessage(ws, message);
+      desktopServer.handleWebSocketMessage(ws, message, db);
     });
 
     ws.on('close', () => {
@@ -532,7 +228,7 @@ async function startServer() {
     // Send pending recovery transactions to newly connected client
     (async () => {
       try {
-        const pendingTransactions = await services.transactionManagement.getPendingTransactions();
+        const pendingTransactions = await instantiatedServices.transactionManagement.getPendingTransactions();
         
         if (pendingTransactions.length > 0) {
           const pendingMessage = {
@@ -596,6 +292,7 @@ async function startServer() {
   // Start the server
   httpServer.listen(PORT, () => {
     logger.info(`Desktop server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
+    logger.info(`Repository pattern implementation active - ProductService using ProductRepository`);
   });
 }
 
