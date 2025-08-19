@@ -14,6 +14,33 @@ class AuthService {
     }
 
     /**
+     * Safely parse permissions data, handling both JSON strings and plain strings
+     * @param {string|Array} permissions - Permissions data from database
+     * @returns {Array} Parsed permissions array
+     * @private
+     */
+    _safeParsePermissions(permissions) {
+        // If already an array, return as-is
+        if (Array.isArray(permissions)) {
+            return permissions;
+        }
+
+        // If not a string, return empty array
+        if (typeof permissions !== 'string') {
+            return [];
+        }
+
+        // Try to parse as JSON
+        try {
+            const parsed = JSON.parse(permissions);
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch (error) {
+            // If JSON parsing fails, treat as a single string permission
+            return [permissions];
+        }
+    }
+
+    /**
      * Authenticate user with username and password, or PIN-only login
      * @param {string} username - User's username (null for PIN-only login)
      * @param {string} password - User's password/PIN
@@ -128,7 +155,7 @@ class AuthService {
                     full_name: user.full_name,
                     email: user.email,
                     role: user.role_name,
-                    permissions: Array.isArray(user.permissions) ? user.permissions : (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions),
+                    permissions: this._safeParsePermissions(user.permissions),
                     storno_daily_limit: parseFloat(user.storno_daily_limit),
                     storno_emergency_limit: parseFloat(user.storno_emergency_limit),
                     storno_used_today: parseFloat(user.storno_used_today),
@@ -181,7 +208,7 @@ class AuthService {
             userId: user.id,
             username: user.username,
             role: user.role_name,
-            permissions: Array.isArray(user.permissions) ? user.permissions : (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions),
+            permissions: this._safeParsePermissions(user.permissions),
             expiresAt: expiresAt.getTime(),
             ipAddress,
             userAgent
@@ -236,7 +263,7 @@ class AuthService {
             userId: dbSession.user_id,
             username: dbSession.username,
             role: dbSession.role_name,
-            permissions: Array.isArray(dbSession.permissions) ? dbSession.permissions : (typeof dbSession.permissions === 'string' ? JSON.parse(dbSession.permissions) : dbSession.permissions),
+            permissions: this._safeParsePermissions(dbSession.permissions),
             expiresAt: new Date(dbSession.expires_at).getTime(),
             ipAddress: dbSession.ip_address,
             userAgent: dbSession.user_agent
@@ -448,7 +475,7 @@ class AuthService {
             full_name: user.full_name,
             email: user.email,
             role: user.role_name,
-            permissions: Array.isArray(user.permissions) ? user.permissions : (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions),
+            permissions: this._safeParsePermissions(user.permissions),
             storno_daily_limit: parseFloat(user.storno_daily_limit),
             storno_emergency_limit: parseFloat(user.storno_emergency_limit),
             storno_used_today: parseFloat(user.storno_used_today),
