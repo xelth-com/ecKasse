@@ -1,16 +1,17 @@
-const db = require('../db/knex');
 const logger = require('../config/logger');
-const loggingService = require('./logging.service');
-const printerService = require('./printer_service');
 const crypto = require('crypto');
-const sessionManager = require('./session.service');
 
 /**
  * Manages the lifecycle of active transactions (orders/receipts).
  * This service handles creating orders, adding items, and finalizing them for fiscal logging.
  */
 class TransactionManagementService {
-
+  constructor(transactionRepository, productRepository, loggingService, printerService) {
+    this.transactionRepository = transactionRepository;
+    this.productRepository = productRepository;
+    this.loggingService = loggingService;
+    this.printerService = printerService;
+  }
 
   /**
    * Finds an existing active transaction based on metadata (e.g., table number) or creates a new one.
@@ -25,9 +26,7 @@ class TransactionManagementService {
 
     // Only attempt to find an existing transaction if a specific transactionId is provided
     if (criteria.transactionId) {
-      existingTransaction = await db('active_transactions')
-        .where({ id: criteria.transactionId, status: 'active' })
-        .first();
+      existingTransaction = await this.transactionRepository.findActiveById(criteria.transactionId);
 
       if (existingTransaction) {
         logger.info({ msg: 'Found existing active transaction by ID', id: existingTransaction.id });
@@ -42,8 +41,7 @@ class TransactionManagementService {
     const newTransactionUUID = crypto.randomUUID();
     const nowUTC = new Date().toISOString();
     
-    // Create the transaction record first
-    const [newTransaction] = await db('active_transactions').insert({
+    const newTransactionData = {
       uuid: newTransactionUUID,
       status: 'active',
       user_id: userId,
@@ -51,18 +49,21 @@ class TransactionManagementService {
       metadata: JSON.stringify(criteria.metadata || {}),
       created_at: nowUTC,
       updated_at: nowUTC
-    }).returning('*');
+    };
+
+    // Create the transaction record first
+    const newTransaction = await this.transactionRepository.create(newTransactionData);
 
     // *** FISCAL LOG INTEGRATION ***
     // Every new transaction MUST be logged with a 'startTransaction' event.
-    const fiscalLogResult = await loggingService.logFiscalEvent('startTransaction', userId, {
+    const fiscalLogResult = await this.loggingService.logFiscalEvent('startTransaction', userId, {
       transaction_uuid: newTransactionUUID,
       metadata: criteria.metadata || {}
     });
 
     if (!fiscalLogResult.success) {
       // If fiscal logging fails, clean up the transaction record and throw error
-      await db('active_transactions').where('id', newTransaction.id).del();
+      await this.transactionRepository.delete(newTransaction.id);
       throw new Error(`Failed to create fiscal log for new transaction: ${fiscalLogResult.error}`);
     }
 
@@ -83,22 +84,22 @@ class TransactionManagementService {
 
     let updatedTransaction, item;
 
-    // Execute database transaction first
-    const result = await db.transaction(async (trx) => {
+    // Execute database transaction first - we'll use the repositories with transaction support
+    const result = await this.transactionRepository.db.transaction(async (trx) => {
         // 1. Fetch the active transaction and lock it for update.
-        const transaction = await trx('active_transactions').where({ id: transactionId, status: 'active' }).forUpdate().first();
+        const transaction = await this.transactionRepository.findActiveById(transactionId, trx);
         if (!transaction) {
             throw new Error(`Active transaction with ID ${transactionId} not found.`);
         }
 
         // 2. Fetch the product details.
-        item = await trx('items').where({ id: itemId }).first();
+        item = await this.productRepository.findById(itemId, trx);
         if (!item) {
             throw new Error(`Item with ID ${itemId} not found.`);
         }
         
         // Simplified tax calculation logic. A real implementation would be more robust.
-        const category = await trx('categories').where({ id: item.associated_category_unique_identifier }).first();
+        const category = await this.productRepository.findCategoryById(item.associated_category_unique_identifier, trx);
         // Assuming 19% for 'drink' and 7% for everything else as a placeholder.
         const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
 
@@ -108,7 +109,7 @@ class TransactionManagementService {
         const tax_amount = total_price - (total_price / (1 + taxRate / 100));
 
         // 4. Insert the new item into the transaction.
-        const [newItem] = await trx('active_transaction_items').insert({
+        const itemData = {
             active_transaction_id: transactionId,
             item_id: itemId,
             quantity: quantity,
@@ -117,19 +118,21 @@ class TransactionManagementService {
             tax_rate: taxRate,
             tax_amount: tax_amount,
             notes: options.notes || null
-        }).returning('*');
+        };
+        const newItem = await this.transactionRepository.addItem(itemData, trx);
 
         // 5. Update the main transaction totals.
         const newTotalAmount = parseFloat(transaction.total_amount) + total_price;
         const newTaxAmount = parseFloat(transaction.tax_amount) + tax_amount;
 
-        updatedTransaction = (await trx('active_transactions').where({ id: transactionId }).update({
+        const updateData = {
             total_amount: newTotalAmount,
             tax_amount: newTaxAmount,
             updated_at: new Date().toISOString()
-        }).returning('*'))[0];
+        };
+        updatedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
 
-        const updatedItems = await trx('active_transaction_items').where({ active_transaction_id: transactionId });
+        const updatedItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
         return { 
             transaction: updatedTransaction, 
             newItem, 
@@ -139,7 +142,7 @@ class TransactionManagementService {
     });
 
     // 6. *** FISCAL LOG INTEGRATION *** (outside database transaction to avoid connection pool issues)
-    const fiscalLogResult = await loggingService.logFiscalEvent('updateTransaction', userId, {
+    const fiscalLogResult = await this.loggingService.logFiscalEvent('updateTransaction', userId, {
         transaction_uuid: updatedTransaction.uuid,
         item_added: {
             item_id: itemId,
@@ -172,9 +175,9 @@ class TransactionManagementService {
     let transaction, processData, finishedTransaction;
 
     // First phase: Update transaction status and prepare fiscal data in database transaction
-    const updateResult = await db.transaction(async (trx) => {
+    const updateResult = await this.transactionRepository.db.transaction(async (trx) => {
       // 1. Fetch the active transaction and lock it.
-      transaction = await trx('active_transactions').where({ id: transactionId, status: 'active' }).forUpdate().first();
+      transaction = await this.transactionRepository.findActiveById(transactionId, trx);
       if (!transaction) {
         throw new Error(`Active transaction with ID ${transactionId} not found.`);
       }
@@ -187,11 +190,7 @@ class TransactionManagementService {
       }
 
       // 3. Fetch tax breakdown for this transaction.
-      const taxBreakdown = await trx('active_transaction_items')
-        .where({ active_transaction_id: transactionId })
-        .groupBy('tax_rate')
-        .select('tax_rate')
-        .sum('total_price as total');
+      const taxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
 
       // 4. Format 'processData' for DSFinV-K compliance.
       // This is a simplified version. A full implementation would map tax rates to the official DSFinV-K indices.
@@ -205,21 +204,15 @@ class TransactionManagementService {
       processData = `Beleg^${bruttoSteuerumsaetze}^${zahlungen}`;
 
       // 5. Update transaction status to 'finished'.
-      const [updatedTransaction] = await trx('active_transactions').where({ id: transactionId }).update({ 
+      const updateData = { 
         status: 'finished',
         payment_type: paymentData.type,
         payment_amount: paymentAmount
-      }).returning('*');
+      };
+      const updatedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
 
       // 6. Fetch the complete transaction with items for the response
-      const items = await trx('active_transaction_items')
-        .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-        .select(
-          'active_transaction_items.*',
-          'items.display_names',
-          'items.item_price_value'
-        )
-        .where('active_transaction_items.active_transaction_id', transactionId);
+      const items = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
 
       finishedTransaction = {
         ...updatedTransaction,
@@ -233,7 +226,7 @@ class TransactionManagementService {
     });
 
     // Second phase: Create fiscal log outside of main transaction to avoid connection pool conflicts
-    const fiscalLogResult = await loggingService.logFiscalEvent('finishTransaction', userId, {
+    const fiscalLogResult = await this.loggingService.logFiscalEvent('finishTransaction', userId, {
       transaction_uuid: transaction.uuid,
       processType: 'Kassenbeleg-V1',
       processData: processData,
@@ -256,8 +249,8 @@ class TransactionManagementService {
     logger.info({ msg: 'Transaction finished successfully', transactionId });
     // Third phase: Attempt receipt printing (after successful transaction completion)
     try {
-      const receiptData = await printerService._prepareReceiptData(finishedTransaction, fiscalLogResult.log);
-      const printResult = await printerService.printReceipt(receiptData);
+      const receiptData = await this.printerService._prepareReceiptData(finishedTransaction, fiscalLogResult.log);
+      const printResult = await this.printerService.printReceipt(receiptData);
       
       if (printResult.status === 'success') {
         logger.info({ 
@@ -276,7 +269,7 @@ class TransactionManagementService {
         };
       } else {
         // Print failed but transaction is complete - log error but don't fail
-        await loggingService.logOperationalEvent(userId, 'print_failed', {
+        await this.loggingService.logOperationalEvent(userId, 'print_failed', {
           transaction_uuid: transaction.uuid,
           print_error: printResult.message,
           printer: printResult.printer || 'unknown'
@@ -299,7 +292,7 @@ class TransactionManagementService {
       
     } catch (printError) {
       // Print service error - log but don't fail the transaction
-      await loggingService.logOperationalEvent(userId, 'print_error', {
+      await this.loggingService.logOperationalEvent(userId, 'print_error', {
         transaction_uuid: transaction.uuid,
         error_message: printError.message
       });
@@ -330,10 +323,7 @@ class TransactionManagementService {
 
     try {
       // Find all transactions with resolution_status = 'pending'
-      const pendingTransactions = await db('active_transactions')
-        .where('resolution_status', 'pending')
-        .select('*')
-        .orderBy('created_at', 'asc');
+      const pendingTransactions = await this.transactionRepository.getPendingRecoveryTransactions();
 
       if (pendingTransactions.length === 0) {
         logger.info('No pending recovery transactions found');
@@ -343,14 +333,7 @@ class TransactionManagementService {
       // For each pending transaction, fetch its associated items
       const transactionsWithItems = await Promise.all(
         pendingTransactions.map(async (transaction) => {
-          const items = await db('active_transaction_items')
-            .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-            .select(
-              'active_transaction_items.*',
-              'items.display_names',
-              'items.item_price_value'
-            )
-            .where('active_transaction_items.active_transaction_id', transaction.id);
+          const items = await this.transactionRepository.getItemsWithDetailsByTransactionId(transaction.id);
 
           return {
             ...transaction,
@@ -395,11 +378,9 @@ class TransactionManagementService {
 
     try {
       // First, verify the transaction exists and is in pending status
-      const transaction = await db('active_transactions')
-        .where({ id: transactionId, resolution_status: 'pending' })
-        .first();
+      const transaction = await this.transactionRepository.findById(transactionId);
 
-      if (!transaction) {
+      if (!transaction || transaction.resolution_status !== 'pending') {
         throw new Error(`Transaction with ID ${transactionId} not found or not in pending status`);
       }
 
@@ -408,15 +389,14 @@ class TransactionManagementService {
       switch (resolution) {
         case 'postpone':
           // Update the transaction's resolution_status to 'postponed'
-          await db('active_transactions')
-            .where({ id: transactionId })
-            .update({ 
-              resolution_status: 'postponed',
-              updated_at: new Date().toISOString()
-            });
+          const updateData = { 
+            resolution_status: 'postponed',
+            updated_at: new Date().toISOString()
+          };
+          await this.transactionRepository.update(transactionId, updateData);
 
           // Log the fiscal event for postponement
-          const fiscalLogResult = await loggingService.logFiscalEvent('postponeTransaction', userId, {
+          const fiscalLogResult = await this.loggingService.logFiscalEvent('postponeTransaction', userId, {
             transaction_uuid: transaction.uuid,
             original_status: 'pending',
             new_status: 'postponed'
@@ -489,9 +469,7 @@ class TransactionManagementService {
 
     try {
       // First, verify the transaction exists and is active
-      const transaction = await db('active_transactions')
-        .where({ id: transactionId, status: 'active' })
-        .first();
+      const transaction = await this.transactionRepository.findActiveById(transactionId);
 
       if (!transaction) {
         throw new Error(`Active transaction with ID ${transactionId} not found`);
@@ -510,13 +488,10 @@ class TransactionManagementService {
         updateData.updated_at = new Date().toISOString();
       }
       
-      const [parkedTransaction] = await db('active_transactions')
-        .where({ id: transactionId })
-        .update(updateData)
-        .returning('*');
+      const parkedTransaction = await this.transactionRepository.update(transactionId, updateData);
 
       // Log the fiscal event for parking
-      const fiscalLogResult = await loggingService.logFiscalEvent('parkTransaction', userId, {
+      const fiscalLogResult = await this.loggingService.logFiscalEvent('parkTransaction', userId, {
         transaction_uuid: transaction.uuid,
         table_identifier: tableIdentifier,
         original_status: 'active',
@@ -567,9 +542,7 @@ class TransactionManagementService {
 
     try {
       // First, verify the transaction exists and is parked
-      const transaction = await db('active_transactions')
-        .where({ id: transactionId, status: 'parked' })
-        .first();
+      const transaction = await this.transactionRepository.findParkedById(transactionId);
 
       if (!transaction) {
         throw new Error(`Parked transaction with ID ${transactionId} not found`);
@@ -582,20 +555,10 @@ class TransactionManagementService {
       }
 
       // Update transaction status to 'active'
-      const [activatedTransaction] = await db('active_transactions')
-        .where({ id: transactionId })
-        .update(updateData)
-        .returning('*');
+      const activatedTransaction = await this.transactionRepository.update(transactionId, updateData);
 
       // Fetch the complete transaction with items
-      const items = await db('active_transaction_items')
-        .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
-        .select(
-          'active_transaction_items.*',
-          'items.display_names',
-          'items.item_price_value'
-        )
-        .where('active_transaction_items.active_transaction_id', transactionId);
+      const items = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId);
 
       const completeTransaction = {
         ...activatedTransaction,
@@ -606,7 +569,7 @@ class TransactionManagementService {
       };
 
       // Log the fiscal event for activation
-      const fiscalLogResult = await loggingService.logFiscalEvent('activateTransaction', userId, {
+      const fiscalLogResult = await this.loggingService.logFiscalEvent('activateTransaction', userId, {
         transaction_uuid: transaction.uuid,
         original_status: 'parked',
         new_status: 'active'
@@ -646,10 +609,7 @@ class TransactionManagementService {
 
     try {
       // Query database for parked transactions
-      const parkedTransactions = await db('active_transactions')
-        .where('status', 'parked')
-        .select('*')
-        .orderBy('updated_at', 'asc');
+      const parkedTransactions = await this.transactionRepository.getParkedTransactions();
 
       // Parse metadata for each transaction and normalize timestamps
       const transactionsWithParsedMetadata = parkedTransactions.map(transaction => ({
@@ -695,9 +655,7 @@ class TransactionManagementService {
 
     try {
       // Find the existing transaction
-      const existingTransaction = await db('active_transactions')
-        .where({ id: transactionId, status: 'active' })
-        .first();
+      const existingTransaction = await this.transactionRepository.findActiveById(transactionId);
 
       if (!existingTransaction) {
         throw new Error(`Active transaction with ID ${transactionId} not found`);
@@ -710,13 +668,10 @@ class TransactionManagementService {
         updateData.updated_at = new Date().toISOString();
       }
       
-      const [updatedTransaction] = await db('active_transactions')
-        .where({ id: transactionId })
-        .update(updateData)
-        .returning('*');
+      const updatedTransaction = await this.transactionRepository.update(transactionId, updateData);
 
       // Log the fiscal event for metadata update
-      const fiscalLogResult = await loggingService.logFiscalEvent('updateTransactionMetadata', userId, {
+      const fiscalLogResult = await this.loggingService.logFiscalEvent('updateTransactionMetadata', userId, {
         transaction_uuid: existingTransaction.uuid,
         old_metadata: existingTransaction.metadata,
         new_metadata: JSON.stringify(metadata)
@@ -764,29 +719,12 @@ class TransactionManagementService {
     });
 
     try {
-      let query;
-      if (db.client.config.client === 'pg') {
-        query = db('active_transactions')
-          .where('status', 'parked')
-          .whereRaw("metadata ->> 'table' = ?", [tableNumber]);
-      } else {
-        query = db('active_transactions')
-          .where('status', 'parked')
-          .whereRaw("JSON_EXTRACT(metadata, '$.table') = ?", [tableNumber]);
-      }
-      
-      if (excludeTransactionId) {
-        query = query.whereNot('id', excludeTransactionId);
-      }
-      
-      const existingTransaction = await query.first();
-      const isInUse = !!existingTransaction;
+      const isInUse = await this.transactionRepository.isTableInUse(tableNumber, excludeTransactionId);
       
       logger.info({ 
         msg: 'Table number availability checked', 
         tableNumber,
-        isInUse,
-        existingTransactionId: existingTransaction ? existingTransaction.id : null
+        isInUse
       });
 
       return isInUse;
@@ -799,8 +737,6 @@ class TransactionManagementService {
       throw error;
     }
   }
-
 }
 
-// Export a singleton instance of the service
-module.exports = new TransactionManagementService();
+module.exports = TransactionManagementService;

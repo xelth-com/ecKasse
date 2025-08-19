@@ -7,7 +7,7 @@ const layoutService = require('./application/layout.service');
 const loggingService = require('./application/logging.service');
 const { ProductService } = require('./application/product.service');
 const transactionService = require('./application/transaction.service');
-const transactionManagementService = require('./application/transaction_management.service');
+const TransactionManagementService = require('./application/transaction_management.service');
 const sessionService = require('./application/session.service');
 const websocketService = require('./application/websocket.service');
 const reportingService = require('./application/reporting.service');
@@ -39,7 +39,7 @@ module.exports = {
     logging: loggingService,
     ProductService: ProductService,
     transaction: transactionService,
-    transactionManagement: transactionManagementService,
+    transactionManagement: null, // This will be instantiated with dependency injection
     session: sessionService,
     websocket: websocketService,
     reporting: reportingService,
@@ -73,7 +73,7 @@ module.exports = {
   loggingService,
   ProductService,
   transactionService,
-  transactionManagementService,
+  TransactionManagementService,
   sessionService,
   websocketService,
   reportingService,

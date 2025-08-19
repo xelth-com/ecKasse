@@ -7,7 +7,7 @@ const WebSocket = require('ws');
 const { DesktopServer } = require('./app');
 
 // Import core business logic and database adapters
-const { services, db, dbInit, ProductService } = require('../../core');
+const { services, db, dbInit, ProductService, TransactionManagementService } = require('../../core');
 const { SQLiteAdapter } = require('../../adapters/database/sqlite');
 const logger = require('../../core/config/logger');
 
@@ -113,13 +113,24 @@ async function startServer() {
   const productService = new ProductService(productRepository, db);
   logger.info('ProductService instantiated with ProductRepository');
   
-  // 4. Create services object with instantiated services
+  // 4. Instantiate TransactionManagementService with repositories and services
+  const transactionRepository = sqliteAdapter.getTransactionRepository();
+  const transactionManagementService = new TransactionManagementService(
+    transactionRepository,
+    productRepository,
+    services.logging,
+    services.printer
+  );
+  logger.info('TransactionManagementService instantiated with TransactionRepository');
+  
+  // 5. Create services object with instantiated services
   const instantiatedServices = {
     ...services,
-    product: productService  // Replace the old product service with the new class instance
+    product: productService,  // Replace the old product service with the new class instance
+    transactionManagement: transactionManagementService  // Replace the old transaction service with the new class instance
   };
   
-  // 5. Pass the instantiated services to DesktopServer
+  // 6. Pass the instantiated services to DesktopServer
   const desktopServer = new DesktopServer(instantiatedServices);
   const app = await desktopServer.initialize();
   logger.info('DesktopServer initialized with dependency-injected services');
@@ -292,7 +303,7 @@ async function startServer() {
   // Start the server
   httpServer.listen(PORT, () => {
     logger.info(`Desktop server (HTTP & WebSocket) listening on http://localhost:${PORT}`);
-    logger.info(`Repository pattern implementation active - ProductService using ProductRepository`);
+    logger.info(`Repository pattern implementation active - ProductService and TransactionManagementService using repository pattern`);
   });
 }
 

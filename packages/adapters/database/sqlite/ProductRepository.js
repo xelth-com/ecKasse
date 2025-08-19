@@ -6,33 +6,66 @@ class ProductRepository {
     this.db = db;
   }
 
-  async findCategoryByName(name, trx = this.db) {
-    logger.info({ repo: 'ProductRepository', function: 'findCategoryByName', name }, 'Finding category by name');
-    const query = trx('categories').whereRaw("json_extract(category_names, '$.de') = ?", [name]);
-    return query.first();
-  }
-
-  async create(productData, trx = this.db) {
-    logger.info({ repo: 'ProductRepository', function: 'create', productData }, 'Creating product in DB');
-    const [result] = await trx('items').insert(productData).returning('id');
-    return typeof result === 'object' ? result.id : result;
-  }
-
-  async addEmbedding(embeddingData, trx = this.db) {
-    logger.info({ repo: 'ProductRepository', function: 'addEmbedding', itemId: embeddingData.rowid }, 'Adding embedding to DB');
-    await trx.raw(
-      'INSERT INTO vec_items(rowid, item_embedding) VALUES (?, ?)',
-      [embeddingData.rowid, embeddingData.item_embedding]
-    );
+  async findCategoryByName(categoryName, trx = this.db) {
+    // Search for category by name in the JSON field
+    const categories = await trx('categories').select('*');
+    
+    for (const category of categories) {
+      try {
+        const categoryNames = JSON.parse(category.category_names);
+        if (categoryNames.de && categoryNames.de.toLowerCase() === categoryName.toLowerCase()) {
+          return category;
+        }
+      } catch (error) {
+        logger.error({ error: error.message, category }, 'Error parsing category names JSON');
+      }
+    }
+    
+    return null;
   }
 
   async findById(id, trx = this.db) {
-    return trx('items').where('id', id).first();
+    return trx('items').where({ id }).first();
+  }
+
+  async findCategoryById(id, trx = this.db) {
+    return trx('categories').where({ id }).first();
+  }
+
+  async create(productData, trx = this.db) {
+    const [result] = await trx('items').insert(productData).returning('id');
+    return result.id || result;
   }
 
   async update(id, updateData, trx = this.db) {
-    logger.info({ repo: 'ProductRepository', function: 'update', id, updateData }, 'Updating product in DB');
-    return trx('items').where('id', id).update(updateData);
+    const [updated] = await trx('items').where({ id }).update(updateData).returning('*');
+    return updated;
+  }
+
+  async addEmbedding(embeddingData, trx = this.db) {
+    const [result] = await trx('vec_items').insert(embeddingData).returning('*');
+    return result;
+  }
+
+  async getAllCategories(trx = this.db) {
+    return trx('categories').select('*');
+  }
+
+  async getProductsByCategoryId(categoryId, trx = this.db) {
+    return trx('items')
+      .where('associated_category_unique_identifier', categoryId)
+      .select('*');
+  }
+
+  async searchProducts(searchTerm, trx = this.db) {
+    return trx('items')
+      .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
+      .where('items.display_names', 'LIKE', `%${searchTerm}%`)
+      .select('items.*', 'categories.category_names');
+  }
+
+  async deleteById(id, trx = this.db) {
+    return trx('items').where({ id }).del();
   }
 }
 
