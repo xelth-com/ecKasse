@@ -420,7 +420,7 @@
                     <li>
                       <span class="qty">{item.quantity}x</span>
                       <span class="name">{item.display_names ? (parseJsonField(item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
-                      <span class="price">{item.total_price.toFixed(2)}€</span>
+                      <span class="price">{parseFloat(item.total_price).toFixed(2)}€</span>
                     </li>
                   {/each}
                 </ul>

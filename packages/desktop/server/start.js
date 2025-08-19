@@ -9,6 +9,7 @@ const { DesktopServer } = require('./app');
 // Import core business logic and database adapters
 const { services, db, dbInit, ProductService, TransactionManagementService, AuthService, ReportingService } = require('../../core');
 const { SQLiteAdapter } = require('../../adapters/database/sqlite');
+const { PostgreSQLAdapter } = require('../../adapters/database/postgresql');
 const logger = require('../../core/config/logger');
 
 const PORT = process.env.BACKEND_PORT || 3030;
@@ -104,17 +105,23 @@ async function startServer() {
   // 1. Initialize database connection (already done via core/db/knex)
   logger.info('Database connection established via core package');
   
-  // 2. Instantiate SQLite adapter with database connection
-  const sqliteAdapter = new SQLiteAdapter(db);
-  logger.info('SQLite adapter instantiated');
+  // 2. Instantiate database adapter based on DB_CLIENT environment variable
+  let databaseAdapter;
+  if (process.env.DB_CLIENT === 'pg') {
+    databaseAdapter = new PostgreSQLAdapter(db);
+    logger.info('PostgreSQL adapter instantiated');
+  } else {
+    databaseAdapter = new SQLiteAdapter(db);
+    logger.info('SQLite adapter instantiated');
+  }
   
   // 3. Instantiate ProductService with repository from adapter
-  const productRepository = sqliteAdapter.getProductRepository();
+  const productRepository = databaseAdapter.getProductRepository();
   const productService = new ProductService(productRepository, db);
   logger.info('ProductService instantiated with ProductRepository');
   
   // 4. Instantiate TransactionManagementService with repositories and services
-  const transactionRepository = sqliteAdapter.getTransactionRepository();
+  const transactionRepository = databaseAdapter.getTransactionRepository();
   const transactionManagementService = new TransactionManagementService(
     transactionRepository,
     productRepository,
@@ -124,7 +131,7 @@ async function startServer() {
   logger.info('TransactionManagementService instantiated with TransactionRepository');
   
   // 5. Instantiate AuthService and ReportingService with their repositories
-  const authRepository = sqliteAdapter.getAuthRepository();
+  const authRepository = databaseAdapter.getAuthRepository();
   const authService = new AuthService(authRepository);
   // Start session cleanup interval for AuthService
   setInterval(() => {
@@ -132,7 +139,7 @@ async function startServer() {
   }, 60 * 60 * 1000); // Every hour
   logger.info('AuthService instantiated with AuthRepository');
   
-  const reportingRepository = sqliteAdapter.getReportingRepository();
+  const reportingRepository = databaseAdapter.getReportingRepository();
   const reportingService = new ReportingService(reportingRepository);
   logger.info('ReportingService instantiated with ReportingRepository');
   

@@ -107,7 +107,8 @@
       "Bash(service postgresql:*)",
       "Bash(sudo systemctl start:*)",
       "Bash(sudo service:*)",
-      "Bash(/tmp/update_wsl_host.sh:*)"
+      "Bash(/tmp/update_wsl_host.sh:*)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckasse -c \"SELECT display_names FROM items LIMIT 1;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

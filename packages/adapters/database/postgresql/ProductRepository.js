@@ -9,10 +9,10 @@ class ProductRepository {
   async findCategoryByName(categoryName, trx = this.db) {
     const categories = await trx('categories').select('*');
     for (const category of categories) {
-        const categoryNames = parseJsonIfNeeded(category.category_names);
-        if (categoryNames && categoryNames.de && categoryNames.de.toLowerCase() === categoryName.toLowerCase()) {
-          return category;
-        }
+      const categoryNames = parseJsonIfNeeded(category.category_names);
+      if (categoryNames && categoryNames.de && categoryNames.de.toLowerCase() === categoryName.toLowerCase()) {
+        return category;
+      }
     }
     return null;
   }
