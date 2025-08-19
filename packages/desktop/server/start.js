@@ -28,6 +28,26 @@ if (semver.major(currentVersion) < 20) {
 const processedOperationIds = new Set();
 const OPERATION_ID_TTL = 60000; // 1 minute TTL
 
+// Helper function to parse JSON fields consistently across database types
+// PostgreSQL returns JSONB as objects, SQLite returns them as strings
+function parseJsonField(field) {
+  // If it's already an object (from PostgreSQL), return as-is
+  if (typeof field === 'object' && field !== null) {
+    return field;
+  }
+  // If it's a string (from SQLite), try to parse it
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field);
+    } catch (error) {
+      // If parsing fails, return the original string
+      return field;
+    }
+  }
+  // For null, undefined, or other types, return as-is
+  return field;
+}
+
 async function handleWebSocketMessage(ws, rawMessage) {
   let parsedMessage;
   try {
@@ -112,7 +132,7 @@ async function handleWebSocketMessage(ws, rawMessage) {
               .where('active_transaction_items.active_transaction_id', responsePayload.id);
             responsePayload.items = items.map(item => ({
               ...item,
-              display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+              display_names: parseJsonField(item.display_names)
             }));
         }
         responseCommand = 'orderUpdated';
@@ -126,7 +146,7 @@ async function handleWebSocketMessage(ws, rawMessage) {
               .where('active_transaction_items.active_transaction_id', responsePayload.id);
             responsePayload.items = items.map(item => ({
               ...item,
-              display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+              display_names: parseJsonField(item.display_names)
             }));
         }
         responseCommand = 'orderUpdated';
@@ -151,11 +171,11 @@ async function handleWebSocketMessage(ws, rawMessage) {
         const categories = await db('categories').select('*');
         console.log('🔍 [Backend] Raw categories from DB:', categories.length, 'items');
         
-        // Ensure all JSON fields are properly stringified to handle database dialect differences
+        // Use parseJsonField helper to ensure consistent object types across database types
         responsePayload = categories.map(category => ({
           ...category,
-          category_names: typeof category.category_names === 'string' ? category.category_names : JSON.stringify(category.category_names || {}),
-          audit_trail: typeof category.audit_trail === 'string' ? category.audit_trail : JSON.stringify(category.audit_trail || {})
+          category_names: parseJsonField(category.category_names),
+          audit_trail: parseJsonField(category.audit_trail)
         }));
         
         console.log('🔍 [Backend] getCategories processed successfully - prepared', responsePayload.length, 'categories for response');
@@ -167,12 +187,12 @@ async function handleWebSocketMessage(ws, rawMessage) {
         const items = await services.product.getProductsByCategoryId(categoryId);
         responsePayload = items.map(item => ({
           ...item,
-          display_names: typeof item.display_names === 'object' ? JSON.stringify(item.display_names || {}) : item.display_names,
-          pricing_schedules: typeof item.pricing_schedules === 'object' ? JSON.stringify(item.pricing_schedules || []) : item.pricing_schedules,
-          availability_schedule: typeof item.availability_schedule === 'object' ? JSON.stringify(item.availability_schedule || {}) : item.availability_schedule,
-          additional_item_attributes: typeof item.additional_item_attributes === 'object' ? JSON.stringify(item.additional_item_attributes || {}) : item.additional_item_attributes,
-          item_flags: typeof item.item_flags === 'object' ? JSON.stringify(item.item_flags || {}) : item.item_flags,
-          audit_trail: typeof item.audit_trail === 'object' ? JSON.stringify(item.audit_trail || {}) : item.audit_trail
+          display_names: parseJsonField(item.display_names),
+          pricing_schedules: parseJsonField(item.pricing_schedules),
+          availability_schedule: parseJsonField(item.availability_schedule),
+          additional_item_attributes: parseJsonField(item.additional_item_attributes),
+          item_flags: parseJsonField(item.item_flags),
+          audit_trail: parseJsonField(item.audit_trail)
         }));
       } else if (command === 'getRecentReceipts') {
         const { limit } = payload || {};
@@ -182,10 +202,10 @@ async function handleWebSocketMessage(ws, rawMessage) {
             ...result,
             transactions: result.transactions.map(tx => ({
               ...tx,
-              metadata: typeof tx.metadata === 'object' && tx.metadata !== null ? JSON.stringify(tx.metadata) : tx.metadata,
+              metadata: parseJsonField(tx.metadata),
               items: tx.items.map(item => ({
                 ...item,
-                display_names: typeof item.display_names === 'object' && item.display_names !== null ? JSON.stringify(item.display_names) : item.display_names
+                display_names: parseJsonField(item.display_names)
               }))
             }))
           };

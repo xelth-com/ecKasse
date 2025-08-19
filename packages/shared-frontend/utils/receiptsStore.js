@@ -2,6 +2,26 @@ import { writable } from 'svelte/store';
 import { wsStore } from './wsStore.js';
 import { addLog } from './logStore.js';
 
+// Helper function to safely parse JSON fields from WebSocket responses
+// PostgreSQL returns JSONB as objects, SQLite returns them as strings
+function parseJsonField(field) {
+	// If it's already an object (from PostgreSQL), return as-is
+	if (typeof field === 'object' && field !== null) {
+		return field;
+	}
+	// If it's a string (from SQLite), try to parse it
+	if (typeof field === 'string') {
+		try {
+			return JSON.parse(field);
+		} catch (error) {
+			// If parsing fails, return the original string
+			return field;
+		}
+	}
+	// For null, undefined, or other types, return as-is
+	return field;
+}
+
 function createReceiptsStore() {
 	const { subscribe, set, update } = writable({
 		receipts: [],
@@ -16,10 +36,10 @@ function createReceiptsStore() {
 			if (state.lastMessage.status === 'success') {
 				const payload = state.lastMessage.payload;
 				if (payload.success && payload.transactions) {
-					// Parse metadata for each transaction
+					// Parse metadata for each transaction using the helper function
 					const transactionsWithParsedMetadata = payload.transactions.map(transaction => ({
 						...transaction,
-						metadata: transaction.metadata ? JSON.parse(transaction.metadata) : {}
+						metadata: transaction.metadata ? parseJsonField(transaction.metadata) : {}
 					}));
 					
 					update(store => ({

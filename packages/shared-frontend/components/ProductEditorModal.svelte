@@ -20,10 +20,30 @@
   let isSubmitting = false;
   let validationErrors = {};
 
+  // Helper function to safely parse JSON fields from WebSocket responses
+  // PostgreSQL returns JSONB as objects, SQLite returns them as strings
+  function parseJsonField(field) {
+    // If it's already an object (from PostgreSQL), return as-is
+    if (typeof field === 'object' && field !== null) {
+      return field;
+    }
+    // If it's a string (from SQLite), try to parse it
+    if (typeof field === 'string') {
+      try {
+        return JSON.parse(field);
+      } catch (error) {
+        // If parsing fails, return the original string
+        return field;
+      }
+    }
+    // For null, undefined, or other types, return as-is
+    return field;
+  }
+
   // Reactive statement to update form when product changes
   $: if (product && visible) {
     // Parse display names from the product structure
-    const displayNames = product.display_names ? JSON.parse(product.display_names) : {};
+    const displayNames = product.display_names ? parseJsonField(product.display_names) : {};
     const productName = displayNames.menu?.de || product.name || '';
     
     // Get category name - need to look it up from categories

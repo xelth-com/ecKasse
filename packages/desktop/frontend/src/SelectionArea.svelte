@@ -134,6 +134,26 @@
     return '✓ ' + shortName;
   }
 
+  // Helper function to safely parse JSON fields from WebSocket responses
+  // PostgreSQL returns JSONB as objects, SQLite returns them as strings
+  function parseJsonField(field) {
+    // If it's already an object (from PostgreSQL), return as-is
+    if (typeof field === 'object' && field !== null) {
+      return field;
+    }
+    // If it's a string (from SQLite), try to parse it
+    if (typeof field === 'string') {
+      try {
+        return JSON.parse(field);
+      } catch (error) {
+        // If parsing fails, return the original string
+        return field;
+      }
+    }
+    // For null, undefined, or other types, return as-is
+    return field;
+  }
+
   function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
     const availableWidth = containerWidth;
     const availableHeight = containerHeight - 2 * verticalPadding;
@@ -1394,8 +1414,8 @@
     // Regular category/product buttons are always enabled (auto-reset handles finished state)
     const isCategory = currentView === 'categories';
     const label = isCategory 
-      ? JSON.parse(cell.content.category_names).de || 'Unnamed'
-      : JSON.parse(cell.content.display_names).menu.de || 'Unnamed Product';
+      ? parseJsonField(cell.content.category_names).de || 'Unnamed'
+      : parseJsonField(cell.content.display_names).menu.de || 'Unnamed Product';
     const onClick = isCategory ? handleCategoryClick : handleProductClick;
     
     return { 

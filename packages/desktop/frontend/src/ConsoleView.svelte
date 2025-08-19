@@ -149,6 +149,25 @@
     }
   }
 
+  // Helper function to safely parse JSON fields from WebSocket responses
+  // PostgreSQL returns JSONB as objects, SQLite returns them as strings
+  function parseJsonField(field) {
+    // If it's already an object (from PostgreSQL), return as-is
+    if (typeof field === 'object' && field !== null) {
+      return field;
+    }
+    // If it's a string (from SQLite), try to parse it
+    if (typeof field === 'string') {
+      try {
+        return JSON.parse(field);
+      } catch (error) {
+        // If parsing fails, return the original string
+        return field;
+      }
+    }
+    // For null, undefined, or other types, return as-is
+    return field;
+  }
 
   // Language selector functionality
   function displayLanguageSelector() {
@@ -400,7 +419,7 @@
                   {#each $orderStore.items as item (item.id)}
                     <li>
                       <span class="qty">{item.quantity}x</span>
-                      <span class="name">{item.display_names ? ( (typeof item.display_names === 'string' ? JSON.parse(item.display_names) : item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
+                      <span class="name">{item.display_names ? (parseJsonField(item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
                       <span class="price">{item.total_price.toFixed(2)}€</span>
                     </li>
                   {/each}
