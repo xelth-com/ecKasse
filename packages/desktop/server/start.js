@@ -32,7 +32,20 @@ async function handleWebSocketMessage(ws, rawMessage) {
   let parsedMessage;
   try {
     parsedMessage = JSON.parse(rawMessage.toString());
-    logger.info({ type: 'websocket_request', direction: 'in', data: parsedMessage, clientId: ws.id || 'unknown' });
+    
+    // DEBUG: Специальное логирование для getCategories
+    if (parsedMessage.command === 'getCategories') {
+      console.log('🔍 [Backend] RECEIVED getCategories command:', parsedMessage);
+      logger.info({ 
+        msg: '🔍 getCategories command received', 
+        type: 'websocket_request', 
+        direction: 'in', 
+        data: parsedMessage, 
+        clientId: ws.id || 'unknown' 
+      });
+    } else {
+      logger.info({ type: 'websocket_request', direction: 'in', data: parsedMessage, clientId: ws.id || 'unknown' });
+    }
   } catch (error) {
     logger.error({ msg: 'Invalid WebSocket message format (not JSON)', raw: rawMessage.toString(), clientId: ws.id, err: error });
     ws.send(JSON.stringify({ error: 'Invalid message format. Expected JSON.', operationId: null }));
@@ -40,6 +53,11 @@ async function handleWebSocketMessage(ws, rawMessage) {
   }
 
   const { operationId, command, payload } = parsedMessage;
+  
+  // DEBUG: Дополнительное логирование для getCategories
+  if (command === 'getCategories') {
+    console.log('🔍 [Backend] Processing getCategories command with operationId:', operationId);
+  }
 
   if (!operationId) {
     logger.warn({ msg: 'WebSocket message without operationId', data: parsedMessage, clientId: ws.id });
@@ -129,13 +147,18 @@ async function handleWebSocketMessage(ws, rawMessage) {
         responsePayload = await services.printer.reprintReceipt(transactionId);
         responseCommand = 'reprintResult';
       } else if (command === 'getCategories') {
+        console.log('🔍 [Backend] Executing getCategories - fetching from database...');
         const categories = await db('categories').select('*');
+        console.log('🔍 [Backend] Raw categories from DB:', categories.length, 'items');
+        
         // Ensure all JSON fields are properly stringified to handle database dialect differences
         responsePayload = categories.map(category => ({
           ...category,
           category_names: typeof category.category_names === 'string' ? category.category_names : JSON.stringify(category.category_names || {}),
           audit_trail: typeof category.audit_trail === 'string' ? category.audit_trail : JSON.stringify(category.audit_trail || {})
         }));
+        
+        console.log('🔍 [Backend] getCategories processed successfully - prepared', responsePayload.length, 'categories for response');
       } else if (command === 'getItemsByCategory') {
         const { categoryId } = payload;
         if (!categoryId) {
@@ -261,6 +284,17 @@ async function handleWebSocketMessage(ws, rawMessage) {
       channel: 'websocket',
       serverTime: new Date().toISOString()
     };
+    
+    // DEBUG: Специальное логирование для getCategories ответа
+    if (responseCommand === 'getCategoriesResponse') {
+      console.log('🔍 [Backend] SENDING getCategoriesResponse:', {
+        operationId,
+        status,
+        payloadLength: Array.isArray(responsePayload) ? responsePayload.length : 'not array',
+        responseCommand
+      });
+    }
+    
     ws.send(JSON.stringify(response));
     logger.info({ type: 'websocket_response', direction: 'out', data: response, clientId: ws.id });
 

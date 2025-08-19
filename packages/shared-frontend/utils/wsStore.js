@@ -23,6 +23,11 @@ function createWebSocketStore() {
 
   // Always use current host for WebSocket connections
   const getServerList = () => {
+    // DEBUG: Force localhost connection for debugging getCategories issue
+    if (window.location.host === 'eckasse.com' || window.location.host === 'www.eckasse.com') {
+      console.log('🔧 [wsStore] Forcing localhost connection for debugging');
+      return ['localhost:3030'];
+    }
     // Always use the current host to avoid cross-domain issues
     return [window.location.host];
   };
@@ -154,7 +159,12 @@ function createWebSocketStore() {
 
     try {
       const currentServer = getNextServer();
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // DEBUG: Force ws:// for localhost debugging
+      let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      if (currentServer.includes('localhost')) {
+        protocol = 'ws:';
+        console.log('🔧 [wsStore] Forcing ws:// protocol for localhost');
+      }
       const wsUrl = `${protocol}//${currentServer}`;
       
       console.log(`Attempting WebSocket connection to ${wsUrl} (attempt ${retryCount + 1}/${maxReconnectAttempts})`);
@@ -295,6 +305,17 @@ function createWebSocketStore() {
 
   // Send message via WebSocket
   function send(message) {
+    // DEBUG: Детальное логирование для отслеживания getCategories
+    console.log('[wsStore] send() called with:', message);
+    console.log('[wsStore] WebSocket state:', {
+      exists: !!ws,
+      readyState: ws ? ws.readyState : 'N/A',
+      readyStateText: ws ? (ws.readyState === 0 ? 'CONNECTING' : 
+                           ws.readyState === 1 ? 'OPEN' : 
+                           ws.readyState === 2 ? 'CLOSING' : 'CLOSED') : 'N/A',
+      sessionId: sessionId
+    });
+    
     if (ws && ws.readyState === WebSocket.OPEN) {
       const messageWithId = {
         operationId: generateUUID(),
@@ -305,6 +326,12 @@ function createWebSocketStore() {
         }
       };
       
+      // DEBUG: Специальное логирование для getCategories
+      if (message.command === 'getCategories') {
+        console.log('🔍 [wsStore] SENDING getCategories command:', messageWithId);
+        console.log('🔍 [wsStore] WebSocket ready state confirmed OPEN for getCategories');
+      }
+      
       console.log('Sending WebSocket message:', messageWithId);
       ws.send(JSON.stringify(messageWithId));
       
@@ -312,17 +339,36 @@ function createWebSocketStore() {
       return new Promise((resolve) => {
         pendingOperations.set(messageWithId.operationId, resolve);
         
-        // Timeout after 10 seconds
-        setTimeout(() => {
+        // DEBUG: Добавим специальное логирование для getCategories timeout
+        const timeoutId = setTimeout(() => {
           if (pendingOperations.has(messageWithId.operationId)) {
             pendingOperations.delete(messageWithId.operationId);
+            if (message.command === 'getCategories') {
+              console.error('❌ [wsStore] getCategories TIMEOUT after 10 seconds');
+            }
             resolve({ error: 'Timeout waiting for response' });
           }
         }, 10000);
+        
+        // DEBUG: Логирование для getCategories
+        if (message.command === 'getCategories') {
+          console.log('🔍 [wsStore] getCategories promise created, waiting for response...');
+        }
       });
     } else {
-      // Silently fail if WebSocket is not connected (avoids startup errors)
-      return Promise.resolve({ error: 'WebSocket not connected' });
+      // DEBUG: Логирование когда WebSocket не подключен
+      const error = 'WebSocket not connected';
+      console.log(`❌ [wsStore] ${error}:`, {
+        command: message.command,
+        wsExists: !!ws,
+        readyState: ws ? ws.readyState : 'N/A'
+      });
+      
+      if (message.command === 'getCategories') {
+        console.error('❌ [wsStore] getCategories FAILED - WebSocket not connected!');
+      }
+      
+      return Promise.resolve({ error });
     }
   }
 

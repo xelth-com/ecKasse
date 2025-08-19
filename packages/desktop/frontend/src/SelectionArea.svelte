@@ -804,21 +804,54 @@
   // Reactive WebSocket connection handling with race condition fix
   let initialLoadDone = false;
   wsStore.subscribe(state => {
+    // DEBUG: Детальное логирование состояния WebSocket
+    console.log('📡 [SelectionArea] wsStore state changed:', {
+      isConnected: state.isConnected,
+      initialLoadDone,
+      lastMessageCommand: state.lastMessage?.command,
+      lastMessageStatus: state.lastMessage?.status
+    });
+    
     isConnected = state.isConnected;
     
     // Only fetch initial data once when connection is established
     if (isConnected && !initialLoadDone) {
+      console.log('🚀 [SelectionArea] Conditions met for getCategories:', {
+        isConnected,
+        initialLoadDone,
+        about_to_send: 'getCategories'
+      });
+      
       status = 'Loading categories...';
-      wsStore.send({ command: 'getCategories' });
+      console.log('📤 [SelectionArea] About to call wsStore.send({ command: "getCategories" })');
+      
+      try {
+        const result = wsStore.send({ command: 'getCategories' });
+        console.log('✅ [SelectionArea] wsStore.send returned:', result);
+      } catch (error) {
+        console.error('❌ [SelectionArea] Error calling wsStore.send:', error);
+      }
+      
       initialLoadDone = true;
+      console.log('🔒 [SelectionArea] initialLoadDone set to true');
+    } else {
+      console.log('⏸️ [SelectionArea] Conditions NOT met for getCategories:', {
+        isConnected,
+        initialLoadDone,
+        reason: !isConnected ? 'not connected' : 'already loaded'
+      });
     }
 
     if (state.lastMessage?.command === 'getCategoriesResponse') {
+      console.log('📥 [SelectionArea] Received getCategoriesResponse:', state.lastMessage);
+      
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
         categories = state.lastMessage.payload;
         status = categories.length > 0 ? '' : 'No categories found.';
+        console.log('✅ [SelectionArea] Categories loaded successfully:', categories.length, 'items');
       } else {
         status = 'Error: Could not load categories from backend.';
+        console.error('❌ [SelectionArea] Failed to load categories:', state.lastMessage);
       }
     }
     if (state.lastMessage?.command === 'getItemsByCategoryResponse') {
