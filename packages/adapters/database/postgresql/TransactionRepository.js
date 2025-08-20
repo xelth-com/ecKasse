@@ -1,5 +1,5 @@
-// packages/adapters/database/postgresql/TransactionRepository.js
 const logger = require('../../../core/config/logger');
+const { parseJsonIfNeeded } = require('../../../core/utils/db-helper');
 
 class TransactionRepository {
   constructor(db) {
@@ -7,20 +7,23 @@ class TransactionRepository {
   }
 
   async findActiveById(id, trx = this.db) {
-    return trx('active_transactions').where({ id, status: 'active' }).first();
+    const tx = await trx('active_transactions').where({ id, status: 'active' }).first();
+    return tx ? { ...tx, metadata: parseJsonIfNeeded(tx.metadata) } : null;
   }
 
   async findById(id, trx = this.db) {
-    return trx('active_transactions').where({ id }).first();
+    const tx = await trx('active_transactions').where({ id }).first();
+    return tx ? { ...tx, metadata: parseJsonIfNeeded(tx.metadata) } : null;
   }
 
   async findParkedById(id, trx = this.db) {
-    return trx('active_transactions').where({ id, status: 'parked' }).first();
+    const tx = await trx('active_transactions').where({ id, status: 'parked' }).first();
+    return tx ? { ...tx, metadata: parseJsonIfNeeded(tx.metadata) } : null;
   }
 
   async create(data, trx = this.db) {
     const [result] = await trx('active_transactions').insert(data).returning('*');
-    return result;
+    return { ...result, metadata: parseJsonIfNeeded(result.metadata) };
   }
 
   async addItem(itemData, trx = this.db) {
@@ -30,7 +33,7 @@ class TransactionRepository {
 
   async update(id, data, trx = this.db) {
     const [updated] = await trx('active_transactions').where({ id }).update(data).returning('*');
-    return updated;
+    return { ...updated, metadata: parseJsonIfNeeded(updated.metadata) };
   }
 
   async getItemsWithDetailsByTransactionId(id, trx = this.db) {
@@ -53,17 +56,19 @@ class TransactionRepository {
   }
 
   async getPendingRecoveryTransactions(trx = this.db) {
-    return trx('active_transactions')
+    const txs = await trx('active_transactions')
       .where('resolution_status', 'pending')
       .select('*')
       .orderBy('created_at', 'asc');
+    return txs.map(tx => ({ ...tx, metadata: parseJsonIfNeeded(tx.metadata) }));
   }
 
   async getParkedTransactions(trx = this.db) {
-    return trx('active_transactions')
+    const txs = await trx('active_transactions')
       .where('status', 'parked')
       .select('*')
       .orderBy('updated_at', 'asc');
+    return txs.map(tx => ({ ...tx, metadata: parseJsonIfNeeded(tx.metadata) }));
   }
 
   async isTableInUse(tableNumber, excludeTransactionId = null, trx = this.db) {
