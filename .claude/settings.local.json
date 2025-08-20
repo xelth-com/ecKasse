@@ -116,7 +116,8 @@
       "Bash(sudo nginx:*)",
       "Bash(sudo systemctl:*)",
       "Bash(./check-deployment.sh)",
-      "Bash(dos2unix:*)"
+      "Bash(dos2unix:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
