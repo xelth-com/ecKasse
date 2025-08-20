@@ -32,7 +32,7 @@ async function ensureDefaultUsersAndRoles() {
     await db.transaction(async (trx) => {
       // Step 1: Check if any roles exist
       const existingRoles = await trx('roles').count('id as count');
-      const roleCount = existingRoles[0].count;
+      const roleCount = Number(existingRoles[0].count);
       
       let adminRoleId = null;
       
@@ -126,7 +126,7 @@ async function ensureDefaultUsersAndRoles() {
       
       // Step 2: Check if any users exist
       const existingUsers = await trx('users').count('id as count');
-      const userCount = existingUsers[0].count;
+      const userCount = Number(existingUsers[0].count);
       
       if (userCount === 0) {
         logger.info('No users found in database, creating default admin user...');
@@ -179,7 +179,7 @@ async function ensureDefaultUsersAndRoles() {
           .orWhere('roles.role_name', 'admin')
           .count('users.id as count');
         
-        const adminUserCount = adminUsers[0].count;
+        const adminUserCount = Number(adminUsers[0].count);
         
         if (adminUserCount === 0) {
           logger.warn('No admin users found in existing user base, creating emergency admin...');
@@ -223,7 +223,7 @@ async function ensureDefaultUsersAndRoles() {
       
       // Step 3: Ensure minimal structure exists (company, branch, POS device, categories)
       const existingCompanies = await trx('companies').count('id as count');
-      const companyCount = existingCompanies[0].count;
+      const companyCount = Number(existingCompanies[0].count);
       
       if (companyCount === 0) {
         logger.info('No companies found in database, creating default company structure...');

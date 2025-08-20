@@ -2,7 +2,12 @@ exports.up = function(knex) {
   return knex.schema.createTable('search_cache', (table) => {
     table.increments('id').primary();
     table.text('query_text').notNullable().index();
-    table.specificType('query_embedding', 'BLOB');
+    // Use bytea for PostgreSQL, BLOB for SQLite
+    if (knex.client.config.client === 'pg') {
+      table.specificType('query_embedding', 'bytea');
+    } else {
+      table.specificType('query_embedding', 'BLOB');
+    }
     table.string('model_used').notNullable();
     table.jsonb('result_item_ids').notNullable();
     table.text('full_response_text').notNullable();

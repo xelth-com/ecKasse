@@ -3,9 +3,12 @@
  * @returns { Promise<void> }
  */
 exports.up = function(knex) {
-  // Only run this migration if we're using PostgreSQL
+  // Skip pgvector extension for now - it needs to be installed separately
+  // Only run this migration if we're using PostgreSQL and vector extension is available
   if (knex.client.config.client === 'pg') {
-    return knex.raw('CREATE EXTENSION IF NOT EXISTS vector');
+    // Skip for now - vector extension not installed
+    return Promise.resolve();
+    // return knex.raw('CREATE EXTENSION IF NOT EXISTS vector');
   }
   // For SQLite, no action needed as it already has vec extension
   return Promise.resolve();

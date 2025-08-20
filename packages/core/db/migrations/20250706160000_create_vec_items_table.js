@@ -1,6 +1,11 @@
 // File: /packages/backend/src/db/migrations/20250706160000_create_vec_items_table.js
 
 exports.up = function(knex) {
+  // This migration is only for SQLite - skip for PostgreSQL
+  if (knex.client.config.client !== 'sqlite3') {
+    return Promise.resolve();
+  }
+  
   return knex.schema.raw(`
     -- Create virtual table for vector search using sqlite-vec
     -- Each row stores a vector embedding for item names
@@ -11,5 +16,10 @@ exports.up = function(knex) {
 };
 
 exports.down = function(knex) {
+  // This migration is only for SQLite - skip for PostgreSQL
+  if (knex.client.config.client !== 'sqlite3') {
+    return Promise.resolve();
+  }
+  
   return knex.schema.dropTableIfExists('vec_items');
 };
