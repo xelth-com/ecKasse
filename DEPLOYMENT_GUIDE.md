@@ -69,40 +69,62 @@ git fetch
 git checkout 06f0ced
 ```
 
-### 3.2 Environment variables configuration
-Create `.env` file in project root:
+### 3.2 Environment variables configuration - SECURE WORKFLOW
 
+The deployment process now follows **secure best practices** with zero secrets in the repository.
+
+#### 🔒 SECURE FIRST DEPLOYMENT PROCESS
+
+**Step 1: Deploy and configure environment**
 ```bash
-cat > .env << 'EOF'
-# =================================================================
-# PRODUCTION SERVER (PostgreSQL)
-# =================================================================
-NODE_ENV=production
-APP_MODE=production
-BACKEND_PORT=3030
-LOG_LEVEL=info
-
-# PostgreSQL database configuration
-PG_DATABASE=eckwms
-PG_USERNAME=wms_user
-PG_PASSWORD=gK76543n2PqX5bV9zR4m
-PG_HOST=localhost
-PG_PORT=5432
-DB_ALTER=true
-
-# Production API keys
-GEMINI_API_KEY="AIzaSyCZJdPazBu1DCe3Suuo1Gm7_rcmOUu07Kc"
-GCS_API_KEY="AIzaSyCZJdPazBu1DCe3Suuo1Gm7_rcmOUu07Kc"
-GCS_CX="YOUR_SEARCH_ENGINE_ID"
-
-# UI Configuration
-VITE_MIN_BUTTON_WIDTH=160
-
-LOG_LEVEL=debug
-EOF
+cd /var/www/eckasse.com
+./deploy-server.sh
 ```
 
-⚠️ **Important**: Replace `GEMINI_API_KEY` and other API keys with your real values.
+On **first deployment**, the script will:
+1. ✅ Copy `.env.example` to `.env` (with secure placeholders)
+2. 🚨 **STOP with error** and display configuration instructions
+3. ❌ **Refuse to continue** until you manually configure secrets
+
+**Step 2: Configure your production secrets**
+```bash
+# Edit the environment file with your production secrets
+nano .env
+
+# Replace these CRITICAL placeholders with real values:
+PG_PASSWORD=your_actual_database_password_here
+GEMINI_API_KEY="your_real_gemini_api_key_here"  
+GCS_API_KEY="your_real_gcs_api_key_here"
+GCS_CX="your_real_search_engine_id_here"
+
+# Save and exit (Ctrl+X, then Y, then Enter)
+```
+
+**Step 3: Complete deployment**
+```bash
+# Run the deployment script again
+./deploy-server.sh
+```
+
+#### 🔄 SUBSEQUENT DEPLOYMENTS (100% SAFE)
+
+For all future deployments, simply run:
+```bash
+./deploy-server.sh
+```
+
+The script will:
+- ✅ **Preserve your existing `.env` file completely**
+- 🔒 **Never modify or overwrite your secrets**
+- 🚀 Update code, install dependencies, build, and restart services
+- ⚠️ Warn if placeholder values are detected but allow continuation
+
+#### 🛡️ SECURITY GUARANTEES
+
+- **Zero secrets in repository** - All sensitive data removed from Git
+- **Manual configuration required** - Forces conscious security setup
+- **Preservation of secrets** - Existing `.env` never modified
+- **Safe re-runs** - Deploy script can run repeatedly without risk
 
 ### 3.3 Dependencies installation
 ```bash
@@ -255,15 +277,24 @@ pm2 logs eckasse-desktop-server --lines 20 --nostream
 
 ---
 
-## 5.3 Automated Deployment
+## 5.3 Secure Automated Deployment
 
-The project has an updated automatic deployment script `deploy-server.sh` that:
+The project has a **completely secure** deployment script `deploy-server.sh` with enterprise-grade security:
 
-- ✅ Automatically creates correct `.env` file with PostgreSQL settings
+### 🔒 SECURITY FEATURES
+- ✅ **Zero hardcoded secrets** - No credentials in the script or repository
+- ✅ **Mandatory manual configuration** - Forces secure setup on first deployment
+- ✅ **Complete preservation** - Never touches existing `.env` files
+- ✅ **Template-based setup** - Uses `.env.example` as secure foundation
+- ✅ **Placeholder detection** - Warns about unconfigured secrets
+- ✅ **Safe re-execution** - Can run repeatedly without any security risk
+
+### 🛠️ DEPLOYMENT CAPABILITIES
 - ✅ Applies all known fixes (log storm, vite.svg)
 - ✅ Builds frontend with fixes
 - ✅ Skips problematic database migrations
 - ✅ Starts application through PM2 with ecosystem.config.js
+- ✅ Sets up PM2 startup scripts
 
 **Usage:**
 ```bash
@@ -272,7 +303,32 @@ chmod +x deploy-server.sh
 ./deploy-server.sh
 ```
 
-⚠️ **Note**: The updated script automatically applies all fixes found during manual deployment.
+### 🔄 DEPLOYMENT WORKFLOWS
+
+**🆕 First Deployment (Secure Setup):**
+1. Run `./deploy-server.sh` 
+   - ✅ Copies `.env.example` → `.env`
+   - ❌ **Exits with error** requiring manual configuration
+2. Edit `.env` with real secrets: `nano .env`
+3. Run `./deploy-server.sh` again
+   - ✅ Completes full deployment
+
+**🔄 Subsequent Deployments (Zero Risk):**
+- Just run `./deploy-server.sh`
+- ✅ Your `.env` file is **never touched**
+- ✅ All secrets preserved automatically
+- ✅ Application updated and restarted safely
+
+### 🛡️ SECURITY COMPARISON
+
+| Feature | ❌ Old Script | ✅ New Secure Script |
+|---------|---------------|---------------------|
+| Secrets in repo | Yes (insecure) | **None (secure)** |
+| Overwrites .env | Yes (dangerous) | **Never (safe)** |
+| Manual config | Optional | **Required (secure)** |
+| Re-run safety | Risky | **100% safe** |
+
+⚠️ **SECURITY NOTE**: This script represents a complete security overhaul. Your production secrets are now fully protected.
 
 ---
 

@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import { orderStore } from './orderStore.js';
 import { parkedOrdersStore } from './parkedOrdersStore.js';
+import { currentView } from './viewStore.js';
 
 // Keyboard layouts for different languages
 const layouts = {
@@ -351,6 +352,7 @@ function createPinpadStore() {
 
         // Helper methods for specific modes
         activateTableEntry() {
+            currentView.set('order');
             this.activate(
                 'table',
                 async (tableNumber) => {
@@ -382,6 +384,7 @@ function createPinpadStore() {
 
         // New method for table entry with auto-collapse
         activateTableEntryWithAutoCollapse() {
+            currentView.set('order');
             this.activate(
                 'table',
                 async (tableNumber) => {

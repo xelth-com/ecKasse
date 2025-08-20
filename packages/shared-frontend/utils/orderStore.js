@@ -3,6 +3,7 @@ import { wsStore } from './wsStore.js';
 import { addLog } from './logStore.js';
 import { notificationStore } from './notificationStore.js';
 import { authStore } from './authStore.js';
+import { currentView } from './viewStore.js';
 
 function createOrderStore() {
 	const { subscribe, set, update } = writable({
@@ -162,6 +163,7 @@ function createOrderStore() {
 	}
 
 	async function addItem(itemId, quantity = 1) {
+		currentView.set('order');
 		const userId = getAuthenticatedUserId();
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
@@ -267,6 +269,7 @@ function createOrderStore() {
 	}
 
 	function loadOrder(orderData) {
+		currentView.set('order');
 		addLog('INFO', `Loading order ${orderData.id}...`);
 		update(store => ({
 			...store,

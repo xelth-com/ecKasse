@@ -122,7 +122,9 @@
       "Bash(sudo systemctl:*)",
       "Bash(./check-deployment.sh)",
       "Bash(dos2unix:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(./test-env-setup.sh:*)",
+      "Bash(./env-check-test.sh)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
