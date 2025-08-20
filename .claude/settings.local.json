@@ -108,7 +108,15 @@
       "Bash(sudo systemctl start:*)",
       "Bash(sudo service:*)",
       "Bash(/tmp/update_wsl_host.sh:*)",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckasse -c \"SELECT display_names FROM items LIMIT 1;\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckasse -c \"SELECT display_names FROM items LIMIT 1;\")",
+      "Bash(NODE_ENV=production PG_USERNAME=wms_user PG_PASSWORD=gK76543n2PqX5bV9zR4m PG_DATABASE=eckwms PG_HOST=localhost PG_PORT=5432 npx knex migrate:latest --knexfile ./knexfile.js)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT version();\")",
+      "Bash(NODE_ENV=production DB_CLIENT=pg npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
+      "Bash(echo:*)",
+      "Bash(sudo nginx:*)",
+      "Bash(sudo systemctl:*)",
+      "Bash(./check-deployment.sh)",
+      "Bash(dos2unix:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
