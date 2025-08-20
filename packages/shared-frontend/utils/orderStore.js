@@ -46,7 +46,10 @@ function createOrderStore() {
 
 		if (state.lastMessage?.command === 'orderUpdated' && state.lastMessage.status === 'success' && state.lastMessage.payload) {
 			const updatedTx = state.lastMessage.payload;
-			const newItems = updatedTx.items || [];
+			const newItems = (updatedTx.items || []).map(item => ({ 
+				...item, 
+				isEdited: item.isEdited || false // Add isEdited flag to all items
+			}));
 			
 			// Identify the most recently modified or added item
 			let activeItemId = null;
@@ -211,17 +214,18 @@ function createOrderStore() {
 
 		// If we're active, check for existing item with same ID and default price
 		if (currentStoreState.status === 'active' && currentStoreState.transactionId) {
-			// Find if item with same itemId and default price already exists
+			// Find if item with same itemId and default price already exists and is not edited
 			const existingItem = currentStoreState.items.find(item => 
 				item.item_id === itemId && 
-				!item.notes?.includes('Custom price:') // Not a custom price item
+				!item.notes?.includes('Custom price:') && // Not a custom price item
+				!item.isEdited // Not manually edited
 			);
 
 			if (existingItem) {
 				// Update quantity instead of adding new item
 				const newQuantity = parseFloat(existingItem.quantity) + quantity;
-				addLog('INFO', `Item ${itemId} already exists, updating quantity to ${newQuantity}`);
-				updateQuantity(existingItem.id, newQuantity);
+				addLog('INFO', `Item ${itemId} already exists and not edited, updating quantity to ${newQuantity}`);
+				updateItemQuantity(existingItem.id, newQuantity);
 				return;
 			}
 
@@ -473,6 +477,73 @@ function createOrderStore() {
 		});
 	}
 
+	// New function to update item quantity with permission-based logic
+	async function updateItemQuantity(transactionItemId, newQuantity) {
+		const userId = getAuthenticatedUserId();
+		let currentStoreState;
+		subscribe(s => currentStoreState = s)();
+
+		if (currentStoreState.status !== 'active' || !currentStoreState.transactionId) {
+			addLog('ERROR', 'Cannot update quantity: no active transaction');
+			return;
+		}
+
+		// Find the item and mark it as edited
+		update(store => ({
+			...store,
+			items: store.items.map(item => 
+				item.id === transactionItemId 
+					? { ...item, isEdited: true }
+					: item
+			)
+		}));
+
+		addLog('INFO', `Updating item quantity for item ${transactionItemId} to ${newQuantity} (marked as edited)`);
+		wsStore.send({
+			command: 'updateItemQuantity',
+			payload: {
+				transactionId: currentStoreState.transactionId,
+				transactionItemId,
+				newQuantity,
+				userId
+			}
+		});
+	}
+
+	// New function to update item price with permission-based logic
+	async function updateItemPrice(transactionItemId, newPrice, isTotalPrice = false) {
+		const userId = getAuthenticatedUserId();
+		let currentStoreState;
+		subscribe(s => currentStoreState = s)();
+
+		if (currentStoreState.status !== 'active' || !currentStoreState.transactionId) {
+			addLog('ERROR', 'Cannot update price: no active transaction');
+			return;
+		}
+
+		// Find the item and mark it as edited
+		update(store => ({
+			...store,
+			items: store.items.map(item => 
+				item.id === transactionItemId 
+					? { ...item, isEdited: true }
+					: item
+			)
+		}));
+
+		addLog('INFO', `Updating item price for item ${transactionItemId} to ${newPrice} (marked as edited)`);
+		wsStore.send({
+			command: 'updateItemPrice',
+			payload: {
+				transactionId: currentStoreState.transactionId,
+				transactionItemId,
+				newPrice,
+				isTotalPrice,
+				userId
+			}
+		});
+	}
+
 	return {
 		subscribe,
 		set,
@@ -480,6 +551,8 @@ function createOrderStore() {
 		initializeOrder,
 		addItem,
 		updateQuantity,
+		updateItemQuantity,
+		updateItemPrice,
 		addWithCustomPrice,
 		finishOrder,
 		resetOrder,

@@ -153,7 +153,6 @@ function createPinpadStore() {
 
         async confirm() {
             let state;
-            let callback;
             let value;
             
             // Get current state
@@ -184,63 +183,71 @@ function createPinpadStore() {
                 const activeItem = currentOrderState.items.find(item => item.id === currentOrderState.activeTransactionItemId);
                 
                 if (activeItem) {
+                    // Get current user and permissions from authStore
+                    const { authStore } = await import('./authStore.js');
+                    let currentAuthState;
+                    authStore.subscribe(s => currentAuthState = s)();
+                    
+                    const userPermissions = currentAuthState.currentUser?.permissions || [];
+                    
                     if (inputValue.includes('.') || inputValue.includes(',')) {
-                        // Contains decimal - treat as custom price
-                        const customPrice = parseFloat(inputValue.replace(',', '.'));
-                        if (!isNaN(customPrice) && customPrice > 0) {
-                            // Get user role to determine price modification permissions
-                            const { authStore } = await import('./authStore.js');
-                            let currentAuthState;
-                            authStore.subscribe(s => currentAuthState = s)();
+                        // Contains decimal - treat as price update
+                        const newPrice = parseFloat(inputValue.replace(',', '.'));
+                        if (!isNaN(newPrice) && newPrice > 0) {
+                            const currentPrice = parseFloat(activeItem.unit_price);
                             
-                            const userRole = currentAuthState.currentUser?.role_name || '';
-                            const isAdmin = userRole === 'admin' || currentAuthState.currentUser?.can_manage_users;
+                            // Determine required permission
+                            let requiredPermission = null;
+                            if (newPrice < currentPrice) {
+                                requiredPermission = 'order.change_price'; // Price reduction needs permission
+                            }
+                            // Note: Price increases don't require special permission
                             
-                            const currentQuantity = parseFloat(activeItem.quantity);
-                            const currentUnitPrice = parseFloat(activeItem.unit_price);
+                            // Check permission
+                            const hasPermission = userPermissions.includes('all') || 
+                                                (requiredPermission ? userPermissions.includes(requiredPermission) : true);
                             
-                            if (currentQuantity === 1) {
-                                // Quantity = 1: Always allow price change (replaces current item)
-                                orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
-                            } else if (currentQuantity > 1) {
-                                // Quantity > 1: Role-based price validation
-                                if (isAdmin) {
-                                    // Admin can set any price
-                                    orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
-                                } else {
-                                    // Non-admin can only set price higher than per-unit result
-                                    const totalCurrentPrice = currentQuantity * currentUnitPrice;
-                                    if (customPrice > totalCurrentPrice) {
-                                        // Price is higher than total - allow
-                                        orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
-                                    } else {
-                                        // Price is lower/equal - add new item with entered price
-                                        orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
-                                    }
-                                }
+                            if (hasPermission) {
+                                // Permission granted - update price
+                                const currentQuantity = parseFloat(activeItem.quantity);
+                                const isTotalPrice = currentQuantity > 1;
+                                orderStore.updateItemPrice(activeItem.id, newPrice, isTotalPrice);
+                            } else {
+                                // Permission denied
+                                update(state => ({
+                                    ...state,
+                                    errorMessage: 'Permission denied to change price.'
+                                }));
+                                return; // Keep pinpad active to show error
                             }
                         }
                     } else {
-                        // Integer - treat as quantity update or add new line
-                        const enteredQuantity = parseInt(inputValue);
-                        if (!isNaN(enteredQuantity) && enteredQuantity > 0) {
+                        // Integer - treat as quantity update
+                        const newQuantity = parseInt(inputValue);
+                        if (!isNaN(newQuantity) && newQuantity > 0) {
                             const currentQuantity = parseFloat(activeItem.quantity);
                             
-                            if (enteredQuantity < currentQuantity) {
-                                // If entered quantity is less than current, add it as a new line item
-                                // and keep the pinpad active for potentially more additions
-                                orderStore.addItem(activeItem.item_id, enteredQuantity);
-                                
-                                // Clear input but keep pinpad active
+                            // Determine required permission
+                            let requiredPermission = null;
+                            if (newQuantity < currentQuantity) {
+                                requiredPermission = 'order.reduce_quantity'; // Quantity reduction needs permission
+                            }
+                            // Note: Quantity increases don't require special permission
+                            
+                            // Check permission
+                            const hasPermission = userPermissions.includes('all') || 
+                                                (requiredPermission ? userPermissions.includes(requiredPermission) : true);
+                            
+                            if (hasPermission) {
+                                // Permission granted - update quantity
+                                orderStore.updateItemQuantity(activeItem.id, newQuantity);
+                            } else {
+                                // Permission denied
                                 update(state => ({
                                     ...state,
-                                    liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
-                                    errorMessage: null
+                                    errorMessage: 'Permission denied to reduce quantity.'
                                 }));
-                                return; // Don't deactivate pinpad
-                            } else {
-                                // If entered quantity >= current, update the existing item's quantity
-                                orderStore.updateQuantity(activeItem.id, enteredQuantity);
+                                return; // Keep pinpad active to show error
                             }
                         }
                     }
@@ -349,7 +356,7 @@ function createPinpadStore() {
             // Handle other modes with callback
             if (!state.confirmCallback) return;
             
-            callback = state.confirmCallback;
+            const callback = state.confirmCallback;
             
             try {
                 // Execute callback and wait for it to complete

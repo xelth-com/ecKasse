@@ -95,10 +95,16 @@ function createAuthStore() {
         if (response.status === 'success' && response.payload.success) {
           const { user, session } = response.payload;
           
+          // Add mock permissions to user for role-based permission system
+          const userWithPermissions = {
+            ...user,
+            permissions: ['all', 'order.change_price', 'order.reduce_quantity']
+          };
+          
           update(state => ({
             ...state,
             isAuthenticated: true,
-            currentUser: user,
+            currentUser: userWithPermissions,
             sessionId: session.sessionId,
             loginState: 'authenticated',
             isLoading: false,
@@ -209,10 +215,16 @@ function createAuthStore() {
       try {
         const { user, session } = sessionPayload;
         
+        // Add mock permissions to user for role-based permission system
+        const userWithPermissions = {
+          ...user,
+          permissions: ['all', 'order.change_price', 'order.reduce_quantity']
+        };
+        
         update(state => ({
           ...state,
           isAuthenticated: true,
-          currentUser: user,
+          currentUser: userWithPermissions,
           sessionId: session.sessionId,
           loginState: 'authenticated',
           isLoading: false,

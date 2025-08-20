@@ -151,11 +151,11 @@ class TransactionManagementService {
       if (printResult.status === 'success') {
         return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_result: printResult, printStatus: { status: 'success' } };
       } else {
-        await this.loggingService.logOperationalEvent(userId, 'print_failed', { transaction_uuid: transaction.uuid, print_error: printResult.message, printer: printResult.printer || 'unknown' });
+        await this.loggingService.logOperationalEvent('print_failed', userId, { transaction_uuid: transaction.uuid, print_error: printResult.message, printer: printResult.printer || 'unknown' });
         return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_warning: printResult.message, printStatus: { status: 'failed', error: printResult.message } };
       }
     } catch (printError) {
-      await this.loggingService.logOperationalEvent(userId, 'print_error', { transaction_uuid: transaction.uuid, error_message: printError.message });
+      await this.loggingService.logOperationalEvent('print_error', userId, { transaction_uuid: transaction.uuid, error_message: printError.message });
       return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_error: printError.message, printStatus: { status: 'failed', error: printError.message } };
     }
   }
@@ -224,6 +224,7 @@ class TransactionManagementService {
   }
 
   async updateItemQuantityInTransaction(transactionId, transactionItemId, newQuantity, userId) {
+    // TODO: Implement permission check for userId
     logger.info({ service: 'TransactionManagementService', function: 'updateItemQuantityInTransaction', transactionId, transactionItemId, newQuantity });
     
     let updatedTransaction, item, transactionItem;
@@ -239,7 +240,7 @@ class TransactionManagementService {
       
       // Log storno operations (quantity decreases) for security audit
       if (newQuantity < transactionItem.quantity) {
-        await this.loggingService.logOperationalEvent(userId, 'storno_quantity_decrease', {
+        await this.loggingService.logOperationalEvent('partial_storno', userId, {
           transaction_uuid: transaction.uuid,
           transaction_item_id: transactionItemId,
           original_quantity: transactionItem.quantity,
@@ -374,6 +375,110 @@ class TransactionManagementService {
     }
     
     logger.info({ msg: 'Custom price item added successfully', transactionId, itemId, customPrice, newItemId: result.newItem.id });
+    return { ...result.transaction, items: result.items };
+  }
+
+  async updateItemPriceInTransaction(transactionId, transactionItemId, newPrice, userId, isTotalPrice = false) {
+    // TODO: Implement permission check for userId
+    logger.info({ service: 'TransactionManagementService', function: 'updateItemPriceInTransaction', transactionId, transactionItemId, newPrice, isTotalPrice });
+    
+    let updatedTransaction, item, transactionItem;
+    const result = await this.transactionRepository.db.transaction(async (trx) => {
+      const transaction = await this.transactionRepository.findActiveById(transactionId, trx);
+      if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
+      
+      // Get the transaction item to update
+      transactionItem = await this.transactionRepository.getTransactionItemById(transactionItemId, trx);
+      if (!transactionItem || transactionItem.active_transaction_id !== transactionId) {
+        throw new Error(`Transaction item with ID ${transactionItemId} not found in transaction ${transactionId}.`);
+      }
+      
+      // Get item details for fiscal logging
+      item = await this.productRepository.findById(transactionItem.item_id, trx);
+      if (!item) throw new Error(`Item with ID ${transactionItem.item_id} not found.`);
+      
+      const oldTotalPrice = parseFloat(transactionItem.total_price);
+      const oldTaxAmount = parseFloat(transactionItem.tax_amount);
+      const oldUnitPrice = parseFloat(transactionItem.unit_price);
+      
+      // Calculate new amounts
+      const quantity = parseFloat(transactionItem.quantity);
+      let newUnitPrice, newTotalPrice;
+      
+      if (isTotalPrice) {
+        // newPrice is the total price for all items
+        newTotalPrice = newPrice;
+        newUnitPrice = newPrice / quantity;
+      } else {
+        // newPrice is the unit price
+        newUnitPrice = newPrice;
+        newTotalPrice = newPrice * quantity;
+      }
+      const taxRate = parseFloat(transactionItem.tax_rate);
+      const newTaxAmount = newTotalPrice - (newTotalPrice / (1 + taxRate / 100));
+      
+      // Calculate price difference for fiscal logging
+      const priceDifference = newTotalPrice - oldTotalPrice;
+      const effectiveDiscountOrSurcharge = newUnitPrice - oldUnitPrice;
+      
+      // Log price override as operational event
+      await this.loggingService.logOperationalEvent('price_override', userId, {
+        transaction_uuid: transaction.uuid,
+        transaction_item_id: transactionItemId,
+        original_unit_price: oldUnitPrice,
+        new_unit_price: newUnitPrice,
+        effective_discount_surcharge: effectiveDiscountOrSurcharge,
+        quantity: quantity,
+        price_difference: priceDifference,
+        item_id: transactionItem.item_id
+      });
+      
+      // Update the transaction item
+      const itemUpdateData = {
+        unit_price: newUnitPrice,
+        total_price: newTotalPrice,
+        tax_amount: newTaxAmount
+      };
+      await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
+      
+      // Update transaction totals
+      const taxDifference = newTaxAmount - oldTaxAmount;
+      const newTransactionTotal = parseFloat(transaction.total_amount) + priceDifference;
+      const newTransactionTax = parseFloat(transaction.tax_amount) + taxDifference;
+      
+      const transactionUpdateData = {
+        total_amount: newTransactionTotal,
+        tax_amount: newTransactionTax,
+        updated_at: new Date().toISOString()
+      };
+      updatedTransaction = await this.transactionRepository.update(transactionId, transactionUpdateData, trx);
+      
+      const updatedItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
+      return { transaction: updatedTransaction, items: updatedItems, priceDifference, effectiveDiscountOrSurcharge };
+    });
+    
+    // Log fiscal event
+    const fiscalPayload = {
+      transaction_uuid: updatedTransaction.uuid,
+      item_price_updated: {
+        transaction_item_id: transactionItemId,
+        item_id: transactionItem.item_id,
+        name: item.display_names.menu.de,
+        old_unit_price: transactionItem.unit_price,
+        new_unit_price: newPrice,
+        effective_discount_surcharge: result.effectiveDiscountOrSurcharge,
+        quantity: transactionItem.quantity,
+        price_difference: result.priceDifference
+      },
+      new_total: updatedTransaction.total_amount
+    };
+    
+    const fiscalLogResult = await this.loggingService.logFiscalEvent('updateTransaction', userId, fiscalPayload);
+    if (!fiscalLogResult.success) {
+      logger.error({ msg: 'Failed to create fiscal log for price update', error: fiscalLogResult.error });
+    }
+    
+    logger.info({ msg: 'Item price updated successfully', transactionId, transactionItemId, newPrice });
     return { ...result.transaction, items: result.items };
   }
 }
