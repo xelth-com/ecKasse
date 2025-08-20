@@ -112,7 +112,9 @@
       "Bash(nc:*)",
       "Bash(ip route:*)",
       "Bash(NODE_ENV=development npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
-      "Bash(NODE_ENV=development npx knex seed:run --knexfile packages/core/db/knexfile.js)"
+      "Bash(NODE_ENV=development npx knex seed:run --knexfile packages/core/db/knexfile.js)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
