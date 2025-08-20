@@ -212,6 +212,7 @@ function createPinpadStore() {
                                 const currentQuantity = parseFloat(activeItem.quantity);
                                 const isTotalPrice = currentQuantity > 1;
                                 orderStore.updateItemPrice(activeItem.id, newPrice, isTotalPrice);
+                                orderStore.deselectItem();
                             } else {
                                 // Permission denied
                                 update(state => ({
@@ -241,6 +242,7 @@ function createPinpadStore() {
                             if (hasPermission) {
                                 // Permission granted - update quantity
                                 orderStore.updateItemQuantity(activeItem.id, newQuantity);
+                                orderStore.deselectItem();
                             } else {
                                 // Permission denied
                                 update(state => ({

@@ -46,10 +46,16 @@ function createOrderStore() {
 
 		if (state.lastMessage?.command === 'orderUpdated' && state.lastMessage.status === 'success' && state.lastMessage.payload) {
 			const updatedTx = state.lastMessage.payload;
-			const newItems = (updatedTx.items || []).map(item => ({ 
-				...item, 
-				isEdited: item.isEdited || false // Add isEdited flag to all items
-			}));
+			
+			// Preserve isEdited flags from current state when server sends updates
+			const newItems = (updatedTx.items || []).map(item => {
+				// Find existing item in current state to preserve isEdited flag
+				const existingItem = currentStoreState.items.find(existing => existing.id === item.id);
+				return { 
+					...item, 
+					isEdited: existingItem?.isEdited || false // Preserve existing isEdited flag
+				};
+			});
 			
 			// Identify the most recently modified or added item
 			let activeItemId = null;
@@ -225,7 +231,7 @@ function createOrderStore() {
 				// Update quantity instead of adding new item
 				const newQuantity = parseFloat(existingItem.quantity) + quantity;
 				addLog('INFO', `Item ${itemId} already exists and not edited, updating quantity to ${newQuantity}`);
-				updateItemQuantity(existingItem.id, newQuantity);
+				updateItemQuantity(existingItem.id, newQuantity, false); // Don't mark as edited when incrementing from menu
 				return;
 			}
 
@@ -478,7 +484,7 @@ function createOrderStore() {
 	}
 
 	// New function to update item quantity with permission-based logic
-	async function updateItemQuantity(transactionItemId, newQuantity) {
+	async function updateItemQuantity(transactionItemId, newQuantity, markAsEdited = true) {
 		const userId = getAuthenticatedUserId();
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
@@ -488,17 +494,19 @@ function createOrderStore() {
 			return;
 		}
 
-		// Find the item and mark it as edited
-		update(store => ({
-			...store,
-			items: store.items.map(item => 
-				item.id === transactionItemId 
-					? { ...item, isEdited: true }
-					: item
-			)
-		}));
+		// Find the item and optionally mark it as edited
+		if (markAsEdited) {
+			update(store => ({
+				...store,
+				items: store.items.map(item => 
+					item.id === transactionItemId 
+						? { ...item, isEdited: true }
+						: item
+				)
+			}));
+		}
 
-		addLog('INFO', `Updating item quantity for item ${transactionItemId} to ${newQuantity} (marked as edited)`);
+		addLog('INFO', `Updating item quantity for item ${transactionItemId} to ${newQuantity}${markAsEdited ? ' (marked as edited)' : ''}`);
 		wsStore.send({
 			command: 'updateItemQuantity',
 			payload: {
@@ -544,6 +552,15 @@ function createOrderStore() {
 		});
 	}
 
+	// Function to deselect the currently active item
+	function deselectItem() {
+		update(store => ({
+			...store,
+			activeTransactionItemId: null
+		}));
+		addLog('INFO', 'Item deselected from order view');
+	}
+
 	return {
 		subscribe,
 		set,
@@ -559,7 +576,8 @@ function createOrderStore() {
 		parkCurrentOrder,
 		assignTableNumber,
 		loadOrder,
-		clearActiveOrderView
+		clearActiveOrderView,
+		deselectItem
 	};
 }
 
