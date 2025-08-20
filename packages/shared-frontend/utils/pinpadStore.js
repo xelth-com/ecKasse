@@ -188,13 +188,60 @@ function createPinpadStore() {
                         // Contains decimal - treat as custom price
                         const customPrice = parseFloat(inputValue.replace(',', '.'));
                         if (!isNaN(customPrice) && customPrice > 0) {
-                            orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
+                            // Get user role to determine price modification permissions
+                            const { authStore } = await import('./authStore.js');
+                            let currentAuthState;
+                            authStore.subscribe(s => currentAuthState = s)();
+                            
+                            const userRole = currentAuthState.currentUser?.role_name || '';
+                            const isAdmin = userRole === 'admin' || currentAuthState.currentUser?.can_manage_users;
+                            
+                            const currentQuantity = parseFloat(activeItem.quantity);
+                            const currentUnitPrice = parseFloat(activeItem.unit_price);
+                            
+                            if (currentQuantity === 1) {
+                                // Quantity = 1: Always allow price change (replaces current item)
+                                orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
+                            } else if (currentQuantity > 1) {
+                                // Quantity > 1: Role-based price validation
+                                if (isAdmin) {
+                                    // Admin can set any price
+                                    orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
+                                } else {
+                                    // Non-admin can only set price higher than per-unit result
+                                    const totalCurrentPrice = currentQuantity * currentUnitPrice;
+                                    if (customPrice > totalCurrentPrice) {
+                                        // Price is higher than total - allow
+                                        orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
+                                    } else {
+                                        // Price is lower/equal - add new item with entered price
+                                        orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
+                                    }
+                                }
+                            }
                         }
                     } else {
-                        // Integer - treat as quantity update
-                        const newQuantity = parseInt(inputValue);
-                        if (!isNaN(newQuantity) && newQuantity > 0) {
-                            orderStore.updateQuantity(activeItem.id, newQuantity);
+                        // Integer - treat as quantity update or add new line
+                        const enteredQuantity = parseInt(inputValue);
+                        if (!isNaN(enteredQuantity) && enteredQuantity > 0) {
+                            const currentQuantity = parseFloat(activeItem.quantity);
+                            
+                            if (enteredQuantity < currentQuantity) {
+                                // If entered quantity is less than current, add it as a new line item
+                                // and keep the pinpad active for potentially more additions
+                                orderStore.addItem(activeItem.item_id, enteredQuantity);
+                                
+                                // Clear input but keep pinpad active
+                                update(state => ({
+                                    ...state,
+                                    liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
+                                    errorMessage: null
+                                }));
+                                return; // Don't deactivate pinpad
+                            } else {
+                                // If entered quantity >= current, update the existing item's quantity
+                                orderStore.updateQuantity(activeItem.id, enteredQuantity);
+                            }
                         }
                     }
                 }

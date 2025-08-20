@@ -691,7 +691,7 @@
   }
 
   .name.input-mode {
-    opacity: 0.15;
+    opacity: 0.3;
     color: #666;
   }
 

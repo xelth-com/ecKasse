@@ -175,9 +175,9 @@
       <button class="numpad-key" on:click={() => handleKeyClick('8')}>8</button>
       <button class="numpad-key" on:click={() => handleKeyClick('9')}>9</button>
       <button class="function-key key-enter" on:click={handleConfirm} aria-label="Enter">↵</button>
-      <button class="numpad-key function-key key-plus" on:click={() => handleKeyClick('+')}>+</button>
+      <button class="numpad-key function-key key-plus" on:click={() => handleKeyClick('.99')}>.99</button>
       <button class="numpad-key" on:click={() => handleKeyClick('0')}>0</button>
-      <button class="numpad-key function-key key-minus" on:click={() => handleKeyClick('-')}>-</button>
+      <button class="numpad-key function-key key-minus" on:click={() => handleKeyClick('.')}>.</button>
     </div>
   {:else if $pinpadStore.layout === 'alpha'}
     <div class="pinpad-grid alpha" style="--alpha-button-width: {alphaButtonWidth}px; --alpha-button-height: {alphaButtonHeight}px;">
