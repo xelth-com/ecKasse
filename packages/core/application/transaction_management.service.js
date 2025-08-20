@@ -222,6 +222,160 @@ class TransactionManagementService {
     logger.info({ service: 'TransactionManagementService', function: 'checkTableAvailability', tableNumber, excludeTransactionId });
     return this.transactionRepository.isTableInUse(tableNumber, excludeTransactionId);
   }
+
+  async updateItemQuantityInTransaction(transactionId, transactionItemId, newQuantity, userId) {
+    logger.info({ service: 'TransactionManagementService', function: 'updateItemQuantityInTransaction', transactionId, transactionItemId, newQuantity });
+    
+    let updatedTransaction, item, transactionItem;
+    const result = await this.transactionRepository.db.transaction(async (trx) => {
+      const transaction = await this.transactionRepository.findActiveById(transactionId, trx);
+      if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
+      
+      // Get the transaction item to update
+      transactionItem = await this.transactionRepository.getTransactionItemById(transactionItemId, trx);
+      if (!transactionItem || transactionItem.active_transaction_id !== transactionId) {
+        throw new Error(`Transaction item with ID ${transactionItemId} not found in transaction ${transactionId}.`);
+      }
+      
+      // Log storno operations (quantity decreases) for security audit
+      if (newQuantity < transactionItem.quantity) {
+        await this.loggingService.logOperationalEvent(userId, 'storno_quantity_decrease', {
+          transaction_uuid: transaction.uuid,
+          transaction_item_id: transactionItemId,
+          original_quantity: transactionItem.quantity,
+          new_quantity: newQuantity,
+          item_id: transactionItem.item_id
+        });
+      }
+      
+      // Get item details for recalculation
+      item = await this.productRepository.findById(transactionItem.item_id, trx);
+      if (!item) throw new Error(`Item with ID ${transactionItem.item_id} not found.`);
+      
+      const oldTotalPrice = parseFloat(transactionItem.total_price);
+      const oldTaxAmount = parseFloat(transactionItem.tax_amount);
+      
+      // Calculate new amounts
+      const unitPrice = parseFloat(transactionItem.unit_price);
+      const newTotalPrice = unitPrice * newQuantity;
+      const taxRate = parseFloat(transactionItem.tax_rate);
+      const newTaxAmount = newTotalPrice - (newTotalPrice / (1 + taxRate / 100));
+      
+      // Update the transaction item
+      const itemUpdateData = {
+        quantity: newQuantity,
+        total_price: newTotalPrice,
+        tax_amount: newTaxAmount
+      };
+      await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
+      
+      // Update transaction totals
+      const priceDifference = newTotalPrice - oldTotalPrice;
+      const taxDifference = newTaxAmount - oldTaxAmount;
+      const newTransactionTotal = parseFloat(transaction.total_amount) + priceDifference;
+      const newTransactionTax = parseFloat(transaction.tax_amount) + taxDifference;
+      
+      const transactionUpdateData = {
+        total_amount: newTransactionTotal,
+        tax_amount: newTransactionTax,
+        updated_at: new Date().toISOString()
+      };
+      updatedTransaction = await this.transactionRepository.update(transactionId, transactionUpdateData, trx);
+      
+      const updatedItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
+      return { transaction: updatedTransaction, items: updatedItems, priceDifference };
+    });
+    
+    // Log fiscal event
+    const fiscalPayload = {
+      transaction_uuid: updatedTransaction.uuid,
+      item_quantity_updated: {
+        transaction_item_id: transactionItemId,
+        item_id: transactionItem.item_id,
+        name: item.display_names.menu.de,
+        old_quantity: transactionItem.quantity,
+        new_quantity: newQuantity,
+        price_difference: result.priceDifference
+      },
+      new_total: updatedTransaction.total_amount
+    };
+    
+    const fiscalLogResult = await this.loggingService.logFiscalEvent('updateTransaction', userId, fiscalPayload);
+    if (!fiscalLogResult.success) {
+      logger.error({ msg: 'Failed to create fiscal log for quantity update', error: fiscalLogResult.error });
+    }
+    
+    logger.info({ msg: 'Item quantity updated successfully', transactionId, transactionItemId, newQuantity });
+    return { ...result.transaction, items: result.items };
+  }
+
+  async addCustomPriceItemToTransaction(transactionId, itemId, customPrice, quantity, userId, options = {}) {
+    logger.info({ service: 'TransactionManagementService', function: 'addCustomPriceItemToTransaction', transactionId, itemId, customPrice, quantity });
+    
+    let updatedTransaction, item;
+    const result = await this.transactionRepository.db.transaction(async (trx) => {
+      const transaction = await this.transactionRepository.findActiveById(transactionId, trx);
+      if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
+      
+      item = await this.productRepository.findById(itemId, trx);
+      if (!item) throw new Error(`Item with ID ${itemId} not found.`);
+      
+      const category = await this.productRepository.findCategoryById(item.associated_category_unique_identifier, trx);
+      const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
+      
+      const unit_price = parseFloat(customPrice);
+      const total_price = unit_price * quantity;
+      const tax_amount = total_price - (total_price / (1 + taxRate / 100));
+      
+      const itemData = {
+        active_transaction_id: transactionId,
+        item_id: itemId,
+        quantity: quantity,
+        unit_price: unit_price,
+        total_price: total_price,
+        tax_rate: taxRate,
+        tax_amount: tax_amount,
+        notes: options.notes || `Custom price: ${customPrice}€`
+      };
+      
+      const newItem = await this.transactionRepository.addItem(itemData, trx);
+      
+      const newTotalAmount = parseFloat(transaction.total_amount) + total_price;
+      const newTaxAmount = parseFloat(transaction.tax_amount) + tax_amount;
+      
+      const updateData = {
+        total_amount: newTotalAmount,
+        tax_amount: newTaxAmount,
+        updated_at: new Date().toISOString()
+      };
+      
+      updatedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
+      const updatedItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
+      
+      return { transaction: updatedTransaction, newItem, items: updatedItems, total_price };
+    });
+    
+    const fiscalPayload = {
+      transaction_uuid: updatedTransaction.uuid,
+      custom_price_item_added: {
+        item_id: itemId,
+        name: item.display_names.menu.de,
+        quantity,
+        custom_price: customPrice,
+        original_price: item.item_price_value,
+        total_price: result.total_price
+      },
+      new_total: updatedTransaction.total_amount
+    };
+    
+    const fiscalLogResult = await this.loggingService.logFiscalEvent('updateTransaction', userId, fiscalPayload);
+    if (!fiscalLogResult.success) {
+      logger.error({ msg: 'Failed to create fiscal log for custom price item', error: fiscalLogResult.error });
+    }
+    
+    logger.info({ msg: 'Custom price item added successfully', transactionId, itemId, customPrice, newItemId: result.newItem.id });
+    return { ...result.transaction, items: result.items };
+  }
 }
 
 module.exports = TransactionManagementService;

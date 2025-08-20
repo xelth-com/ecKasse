@@ -417,9 +417,19 @@
               <div class="scrollable-items-content">
                 <ul class="item-list">
                   {#each $orderStore.items as item (item.id)}
-                    <li>
-                      <span class="qty">{parseFloat(item.quantity)}x</span>
-                      <span class="name">{item.display_names ? (parseJsonField(item.display_names).menu.de || 'N/A') : 'Loading...'}</span>
+                    <li class:active={$orderStore.activeTransactionItemId === item.id}>
+                      {#if parseFloat(item.quantity) > 1}
+                        <span class="qty">{parseFloat(item.quantity)}x</span>
+                      {/if}
+                      <div class="name-container">
+                        <span class="name" 
+                              class:input-mode={$orderStore.activeTransactionItemId === item.id && $pinpadStore.isActive && $pinpadStore.mode !== 'agent' && $pinpadStore.liveValue}>
+                          {item.display_names ? (parseJsonField(item.display_names).menu.de || 'N/A') : 'Loading...'}
+                        </span>
+                        {#if $orderStore.activeTransactionItemId === item.id && $pinpadStore.isActive && $pinpadStore.mode !== 'agent' && $pinpadStore.liveValue}
+                          <span class="input-overlay">{$pinpadStore.liveValue}</span>
+                        {/if}
+                      </div>
                       <span class="price">{parseFloat(item.total_price).toFixed(2)}€</span>
                     </li>
                   {/each}
@@ -652,6 +662,14 @@
     margin-bottom: 8px;
     border-bottom: 1px dashed #666;
     padding-bottom: 8px;
+    position: relative;
+  }
+
+  .item-list li.active {
+    background-color: #3a3a3c;
+    border-radius: 4px;
+    padding: 8px;
+    border-bottom: 1px dashed #888;
   }
 
   .qty {
@@ -660,8 +678,21 @@
     color: #d32f2f; /* Red color matching receipts */
   }
 
+  .name-container {
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
   .name {
     flex-grow: 1;
+    transition: opacity 0.2s ease;
+  }
+
+  .name.input-mode {
+    opacity: 0.15;
+    color: #666;
   }
 
   .price {
@@ -796,6 +827,21 @@
   @keyframes blink {
     0%, 50% { opacity: 1; }
     51%, 100% { opacity: 0; }
+  }
+
+  .input-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    color: #4a69bd;
+    font-size: 1.1em;
+    pointer-events: none;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
   }
 
 

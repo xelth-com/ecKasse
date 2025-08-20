@@ -451,6 +451,40 @@ class DesktopServer {
         } else if (command === 'updateTransactionMetadata') {
           const { transactionId, metadata, userId, updateTimestamp } = payload;
           responsePayload = await this.services.transactionManagement.updateTransactionMetadata(transactionId, metadata, userId, updateTimestamp);
+        } else if (command === 'updateItemQuantity') {
+          const { transactionId, transactionItemId, newQuantity, userId } = payload;
+          if (!transactionId || !transactionItemId || newQuantity === undefined || !userId) {
+            throw new Error('transactionId, transactionItemId, newQuantity, and userId are required');
+          }
+          responsePayload = await this.services.transactionManagement.updateItemQuantityInTransaction(transactionId, transactionItemId, newQuantity, userId);
+          if (responsePayload && responsePayload.id) {
+              const items = await db('active_transaction_items')
+                .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+                .select('active_transaction_items.*', 'items.display_names')
+                .where('active_transaction_items.active_transaction_id', responsePayload.id);
+              responsePayload.items = items.map(item => ({
+                ...item,
+                display_names: this.parseJsonField(item.display_names)
+              }));
+          }
+          responseCommand = 'orderUpdated';
+        } else if (command === 'addCustomPriceItem') {
+          const { transactionId, itemId, customPrice, quantity, userId, options } = payload;
+          if (!transactionId || !itemId || customPrice === undefined || !quantity || !userId) {
+            throw new Error('transactionId, itemId, customPrice, quantity, and userId are required');
+          }
+          responsePayload = await this.services.transactionManagement.addCustomPriceItemToTransaction(transactionId, itemId, customPrice, quantity, userId, options);
+          if (responsePayload && responsePayload.id) {
+              const items = await db('active_transaction_items')
+                .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
+                .select('active_transaction_items.*', 'items.display_names')
+                .where('active_transaction_items.active_transaction_id', responsePayload.id);
+              responsePayload.items = items.map(item => ({
+                ...item,
+                display_names: this.parseJsonField(item.display_names)
+              }));
+          }
+          responseCommand = 'orderUpdated';
         } else {
           status = 'error';
           responsePayload = { message: 'Unknown command', originalCommand: command };

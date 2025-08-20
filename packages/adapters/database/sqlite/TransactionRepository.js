@@ -87,6 +87,15 @@ class TransactionRepository {
   async delete(id, trx = this.db) {
     return trx('active_transactions').where({ id }).del();
   }
+
+  async getTransactionItemById(transactionItemId, trx = this.db) {
+    return trx('active_transaction_items').where({ id: transactionItemId }).first();
+  }
+
+  async updateTransactionItem(transactionItemId, updateData, trx = this.db) {
+    const [updated] = await trx('active_transaction_items').where({ id: transactionItemId }).update(updateData).returning('*');
+    return updated;
+  }
 }
 
 module.exports = { TransactionRepository };

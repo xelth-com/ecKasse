@@ -935,6 +935,8 @@
   }
 
   async function handleUserButtonClick() {
+    // This function now only handles the authenticated user case
+    // Login initiation is handled directly by the button's onClick property
     if ($authStore.isAuthenticated) {
       const user = $authStore.currentUser;
       const message = `👤 **${user.full_name}** (${user.role})\n\n🔐 **Status:** Erfolgreich angemeldet\n💡 **Tipp:** Lange drücken zum Abmelden`;
@@ -948,9 +950,6 @@
       });
       
       // addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
-    } else {
-      // addLog('INFO', 'Login requested');
-      // The login view should already be visible since user is not authenticated
     }
   }
   
@@ -1298,16 +1297,29 @@
     };
     if (cell.content.isUserButton) {
       const currentUser = $authStore.currentUser;
-      const userLabel = currentUser ? shortenUserName(currentUser.full_name) : 'Login';
-      return {
-        label: userLabel,
-        data: { isUserButton: true, authenticated: !!currentUser },
-        onClick: handleUserButtonClick,
-        active: true,
-        color: currentUser ? '#28a745' : '#6c757d',
-        textColor: currentUser ? 'white' : '#666',
-        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
-      };
+      if (currentUser) {
+        // User is authenticated - show user info
+        return {
+          label: shortenUserName(currentUser.full_name),
+          data: { isUserButton: true, authenticated: true },
+          onClick: handleUserButtonClick,
+          active: true,
+          color: '#28a745',
+          textColor: 'white',
+          customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
+        };
+      } else {
+        // User is not authenticated - show login button
+        return {
+          label: 'Login',
+          data: { isUserButton: true, authenticated: false },
+          onClick: () => pinpadStore.activate('agent', null, null, 'numeric'),
+          active: true,
+          color: '#6c757d',
+          textColor: '#666',
+          customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
+        };
+      }
     }
     if (cell.content.isSmartNavigation) {
       if (isAtBottom) {

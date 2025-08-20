@@ -9,7 +9,7 @@ function createAgentStore() {
       {
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
-        message: 'Willkommen bei ecKasse!\n\n🔐 Bitte geben Sie Ihre PIN über das Tastenfeld ein.\n\n👥 Verfügbare Benutzer:\n• Admin (Vollzugriff)\n• Kassier (Kassenfunktionen)\n• Aushilfe (Grundfunktionen)\n\n⏰ Überprüfe Systemzeit und ausstehende Transaktionen...\n\n💡 Geben Sie einfach Ihre 4-6 stellige PIN ein - das System erkennt Sie automatisch.'
+        message: 'Willkommen bei ecKasse!\n\n👥 Verfügbare Benutzer:\n• Admin (Vollzugriff)\n• Kassier (Kassenfunktionen)\n• Aushilfe (Grundfunktionen)\n\n⏰ Überprüfe Systemzeit und ausstehende Transaktionen...\n\n💡 Geben Sie einfach Ihre 4-6 stellige PIN ein - das System erkennt Sie automatisch. Bei neuer oder Testkasse: Admin-PIN ist 1234'
       }
     ],
     draftMessage: null, // Currently being typed message

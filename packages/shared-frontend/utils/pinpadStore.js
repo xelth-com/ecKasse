@@ -166,6 +166,49 @@ function createPinpadStore() {
             
             value = state.layout === 'alpha' ? state.liveValue.text : state.liveValue;
             
+            // Check if we should handle context-aware order input
+            let currentOrderState;
+            orderStore.subscribe(s => currentOrderState = s)();
+            
+            if (currentOrderState.activeTransactionItemId && state.layout === 'numeric' && state.mode !== 'agent' && state.mode !== 'table') {
+                // Context-aware mode: we have an active item and numeric input
+                const inputValue = value.trim();
+                
+                if (!inputValue) {
+                    // Empty input, just deactivate
+                    this.deactivate();
+                    return;
+                }
+                
+                // Find the active item
+                const activeItem = currentOrderState.items.find(item => item.id === currentOrderState.activeTransactionItemId);
+                
+                if (activeItem) {
+                    if (inputValue.includes('.') || inputValue.includes(',')) {
+                        // Contains decimal - treat as custom price
+                        const customPrice = parseFloat(inputValue.replace(',', '.'));
+                        if (!isNaN(customPrice) && customPrice > 0) {
+                            orderStore.addWithCustomPrice(activeItem.item_id, customPrice, 1);
+                        }
+                    } else {
+                        // Integer - treat as quantity update
+                        const newQuantity = parseInt(inputValue);
+                        if (!isNaN(newQuantity) && newQuantity > 0) {
+                            orderStore.updateQuantity(activeItem.id, newQuantity);
+                        }
+                    }
+                }
+                
+                // Clear input and deactivate
+                update(state => ({
+                    ...state,
+                    liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
+                    errorMessage: null
+                }));
+                this.deactivate();
+                return;
+            }
+            
             // Handle agent mode specially
             if (state.mode === 'agent') {
                 // Check if this is a direct login attempt (numeric PIN)

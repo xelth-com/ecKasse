@@ -15,7 +15,8 @@ function createOrderStore() {
 		status: 'idle', // idle, initializing, active, finished, error
 		paymentType: null,
 		paymentAmount: null,
-		metadata: {}
+		metadata: {},
+		activeTransactionItemId: null
 	});
 
 	let initializationPromise = null;
@@ -31,7 +32,8 @@ function createOrderStore() {
 			status: 'idle',
 			paymentType: null,
 			paymentAmount: null,
-			metadata: {}
+			metadata: {},
+			activeTransactionItemId: null
 		});
 		initializationPromise = null;
 		pendingItems = [];
@@ -44,15 +46,32 @@ function createOrderStore() {
 
 		if (state.lastMessage?.command === 'orderUpdated' && state.lastMessage.status === 'success' && state.lastMessage.payload) {
 			const updatedTx = state.lastMessage.payload;
+			const newItems = updatedTx.items || [];
+			
+			// Identify the most recently modified or added item
+			let activeItemId = null;
+			if (newItems.length > 0) {
+				// Find the item with the highest ID (most recent) or most recent update
+				const sortedItems = [...newItems].sort((a, b) => {
+					// First sort by updated_at if available, then by id
+					if (a.updated_at && b.updated_at) {
+						return new Date(b.updated_at) - new Date(a.updated_at);
+					}
+					return b.id - a.id;
+				});
+				activeItemId = sortedItems[0].id;
+			}
+			
 			update(store => ({
 				...store,
 				transactionId: updatedTx.id,
 				uuid: updatedTx.uuid,
-				items: updatedTx.items || [],
+				items: newItems,
 				total: parseFloat(updatedTx.total_amount),
 				tax: parseFloat(updatedTx.tax_amount),
 				status: 'active',
-				metadata: updatedTx.metadata ? (typeof updatedTx.metadata === 'string' ? JSON.parse(updatedTx.metadata) : updatedTx.metadata) : {}
+				metadata: updatedTx.metadata ? (typeof updatedTx.metadata === 'string' ? JSON.parse(updatedTx.metadata) : updatedTx.metadata) : {},
+				activeTransactionItemId: activeItemId
 			}));
 			addLog('INFO', `Order ${updatedTx.id} updated.`);
 			
@@ -105,7 +124,8 @@ function createOrderStore() {
 					status: 'finished',
 					paymentType: finishedTx.transaction.payment_type,
 					paymentAmount: parseFloat(finishedTx.transaction.payment_amount),
-					metadata: finishedTx.transaction.metadata ? (typeof finishedTx.transaction.metadata === 'string' ? JSON.parse(finishedTx.transaction.metadata) : finishedTx.transaction.metadata) : {}
+					metadata: finishedTx.transaction.metadata ? (typeof finishedTx.transaction.metadata === 'string' ? JSON.parse(finishedTx.transaction.metadata) : finishedTx.transaction.metadata) : {},
+					activeTransactionItemId: null
 				}));
 				addLog('SUCCESS', `Transaction ${finishedTx.transaction.id} finished successfully.`);
 			} else {
@@ -189,9 +209,24 @@ function createOrderStore() {
 			return;
 		}
 
-		// If we're active, add item directly
+		// If we're active, check for existing item with same ID and default price
 		if (currentStoreState.status === 'active' && currentStoreState.transactionId) {
-			addLog('INFO', `Adding item ${itemId} to transaction ${currentStoreState.transactionId}`);
+			// Find if item with same itemId and default price already exists
+			const existingItem = currentStoreState.items.find(item => 
+				item.item_id === itemId && 
+				!item.notes?.includes('Custom price:') // Not a custom price item
+			);
+
+			if (existingItem) {
+				// Update quantity instead of adding new item
+				const newQuantity = parseFloat(existingItem.quantity) + quantity;
+				addLog('INFO', `Item ${itemId} already exists, updating quantity to ${newQuantity}`);
+				updateQuantity(existingItem.id, newQuantity);
+				return;
+			}
+
+			// Add new item if not found
+			addLog('INFO', `Adding new item ${itemId} to transaction ${currentStoreState.transactionId}`);
 			wsStore.send({
 				command: 'addItemToTransaction',
 				payload: {
@@ -279,7 +314,8 @@ function createOrderStore() {
 			total: parseFloat(orderData.total_amount),
 			tax: parseFloat(orderData.tax_amount),
 			status: 'active',
-			metadata: orderData.metadata ? (typeof orderData.metadata === 'string' ? JSON.parse(orderData.metadata) : orderData.metadata) : {}
+			metadata: orderData.metadata ? (typeof orderData.metadata === 'string' ? JSON.parse(orderData.metadata) : orderData.metadata) : {},
+			activeTransactionItemId: null
 		}));
 		addLog('SUCCESS', `Order ${orderData.id} loaded successfully`);
 	}
@@ -392,12 +428,59 @@ function createOrderStore() {
 		resetOrder();
 	}
 
+	function updateQuantity(transactionItemId, newQuantity) {
+		const userId = getAuthenticatedUserId();
+		let currentStoreState;
+		subscribe(s => currentStoreState = s)();
+
+		if (currentStoreState.status !== 'active' || !currentStoreState.transactionId) {
+			addLog('ERROR', 'Cannot update quantity: no active transaction');
+			return;
+		}
+
+		addLog('INFO', `Updating item quantity for item ${transactionItemId} to ${newQuantity}`);
+		wsStore.send({
+			command: 'updateItemQuantity',
+			payload: {
+				transactionId: currentStoreState.transactionId,
+				transactionItemId,
+				newQuantity,
+				userId
+			}
+		});
+	}
+
+	function addWithCustomPrice(originalItemId, customPrice, quantity = 1) {
+		const userId = getAuthenticatedUserId();
+		let currentStoreState;
+		subscribe(s => currentStoreState = s)();
+
+		if (currentStoreState.status !== 'active' || !currentStoreState.transactionId) {
+			addLog('ERROR', 'Cannot add custom price item: no active transaction');
+			return;
+		}
+
+		addLog('INFO', `Adding custom price item ${originalItemId} with price ${customPrice} and quantity ${quantity}`);
+		wsStore.send({
+			command: 'addCustomPriceItem',
+			payload: {
+				transactionId: currentStoreState.transactionId,
+				itemId: originalItemId,
+				customPrice,
+				quantity,
+				userId
+			}
+		});
+	}
+
 	return {
 		subscribe,
 		set,
 		update,
 		initializeOrder,
 		addItem,
+		updateQuantity,
+		addWithCustomPrice,
 		finishOrder,
 		resetOrder,
 		parkCurrentOrder,
