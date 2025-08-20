@@ -203,7 +203,12 @@ class TransactionManagementService {
   async updateTransactionMetadata(transactionId, metadata, userId, updateTimestamp = false) {
     const existingTransaction = await this.transactionRepository.findActiveById(transactionId);
     if (!existingTransaction) throw new Error(`Active transaction with ID ${transactionId} not found`);
-    const updateData = { metadata: JSON.stringify(metadata) };
+    
+    // Parse existing metadata and merge with new metadata to prevent data loss
+    const existingMetadata = parseJsonIfNeeded(existingTransaction.metadata) || {};
+    const mergedMetadata = { ...existingMetadata, ...metadata };
+    
+    const updateData = { metadata: JSON.stringify(mergedMetadata) };
     if (updateTimestamp) updateData.updated_at = new Date().toISOString();
     const updatedTransaction = await this.transactionRepository.update(transactionId, updateData);
     return { ...updatedTransaction, metadata: updatedTransaction.metadata };

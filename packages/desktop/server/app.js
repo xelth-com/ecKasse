@@ -438,17 +438,19 @@ class DesktopServer {
         } else if (command === 'getParkedTransactions') {
           responsePayload = await this.services.transactionManagement.getParkedTransactions();
         } else if (command === 'parkTransaction') {
-          const { transactionId, tableNumber } = payload;
-          responsePayload = await this.services.transactionManagement.parkTransaction(transactionId, tableNumber);
+          const { transactionId, tableIdentifier, userId, updateTimestamp } = payload;
+          responsePayload = await this.services.transactionManagement.parkTransaction(transactionId, tableIdentifier, userId, updateTimestamp);
+          responseCommand = 'parkTransactionResponse';
         } else if (command === 'activateTransaction') {
-          const { transactionId } = payload;
-          responsePayload = await this.services.transactionManagement.activateTransaction(transactionId);
+          const { transactionId, userId, updateTimestamp } = payload;
+          responsePayload = await this.services.transactionManagement.activateTransaction(transactionId, userId, updateTimestamp);
         } else if (command === 'checkTableAvailability') {
-          const { tableNumber } = payload;
-          responsePayload = await this.services.transactionManagement.checkTableAvailability(tableNumber);
+          const { tableNumber, excludeTransactionId } = payload;
+          const isInUse = await this.services.transactionManagement.checkTableAvailability(tableNumber, excludeTransactionId);
+          responsePayload = { isInUse };
         } else if (command === 'updateTransactionMetadata') {
-          const { transactionId, metadata } = payload;
-          responsePayload = await this.services.transactionManagement.updateTransactionMetadata(transactionId, metadata);
+          const { transactionId, metadata, userId, updateTimestamp } = payload;
+          responsePayload = await this.services.transactionManagement.updateTransactionMetadata(transactionId, metadata, userId, updateTimestamp);
         } else {
           status = 'error';
           responsePayload = { message: 'Unknown command', originalCommand: command };
