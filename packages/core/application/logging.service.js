@@ -2,6 +2,7 @@ const db = require('../db/knex');
 const logger = require('../config/logger');
 const crypto = require('crypto');
 const hieroService = require('./hiero.service');
+const { parseJsonIfNeeded } = require('../utils/db-helper');
 
 /**
  * LoggingService provides a centralized interface for all logging activities:
@@ -21,6 +22,15 @@ class LoggingService {
   async logFiscalEvent(event_type, user_id, payload_for_tse, trx = null) {
     const operation_id = crypto.randomUUID();
     let pendingOperationId;
+
+    // Diagnostic Log: Inspect incoming payload
+    logger.info({
+        msg: 'logFiscalEvent received payload',
+        event_type,
+        operation_id,
+        payload_for_tse,
+        payload_type: typeof payload_for_tse
+    }, 'Detailed payload inspection for logFiscalEvent');
 
     try {
       // Step 1: Create 'PENDING' record in the write-ahead log.
@@ -50,11 +60,16 @@ class LoggingService {
       return await this.commitFiscalOperation(pendingOperationId, event_type, user_id, trx);
 
     } catch (error) {
+      // Enhanced Diagnostic Log: Full error object
       logger.error({
         msg: 'Fiscal event logging failed.',
         operation_id,
-        error: error.message,
-      });
+        error: {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        }
+      }, 'Full error object in logFiscalEvent catch block');
 
       if (pendingOperationId) {
         const dbInstance = trx || db;
@@ -101,15 +116,17 @@ class LoggingService {
       const lastLog = await trx('fiscal_log').orderBy('id', 'desc').first();
       const previous_log_hash = lastLog ? lastLog.current_log_hash : '0'.repeat(64);
 
-      const tseResponseData = JSON.parse(operation.tse_response);
+      const tseResponseData = parseJsonIfNeeded(operation.tse_response);
+      const payloadForTse = parseJsonIfNeeded(operation.payload_for_tse);
+
       const newLogEntry = {
         log_id: operation.operation_id,
         timestamp_utc: new Date().toISOString(),
         event_type,
         user_id,
         transaction_number_tse: tseResponseData.transaction_number,
-        payload_for_tse: operation.payload_for_tse,
-        tse_response: operation.tse_response,
+        payload_for_tse: JSON.stringify(payloadForTse), // Re-stringify for consistent storage
+        tse_response: JSON.stringify(tseResponseData), // Re-stringify for consistent storage
         previous_log_hash
       };
       

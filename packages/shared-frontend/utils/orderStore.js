@@ -341,17 +341,40 @@ function createOrderStore() {
 				}
 			}));
 
-			// Send update to backend
-			wsStore.send({
-				command: 'updateTransactionMetadata',
-				payload: {
-					transactionId: currentStoreState.transactionId,
-					metadata: {
-						...currentStoreState.metadata,
-						table: tableNumber
-					},
-					userId
-				}
+			// Send update to backend and await response to prevent race condition
+			const metadataUpdateId = Math.random().toString(36).substring(2, 15);
+			await new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					if (unsubscribe) unsubscribe();
+					reject(new Error('Metadata update timeout'));
+				}, 5000);
+
+				let unsubscribe;
+				unsubscribe = wsStore.subscribe(state => {
+					if (state.lastMessage?.command === 'updateTransactionMetadataResponse' &&
+						state.lastMessage?.operationId === metadataUpdateId) {
+						clearTimeout(timeout);
+						if (unsubscribe) unsubscribe();
+						if (state.lastMessage.status === 'success') {
+							resolve(state.lastMessage);
+						} else {
+							reject(new Error(state.lastMessage.payload?.message || 'Failed to update metadata'));
+						}
+					}
+				});
+
+				wsStore.send({
+					operationId: metadataUpdateId,
+					command: 'updateTransactionMetadata',
+					payload: {
+						transactionId: currentStoreState.transactionId,
+						metadata: {
+							...currentStoreState.metadata,
+							table: tableNumber
+						},
+						userId
+					}
+				});
 			});
 
 			addLog('SUCCESS', `Table ${tableNumber} assigned to order`);

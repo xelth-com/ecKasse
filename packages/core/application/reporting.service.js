@@ -1,6 +1,7 @@
 // Real reporting service implementation
 
 const logger = require('../config/logger');
+const { parseJsonIfNeeded } = require('../utils/db-helper');
 
 class ReportingService {
     constructor(reportingRepository) {
@@ -123,7 +124,7 @@ class ReportingService {
                         ...transaction,
                         items: items.map(item => ({
                             ...item,
-                            display_names: item.display_names ? JSON.parse(item.display_names) : null
+                            display_names: parseJsonIfNeeded(item.display_names)
                         }))
                     };
                 })

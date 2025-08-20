@@ -108,13 +108,7 @@
       "Bash(sudo systemctl start:*)",
       "Bash(sudo service:*)",
       "Bash(/tmp/update_wsl_host.sh:*)",
-      "Bash(ping:*)",
-      "Bash(nc:*)",
-      "Bash(ip route:*)",
-      "Bash(NODE_ENV=development npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
-      "Bash(NODE_ENV=development npx knex seed:run --knexfile packages/core/db/knexfile.js)",
-      "Bash(git merge:*)",
-      "Bash(git stash:*)"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckasse -c \"SELECT display_names FROM items LIMIT 1;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

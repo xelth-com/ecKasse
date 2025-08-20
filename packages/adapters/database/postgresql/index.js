@@ -1,28 +1,40 @@
-// PostgreSQL Multi-Tenant Adapter Implementation
+// PostgreSQL Adapter Implementation
 // This adapter provides database access for the web application
-// Supports multi-tenancy with tenant isolation
+
+const { ProductRepository } = require('./ProductRepository');
+const { TransactionRepository } = require('./TransactionRepository');
+const { AuthRepository } = require('./AuthRepository');
+const { ReportingRepository } = require('./ReportingRepository');
 
 class PostgreSQLAdapter {
-  constructor(config) {
-    this.config = config;
-    this.pool = null;
-    this.currentTenant = null;
+  constructor(db) {
+    this.db = db;
+    this.productRepository = new ProductRepository(db);
+    this.transactionRepository = new TransactionRepository(db);
+    this.authRepository = new AuthRepository(db);
+    this.reportingRepository = new ReportingRepository(db);
   }
 
-  async connect() {
-    // TODO: Initialize PostgreSQL connection pool
-    console.log('PostgreSQL adapter connecting...');
+  getProductRepository() {
+    return this.productRepository;
+  }
+
+  getTransactionRepository() {
+    return this.transactionRepository;
+  }
+
+  getAuthRepository() {
+    return this.authRepository;
+  }
+
+  getReportingRepository() {
+    return this.reportingRepository;
   }
 
   async disconnect() {
-    // TODO: Close PostgreSQL connection pool
-    console.log('PostgreSQL adapter disconnecting...');
-  }
-
-  setTenant(tenantId) {
-    // TODO: Set current tenant context
-    this.currentTenant = tenantId;
-    console.log(`PostgreSQL adapter set to tenant: ${tenantId}`);
+    if (this.db) {
+      await this.db.destroy();
+    }
   }
 }
 
