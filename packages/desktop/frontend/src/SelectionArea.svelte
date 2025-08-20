@@ -392,6 +392,13 @@
     }
   }
   
+  // Update grid content when order state changes (to activate/deactivate payment buttons)
+  $: {
+    if (gridCells.length > 0 && $orderStore) {
+      gridCells = [...gridCells]; // Force reactivity update
+    }
+  }
+  
   // REMOVED REACTIVE BLOCKS CAUSING HANGING ISSUE
   // These reactive blocks were causing infinite re-rendering loops
   // The grid content will still update correctly on render without these
@@ -408,32 +415,6 @@
       buildRectGridLayout(cells, chosenLayout);
     }
     
-    // Designate the bottom-left full button as the Pinpad trigger
-    if (cells.length > 0) {
-        let potentialTriggers = cells.filter(c => c.type === 'full' || c.type === 'rect-grid');
-        if (potentialTriggers.length > 0) {
-            potentialTriggers.sort((a,b) => (b.rowIndex - a.rowIndex) || (a.columnIndex - b.columnIndex));
-            potentialTriggers[0].isPinpadTrigger = true;
-        }
-    }
-
-    // Designate the leftmost button of the second-to-last row as the Table button
-    if (cells.length > 0) {
-        // Find the second-to-last row (предпоследний ряд)
-        const maxRowIndex = Math.max(...cells.map(c => c.rowIndex));
-        const secondToLastRowIndex = maxRowIndex - 1;
-        
-        let potentialTableButtons = cells.filter(c => 
-            (c.type === 'full' || c.type === 'rect-grid') && 
-            c.rowIndex === secondToLastRowIndex
-        );
-        
-        if (potentialTableButtons.length > 0) {
-            // Sort by column (left first) 
-            potentialTableButtons.sort((a,b) => a.columnIndex - b.columnIndex);
-            potentialTableButtons[0].isTableButton = true;
-        }
-    }
 
     return cells;
   }
@@ -592,7 +573,10 @@
     }
     clearGridContent();
     
-    // Always initialize system buttons first
+    // First assign payment buttons to ensure they get priority
+    assignPaymentButtons(gridCells);
+    
+    // Then initialize system buttons in remaining slots
     initializeSystemButtons(gridCells);
     
     if (currentView === 'categories') {
@@ -681,13 +665,24 @@
     // --- Main Grid System Buttons --- //
     const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
 
-    // Designate the Table button - leftmost full button in second-to-last row
+    // Designate the Pinpad trigger - bottom-left full button (only if not already filled)
+    let potentialTriggers = grid.filter(c => 
+        (c.type === 'full' || c.type === 'rect-grid') && 
+        !c.content
+    );
+    if (potentialTriggers.length > 0) {
+        potentialTriggers.sort((a,b) => (b.rowIndex - a.rowIndex) || (a.columnIndex - b.columnIndex));
+        potentialTriggers[0].isPinpadTrigger = true;
+    }
+
+    // Designate the Table button - leftmost full button in second-to-last row (only if not already filled)
     if (maxRowIndex > 0) {
         const secondToLastRowIndex = maxRowIndex - 1;
         let potentialTableButtons = grid.filter(c => 
             (c.type === 'full' || c.type === 'rect-grid') && 
             c.rowIndex === secondToLastRowIndex &&
-            !c.content
+            !c.content &&
+            !c.isPinpadTrigger
         );
         
         if (potentialTableButtons.length > 0) {
@@ -698,13 +693,10 @@
   }
   
   function populateWithCategories(grid, categories) {
-    // Find bottom row full buttons and assign payment functions from right to left
-    assignPaymentButtons(grid);
-    
     let categoryIndex = 0;
     for (const cell of grid) {
       if (categoryIndex >= categories.length) break;
-      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.content) {
+      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.isTableButton && !cell.content) {
         cell.content = categories[categoryIndex];
         categoryIndex++;
       }
@@ -722,13 +714,10 @@
       leftHalfCell.content = { isBackButton: true, icon: '←' };
     }
 
-    // Find bottom row full buttons and assign payment functions from right to left
-    assignPaymentButtons(grid);
-    
     let productIndex = 0;
     for (const cell of grid) {
       if (productIndex >= products.length) break;
-      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.content) {
+      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.isTableButton && !cell.content) {
         cell.content = products[productIndex];
         productIndex++;
       }
