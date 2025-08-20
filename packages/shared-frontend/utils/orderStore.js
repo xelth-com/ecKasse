@@ -61,21 +61,30 @@ function createOrderStore() {
 			let activeItemId = null;
 			if (newItems.length > 0) {
 				// Find the item with the highest ID (most recent) or most recent update
-				const sortedItems = [...newItems].sort((a, b) => {
+				const sortedItemsForActive = [...newItems].sort((a, b) => {
 					// First sort by updated_at if available, then by id
 					if (a.updated_at && b.updated_at) {
 						return new Date(b.updated_at) - new Date(a.updated_at);
 					}
 					return b.id - a.id;
 				});
-				activeItemId = sortedItems[0].id;
+				activeItemId = sortedItemsForActive[0].id;
 			}
+			
+			// Sort items chronologically for display (oldest first, newest last)
+			const sortedItemsForDisplay = [...newItems].sort((a, b) => {
+				// First sort by created_at if available, then by id (ascending order)
+				if (a.created_at && b.created_at) {
+					return new Date(a.created_at) - new Date(b.created_at);
+				}
+				return a.id - b.id;
+			});
 			
 			update(store => ({
 				...store,
 				transactionId: updatedTx.id,
 				uuid: updatedTx.uuid,
-				items: newItems,
+				items: sortedItemsForDisplay,
 				total: parseFloat(updatedTx.total_amount),
 				tax: parseFloat(updatedTx.tax_amount),
 				status: 'active',
