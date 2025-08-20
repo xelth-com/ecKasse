@@ -57,25 +57,39 @@ function createOrderStore() {
 				};
 			});
 			
-			// Identify the most recently modified or added item
+			// Helper function to get the latest date for an item (max of created_at and updated_at)
+			const getLatestDate = (item) => {
+				const dates = [];
+				if (item.created_at) dates.push(new Date(item.created_at));
+				if (item.updated_at) dates.push(new Date(item.updated_at));
+				return dates.length > 0 ? Math.max(...dates) : 0;
+			};
+			
+			// Identify the most recently active item
 			let activeItemId = null;
 			if (newItems.length > 0) {
-				// Find the item with the highest ID (most recent) or most recent update
+				// Find the item with the most recent activity
 				const sortedItemsForActive = [...newItems].sort((a, b) => {
-					// First sort by updated_at if available, then by id
-					if (a.updated_at && b.updated_at) {
-						return new Date(b.updated_at) - new Date(a.updated_at);
+					const aLatest = getLatestDate(a);
+					const bLatest = getLatestDate(b);
+					
+					// Sort by latest activity (descending), then by id (descending)
+					if (aLatest !== bLatest) {
+						return bLatest - aLatest; // descending order
 					}
 					return b.id - a.id;
 				});
 				activeItemId = sortedItemsForActive[0].id;
 			}
 			
-			// Sort items chronologically for display (oldest first, newest last)
+			// Sort items by latest activity for display (oldest first, most recently active last)
 			const sortedItemsForDisplay = [...newItems].sort((a, b) => {
-				// First sort by created_at if available, then by id (ascending order)
-				if (a.created_at && b.created_at) {
-					return new Date(a.created_at) - new Date(b.created_at);
+				const aLatest = getLatestDate(a);
+				const bLatest = getLatestDate(b);
+				
+				// Sort by latest activity, then by id if dates are equal
+				if (aLatest !== bLatest) {
+					return aLatest - bLatest; // ascending order
 				}
 				return a.id - b.id;
 			});
