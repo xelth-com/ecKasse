@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, afterUpdate } from 'svelte';
   import { get } from 'svelte/store';
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { addLog } from '@eckasse/shared-frontend/utils/logStore.js';
@@ -769,9 +769,9 @@
   let resizeObserver;
   let containerElement;
   let debounceTimer;
-  
+  let initialLoadDone = false;
+
   onMount(() => {
-    // addLog('INFO', 'SelectionArea mounted, setting up resize observer');
     if (containerElement) {
       resizeObserver = new ResizeObserver(entries => {
         if (debounceTimer) clearTimeout(debounceTimer);
@@ -779,7 +779,6 @@
           for (let entry of entries) {
             const newWidth = entry.contentRect.width;
             const newHeight = entry.contentRect.height;
-            
             if (containerWidth !== newWidth || containerHeight !== newHeight) {
               containerWidth = newWidth;
               containerHeight = newHeight;
@@ -796,62 +795,48 @@
         rebuildGridAndContent();
       }, 100);
     }
-    return () => resizeObserver?.disconnect();
+
+    const handleAutoCollapseComplete = () => {
+      currentView = 'categories';
+      selectedCategory = null;
+      consoleView.set('order');
+    };
+
+    window.addEventListener('autoCollapseComplete', handleAutoCollapseComplete);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('autoCollapseComplete', handleAutoCollapseComplete);
+    };
   });
 
-  // Reactive WebSocket connection handling with race condition fix
-  let initialLoadDone = false;
   wsStore.subscribe(state => {
-    // DEBUG: Детальное логирование состояния WebSocket
-    console.log('📡 [SelectionArea] wsStore state changed:', {
-      isConnected: state.isConnected,
-      initialLoadDone,
-      lastMessageCommand: state.lastMessage?.command,
-      lastMessageStatus: state.lastMessage?.status
-    });
-    
     isConnected = state.isConnected;
-    
-    // Only fetch initial data once when connection is established
     if (isConnected && !initialLoadDone) {
-      console.log('🚀 [SelectionArea] Conditions met for getCategories:', {
-        isConnected,
-        initialLoadDone,
-        about_to_send: 'getCategories'
-      });
-      
+      initialLoadDone = true; // Prevent re-triggering
       status = 'Loading categories...';
-      console.log('📤 [SelectionArea] About to call wsStore.send({ command: "getCategories" })');
       
-      try {
-        const result = wsStore.send({ command: 'getCategories' });
-        console.log('✅ [SelectionArea] wsStore.send returned:', result);
-      } catch (error) {
-        console.error('❌ [SelectionArea] Error calling wsStore.send:', error);
-      }
-      
-      initialLoadDone = true;
-      console.log('🔒 [SelectionArea] initialLoadDone set to true');
-    } else {
-      console.log('⏸️ [SelectionArea] Conditions NOT met for getCategories:', {
-        isConnected,
-        initialLoadDone,
-        reason: !isConnected ? 'not connected' : 'already loaded'
-      });
+      // Delay to ensure WebSocket is fully ready
+      setTimeout(() => {
+        const resultPromise = wsStore.send({ command: 'getCategories' });
+
+        // Handle the promise returned by the send command
+        resultPromise.then(result => {
+          if (result.status === 'success' && Array.isArray(result.payload)) {
+            categories = result.payload;
+            status = ''; // Clear status to show the grid
+            updateGridContent(); // Explicitly trigger grid update
+          } else {
+            status = 'Error: Could not load categories from backend.';
+            console.error('Failed to load categories:', result);
+          }
+        }).catch(error => {
+          status = 'Error: Failed to get response for categories.';
+          console.error('Error in getCategories promise:', error);
+        });
+      }, 500);
     }
 
-    if (state.lastMessage?.command === 'getCategoriesResponse') {
-      console.log('📥 [SelectionArea] Received getCategoriesResponse:', state.lastMessage);
-      
-      if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
-        categories = state.lastMessage.payload;
-        status = categories.length > 0 ? '' : 'No categories found.';
-        console.log('✅ [SelectionArea] Categories loaded successfully:', categories.length, 'items');
-      } else {
-        status = 'Error: Could not load categories from backend.';
-        console.error('❌ [SelectionArea] Failed to load categories:', state.lastMessage);
-      }
-    }
     if (state.lastMessage?.command === 'getItemsByCategoryResponse') {
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
         products = state.lastMessage.payload;
@@ -861,26 +846,6 @@
         status = 'Error: Could not load products from backend.';
       }
     }
-  });
-
-  // Race condition fix: removed setTimeout-based data fetch from onMount
-  // Categories are now loaded reactively when WebSocket connects
-
-  // Handle auto-collapse completion event
-  onMount(() => {
-    const handleAutoCollapseComplete = () => {
-      // addLog('INFO', 'Auto-collapse completed, returning to categories');
-      currentView = 'categories';
-      selectedCategory = null;
-      consoleView.set('order'); // Switch back to order view
-    };
-
-    window.addEventListener('autoCollapseComplete', handleAutoCollapseComplete);
-
-    // Cleanup on component destroy
-    return () => {
-      window.removeEventListener('autoCollapseComplete', handleAutoCollapseComplete);
-    };
   });
 
   let gridRows = [];
@@ -1013,7 +978,6 @@
     } else if (paymentType === 'zwischenrechnung') {
       // Interim receipt - just log for now
       // addLog('INFO', 'Interim receipt requested');
-      console.log('Interim receipt requested');
     }
   }
 
@@ -1154,7 +1118,6 @@
 
   function handleContextMenuEdit(event) {
     const { item } = event.detail;
-    console.log('Edit item:', item);
     
     const itemType = item.category_names ? 'Category' : 'Product';
     
@@ -1165,7 +1128,6 @@
       // Close context menu
       contextMenuVisible = false;
     } else {
-      console.log('Category editing not implemented yet');
     }
     // addLog('INFO', `Edit requested for: ${item.id} - ${itemType}`);
   }
