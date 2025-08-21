@@ -87,10 +87,12 @@ function createOrderStore() {
 				const aLatest = getLatestDate(a);
 				const bLatest = getLatestDate(b);
 				
-				// Sort by latest activity, then by id if dates are equal
+				// Primary sort: by latest activity (ascending - oldest first)
 				if (aLatest !== bLatest) {
-					return aLatest - bLatest; // ascending order
+					return aLatest - bLatest;
 				}
+				
+				// Secondary sort: by item ID (ascending) for stable ordering
 				return a.id - b.id;
 			});
 			

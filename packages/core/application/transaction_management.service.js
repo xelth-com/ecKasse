@@ -111,8 +111,12 @@ class TransactionManagementService {
       transaction = await this.transactionRepository.findActiveById(transactionId, trx);
       if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
       
+      // Get the initial items before fiscal compliance to preserve display order
+      const initialItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
+      const displayOrderMap = new Map(initialItems.map((item, index) => [item.id, index]));
+      
       // Create fiscal compliance records based on operational logs FIRST - this reconstructs the transaction
-      await this.createFiscalComplianceRecords(transactionId, transaction.uuid, trx);
+      await this.createFiscalComplianceRecords(transactionId, transaction.uuid, trx, initialItems);
       
       const paymentAmount = parseFloat(paymentData.amount);
       const taxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
@@ -150,7 +154,27 @@ class TransactionManagementService {
         tax_amount: recalculatedTax
       };
       const updatedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
-      finishedTransaction = { ...updatedTransaction, items: allItems };
+      
+      // Sort items using sophisticated criteria to preserve display order with compliance records grouped
+      const sortedItems = [...allItems].sort((a, b) => {
+        // Get sort keys - original items use their id, compliance items use parent_transaction_item_id
+        const aSortKey = a.parent_transaction_item_id || a.id;
+        const bSortKey = b.parent_transaction_item_id || b.id;
+        
+        // Get original indices from display order map
+        const aIndex = displayOrderMap.get(aSortKey) ?? 999999;
+        const bIndex = displayOrderMap.get(bSortKey) ?? 999999;
+        
+        // Primary sort: original display order index
+        if (aIndex !== bIndex) {
+          return aIndex - bIndex;
+        }
+        
+        // Secondary sort: item ID (ensures original items come before compliance items)
+        return a.id - b.id;
+      });
+      
+      finishedTransaction = { ...updatedTransaction, items: sortedItems };
       return { totalAmount: recalculatedTotal };
     });
     
@@ -294,7 +318,8 @@ class TransactionManagementService {
         const itemUpdateData = {
           quantity: newQuantity,
           total_price: newTotalPrice,
-          tax_amount: newTaxAmount
+          tax_amount: newTaxAmount,
+          updated_at: new Date().toISOString()
         };
         await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
       } else {
@@ -311,7 +336,8 @@ class TransactionManagementService {
         const itemUpdateData = {
           quantity: newQuantity,
           total_price: newTotalPrice,
-          tax_amount: newTaxAmount
+          tax_amount: newTaxAmount,
+          updated_at: new Date().toISOString()
         };
         await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
       }
@@ -481,7 +507,8 @@ class TransactionManagementService {
       const itemUpdateData = {
         unit_price: newUnitPrice,
         total_price: newTotalPrice,
-        tax_amount: newTaxAmount
+        tax_amount: newTaxAmount,
+        updated_at: new Date().toISOString()
       };
       await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
       
@@ -526,7 +553,7 @@ class TransactionManagementService {
     return { ...result.transaction, items: result.items };
   }
 
-  async createFiscalComplianceRecords(transactionId, transactionUuid, trx) {
+  async createFiscalComplianceRecords(transactionId, transactionUuid, trx, initialItems = []) {
     // Get operational logs for this transaction to reconstruct fiscal compliance records
     // Use database-agnostic JSON search
     const dbClient = trx.client.config.client;
@@ -590,7 +617,8 @@ class TransactionManagementService {
               total_price: -stornoTotalPrice, // Negative total price
               tax_rate: taxRate,
               tax_amount: -stornoTaxAmount, // Negative tax amount
-              notes: 'STORNO'
+              notes: 'STORNO',
+              parent_transaction_item_id: transactionItemId // Add parent reference
             };
             
             await this.transactionRepository.addItem(stornoItemData, trx);
@@ -638,7 +666,8 @@ class TransactionManagementService {
               total_price: actualPriceDifference,
               tax_rate: taxRate,
               tax_amount: taxAmount,
-              notes: label
+              notes: label,
+              parent_transaction_item_id: transactionItemId // Add parent reference
             };
             
             await this.transactionRepository.addItem(compensatingItemData, trx);
