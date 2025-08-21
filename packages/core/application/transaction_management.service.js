@@ -110,6 +110,10 @@ class TransactionManagementService {
     const updateResult = await this.transactionRepository.db.transaction(async (trx) => {
       transaction = await this.transactionRepository.findActiveById(transactionId, trx);
       if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
+      
+      // Create fiscal compliance records based on operational logs FIRST - this reconstructs the transaction
+      await this.createFiscalComplianceRecords(transactionId, transaction.uuid, trx);
+      
       const paymentAmount = parseFloat(paymentData.amount);
       const taxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
       const taxRatesOrder = [19.00, 7.00, 10.70, 5.50, 0.00];
@@ -120,8 +124,6 @@ class TransactionManagementService {
       // Note: zahlungen will be recalculated after fiscal compliance records
       let zahlungen = `${paymentAmount.toFixed(2)}:${paymentData.type}`;
       processData = `Beleg^${bruttoSteuerumsaetze}^${zahlungen}`;
-      // Create fiscal compliance records based on operational logs before finishing
-      await this.createFiscalComplianceRecords(transactionId, transaction.uuid, trx);
       
       // Recalculate total amounts after fiscal compliance records are created
       const allItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
@@ -270,7 +272,7 @@ class TransactionManagementService {
       let priceDifference, taxDifference;
       
       if (newQuantity < transactionItem.quantity) {
-        // STORNO operation - don't update the original item, just log for fiscal compliance
+        // STORNO operation - UPDATE the item to show current state for UI, and log for fiscal compliance
         await this.loggingService.logOperationalEvent('partial_storno', userId, {
           transaction_uuid: transaction.uuid,
           transaction_item_id: transactionItemId,
@@ -288,8 +290,13 @@ class TransactionManagementService {
         priceDifference = newTotalPrice - oldTotalPrice;
         taxDifference = newTaxAmount - oldTaxAmount;
         
-        // Don't update the transaction item for STORNO - keep original quantity
-        // Fiscal compliance will create separate STORNO entries later
+        // Update the transaction item to show current state for UI
+        const itemUpdateData = {
+          quantity: newQuantity,
+          total_price: newTotalPrice,
+          tax_amount: newTaxAmount
+        };
+        await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
       } else {
         // Normal quantity increase - update the transaction item
         const unitPrice = parseFloat(transactionItem.unit_price);
@@ -520,7 +527,7 @@ class TransactionManagementService {
   }
 
   async createFiscalComplianceRecords(transactionId, transactionUuid, trx) {
-    // Get operational logs for this transaction to create fiscal compliance records
+    // Get operational logs for this transaction to reconstruct fiscal compliance records
     // Use database-agnostic JSON search
     const dbClient = trx.client.config.client;
     let operationalLogs;
@@ -539,11 +546,13 @@ class TransactionManagementService {
         .orderBy('timestamp_utc', 'asc');
     }
 
+    // Process logs to reconstruct transaction history
     for (const log of operationalLogs) {
       const payload = parseJsonIfNeeded(log.details);
       
       if (log.event_type === 'partial_storno') {
-        // Create STORNO line item for quantity reduction
+        // STEP 1: Find the current transaction item and revert it to original quantity
+        const transactionItemId = payload.transaction_item_id;
         const originalQuantity = parseFloat(payload.original_quantity);
         const newQuantity = parseFloat(payload.new_quantity);
         const stornoQuantity = originalQuantity - newQuantity;
@@ -558,6 +567,18 @@ class TransactionManagementService {
             const category = await this.productRepository.findCategoryById(catalogItem.associated_category_unique_identifier, trx);
             const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
             
+            // STEP 2: UPDATE the original transaction item back to original quantity and original price
+            const originalTotalPrice = originalUnitPrice * originalQuantity;
+            const originalTaxAmount = originalTotalPrice - (originalTotalPrice / (1 + taxRate / 100));
+            
+            await this.transactionRepository.updateTransactionItem(transactionItemId, {
+              quantity: originalQuantity,
+              unit_price: originalUnitPrice,
+              total_price: originalTotalPrice,
+              tax_amount: originalTaxAmount
+            }, trx);
+            
+            // STEP 3: INSERT a new STORNO line item for the reduction
             const stornoTotalPrice = originalUnitPrice * stornoQuantity;
             const stornoTaxAmount = stornoTotalPrice - (stornoTotalPrice / (1 + taxRate / 100));
             
@@ -576,26 +597,38 @@ class TransactionManagementService {
           }
         }
       } else if (log.event_type === 'price_override') {
-        // Create DISCOUNT/SURCHARGE line item for price changes
-        const priceDifference = parseFloat(payload.price_difference);
+        // STEP 1: Find the current transaction item and revert it to original price
+        const transactionItemId = payload.transaction_item_id;
+        const originalUnitPrice = parseFloat(payload.original_unit_price);
+        const newUnitPrice = parseFloat(payload.new_unit_price);
+        const quantity = parseFloat(payload.quantity);
         
-        if (Math.abs(priceDifference) > 0.001) { // Only create if significant difference
-          // Get the original item from catalog to calculate discount/surcharge from original price
+        // Calculate actual discount/surcharge from original price
+        const unitPriceDifference = newUnitPrice - originalUnitPrice;
+        const actualPriceDifference = unitPriceDifference * quantity;
+        
+        if (Math.abs(actualPriceDifference) > 0.001) { // Only create if significant difference
+          // Get the original item from catalog
           const catalogItem = await this.productRepository.findById(payload.item_id, trx);
           if (catalogItem) {
-            const originalUnitPrice = parseFloat(catalogItem.item_price_value);
-            const quantity = parseFloat(payload.quantity);
-            
-            // Calculate actual discount/surcharge from original price
-            const actualPriceDifference = (parseFloat(payload.new_unit_price) - originalUnitPrice) * quantity;
-            
             // Get category for tax rate calculation
             const category = await this.productRepository.findCategoryById(catalogItem.associated_category_unique_identifier, trx);
             const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
             
+            // STEP 2: UPDATE the original transaction item back to original catalog price
+            const originalTotalPrice = parseFloat(catalogItem.item_price_value) * quantity;
+            const originalTaxAmount = originalTotalPrice - (originalTotalPrice / (1 + taxRate / 100));
+            
+            await this.transactionRepository.updateTransactionItem(transactionItemId, {
+              unit_price: parseFloat(catalogItem.item_price_value),
+              total_price: originalTotalPrice,
+              tax_amount: originalTaxAmount
+            }, trx);
+            
+            // STEP 3: INSERT a new DISCOUNT/SURCHARGE line item for the price difference
             const isDiscount = actualPriceDifference < 0;
             const label = isDiscount ? 'DISCOUNT' : 'SURCHARGE';
-            const compensatingTaxAmount = Math.abs(actualPriceDifference) - (Math.abs(actualPriceDifference) / (1 + taxRate / 100));
+            const taxAmount = actualPriceDifference - (actualPriceDifference / (1 + taxRate / 100));
             
             const compensatingItemData = {
               active_transaction_id: transactionId,
@@ -604,7 +637,7 @@ class TransactionManagementService {
               unit_price: actualPriceDifference, // The actual difference from original price
               total_price: actualPriceDifference,
               tax_rate: taxRate,
-              tax_amount: isDiscount ? -compensatingTaxAmount : compensatingTaxAmount,
+              tax_amount: taxAmount,
               notes: label
             };
             
