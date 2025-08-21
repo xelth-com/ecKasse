@@ -80,7 +80,11 @@
     if (item.notes === 'DISCOUNT' || item.notes === 'SURCHARGE') {
       return ''; // Hide quantity for discount/surcharge items
     }
-    return parseFloat(item.quantity) + 'x';
+    const quantity = parseFloat(item.quantity);
+    if (quantity === 1) {
+      return ''; // Hide quantity for single items
+    }
+    return quantity + 'x';
   }
 
   async function handleReprintReceipt(receipt) {

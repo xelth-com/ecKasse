@@ -134,7 +134,8 @@
       "Bash(claude migrate-installer:*)",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"ALTER TABLE active_transaction_items ADD COLUMN IF NOT EXISTS parent_transaction_item_id INTEGER REFERENCES active_transaction_items(id);\")",
       "Bash(NODE_ENV=production DB_CLIENT=pg npx knex raw \"ALTER TABLE active_transaction_items ADD COLUMN IF NOT EXISTS parent_transaction_item_id INTEGER REFERENCES active_transaction_items(id);\" --knexfile packages/core/db/knexfile.js)",
-      "Bash(NODE_ENV=production DB_CLIENT=pg npx knex migrate:make add_parent_transaction_item_id --knexfile packages/core/db/knexfile.js)"
+      "Bash(NODE_ENV=production DB_CLIENT=pg npx knex migrate:make add_parent_transaction_item_id --knexfile packages/core/db/knexfile.js)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ''active_transaction_items'' ORDER BY ordinal_position;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
