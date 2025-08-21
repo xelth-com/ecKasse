@@ -110,24 +110,46 @@ class TransactionManagementService {
     const updateResult = await this.transactionRepository.db.transaction(async (trx) => {
       transaction = await this.transactionRepository.findActiveById(transactionId, trx);
       if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
-      const totalAmount = parseFloat(transaction.total_amount);
       const paymentAmount = parseFloat(paymentData.amount);
-      if (Math.abs(totalAmount - paymentAmount) > 0.001) {
-        throw new Error(`Payment amount (${paymentAmount}) does not match transaction total (${totalAmount}).`);
-      }
       const taxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
       const taxRatesOrder = [19.00, 7.00, 10.70, 5.50, 0.00];
       const bruttoSteuerumsaetze = taxRatesOrder.map(rate => {
         const found = taxBreakdown.find(b => parseFloat(b.tax_rate) === rate);
         return found ? parseFloat(found.total).toFixed(2) : '0.00';
       }).join('_');
-      const zahlungen = `${paymentAmount.toFixed(2)}:${paymentData.type}`;
+      // Note: zahlungen will be recalculated after fiscal compliance records
+      let zahlungen = `${paymentAmount.toFixed(2)}:${paymentData.type}`;
       processData = `Beleg^${bruttoSteuerumsaetze}^${zahlungen}`;
-      const updateData = { status: 'finished', payment_type: paymentData.type, payment_amount: paymentAmount };
+      // Create fiscal compliance records based on operational logs before finishing
+      await this.createFiscalComplianceRecords(transactionId, transaction.uuid, trx);
+      
+      // Recalculate total amounts after fiscal compliance records are created
+      const allItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
+      const recalculatedTotal = allItems.reduce((sum, item) => sum + parseFloat(item.total_price), 0);
+      const recalculatedTax = allItems.reduce((sum, item) => sum + parseFloat(item.tax_amount), 0);
+      
+      // Update payment amount to match recalculated total (fiscal compliance may change the total)
+      const finalPaymentAmount = recalculatedTotal;
+      
+      // Recalculate processData with correct amounts
+      const finalTaxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
+      const finalBruttoSteuerumsaetze = taxRatesOrder.map(rate => {
+        const found = finalTaxBreakdown.find(b => parseFloat(b.tax_rate) === rate);
+        return found ? parseFloat(found.total).toFixed(2) : '0.00';
+      }).join('_');
+      zahlungen = `${finalPaymentAmount.toFixed(2)}:${paymentData.type}`;
+      processData = `Beleg^${finalBruttoSteuerumsaetze}^${zahlungen}`;
+      
+      const updateData = { 
+        status: 'finished', 
+        payment_type: paymentData.type, 
+        payment_amount: finalPaymentAmount,
+        total_amount: recalculatedTotal,
+        tax_amount: recalculatedTax
+      };
       const updatedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
-      const items = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
-      finishedTransaction = { ...updatedTransaction, items: items };
-      return { totalAmount };
+      finishedTransaction = { ...updatedTransaction, items: allItems };
+      return { totalAmount: recalculatedTotal };
     });
     
     const fiscalPayload = {
@@ -238,17 +260,6 @@ class TransactionManagementService {
         throw new Error(`Transaction item with ID ${transactionItemId} not found in transaction ${transactionId}.`);
       }
       
-      // Log storno operations (quantity decreases) for security audit
-      if (newQuantity < transactionItem.quantity) {
-        await this.loggingService.logOperationalEvent('partial_storno', userId, {
-          transaction_uuid: transaction.uuid,
-          transaction_item_id: transactionItemId,
-          original_quantity: transactionItem.quantity,
-          new_quantity: newQuantity,
-          item_id: transactionItem.item_id
-        });
-      }
-      
       // Get item details for recalculation
       item = await this.productRepository.findById(transactionItem.item_id, trx);
       if (!item) throw new Error(`Item with ID ${transactionItem.item_id} not found.`);
@@ -256,23 +267,49 @@ class TransactionManagementService {
       const oldTotalPrice = parseFloat(transactionItem.total_price);
       const oldTaxAmount = parseFloat(transactionItem.tax_amount);
       
-      // Calculate new amounts
-      const unitPrice = parseFloat(transactionItem.unit_price);
-      const newTotalPrice = unitPrice * newQuantity;
-      const taxRate = parseFloat(transactionItem.tax_rate);
-      const newTaxAmount = newTotalPrice - (newTotalPrice / (1 + taxRate / 100));
+      let priceDifference, taxDifference;
       
-      // Update the transaction item
-      const itemUpdateData = {
-        quantity: newQuantity,
-        total_price: newTotalPrice,
-        tax_amount: newTaxAmount
-      };
-      await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
+      if (newQuantity < transactionItem.quantity) {
+        // STORNO operation - don't update the original item, just log for fiscal compliance
+        await this.loggingService.logOperationalEvent('partial_storno', userId, {
+          transaction_uuid: transaction.uuid,
+          transaction_item_id: transactionItemId,
+          original_quantity: transactionItem.quantity,
+          new_quantity: newQuantity,
+          item_id: transactionItem.item_id
+        });
+        
+        // Calculate the price difference for transaction total update
+        const unitPrice = parseFloat(transactionItem.unit_price);
+        const newTotalPrice = unitPrice * newQuantity;
+        const taxRate = parseFloat(transactionItem.tax_rate);
+        const newTaxAmount = newTotalPrice - (newTotalPrice / (1 + taxRate / 100));
+        
+        priceDifference = newTotalPrice - oldTotalPrice;
+        taxDifference = newTaxAmount - oldTaxAmount;
+        
+        // Don't update the transaction item for STORNO - keep original quantity
+        // Fiscal compliance will create separate STORNO entries later
+      } else {
+        // Normal quantity increase - update the transaction item
+        const unitPrice = parseFloat(transactionItem.unit_price);
+        const newTotalPrice = unitPrice * newQuantity;
+        const taxRate = parseFloat(transactionItem.tax_rate);
+        const newTaxAmount = newTotalPrice - (newTotalPrice / (1 + taxRate / 100));
+        
+        priceDifference = newTotalPrice - oldTotalPrice;
+        taxDifference = newTaxAmount - oldTaxAmount;
+        
+        // Update the transaction item
+        const itemUpdateData = {
+          quantity: newQuantity,
+          total_price: newTotalPrice,
+          tax_amount: newTaxAmount
+        };
+        await this.transactionRepository.updateTransactionItem(transactionItemId, itemUpdateData, trx);
+      }
       
       // Update transaction totals
-      const priceDifference = newTotalPrice - oldTotalPrice;
-      const taxDifference = newTaxAmount - oldTaxAmount;
       const newTransactionTotal = parseFloat(transaction.total_amount) + priceDifference;
       const newTransactionTax = parseFloat(transaction.tax_amount) + taxDifference;
       
@@ -480,6 +517,102 @@ class TransactionManagementService {
     
     logger.info({ msg: 'Item price updated successfully', transactionId, transactionItemId, newPrice });
     return { ...result.transaction, items: result.items };
+  }
+
+  async createFiscalComplianceRecords(transactionId, transactionUuid, trx) {
+    // Get operational logs for this transaction to create fiscal compliance records
+    // Use database-agnostic JSON search
+    const dbClient = trx.client.config.client;
+    let operationalLogs;
+    
+    if (dbClient === 'pg') {
+      // PostgreSQL with JSONB - use JSON containment operator
+      operationalLogs = await trx('operational_log')
+        .whereRaw('details::text LIKE ?', [`%${transactionUuid}%`])
+        .andWhere('event_type', 'in', ['partial_storno', 'price_override'])
+        .orderBy('timestamp_utc', 'asc');
+    } else {
+      // SQLite with TEXT - use regular LIKE
+      operationalLogs = await trx('operational_log')
+        .where('details', 'like', `%${transactionUuid}%`)
+        .andWhere('event_type', 'in', ['partial_storno', 'price_override'])
+        .orderBy('timestamp_utc', 'asc');
+    }
+
+    for (const log of operationalLogs) {
+      const payload = parseJsonIfNeeded(log.details);
+      
+      if (log.event_type === 'partial_storno') {
+        // Create STORNO line item for quantity reduction
+        const originalQuantity = parseFloat(payload.original_quantity);
+        const newQuantity = parseFloat(payload.new_quantity);
+        const stornoQuantity = originalQuantity - newQuantity;
+        
+        if (stornoQuantity > 0) {
+          // Get the original item from catalog to get original price
+          const catalogItem = await this.productRepository.findById(payload.item_id, trx);
+          if (catalogItem) {
+            const originalUnitPrice = parseFloat(catalogItem.item_price_value);
+            
+            // Get category for tax rate calculation
+            const category = await this.productRepository.findCategoryById(catalogItem.associated_category_unique_identifier, trx);
+            const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
+            
+            const stornoTotalPrice = originalUnitPrice * stornoQuantity;
+            const stornoTaxAmount = stornoTotalPrice - (stornoTotalPrice / (1 + taxRate / 100));
+            
+            const stornoItemData = {
+              active_transaction_id: transactionId,
+              item_id: payload.item_id,
+              quantity: -stornoQuantity, // Negative quantity for storno
+              unit_price: originalUnitPrice,
+              total_price: -stornoTotalPrice, // Negative total price
+              tax_rate: taxRate,
+              tax_amount: -stornoTaxAmount, // Negative tax amount
+              notes: 'STORNO'
+            };
+            
+            await this.transactionRepository.addItem(stornoItemData, trx);
+          }
+        }
+      } else if (log.event_type === 'price_override') {
+        // Create DISCOUNT/SURCHARGE line item for price changes
+        const priceDifference = parseFloat(payload.price_difference);
+        
+        if (Math.abs(priceDifference) > 0.001) { // Only create if significant difference
+          // Get the original item from catalog to calculate discount/surcharge from original price
+          const catalogItem = await this.productRepository.findById(payload.item_id, trx);
+          if (catalogItem) {
+            const originalUnitPrice = parseFloat(catalogItem.item_price_value);
+            const quantity = parseFloat(payload.quantity);
+            
+            // Calculate actual discount/surcharge from original price
+            const actualPriceDifference = (parseFloat(payload.new_unit_price) - originalUnitPrice) * quantity;
+            
+            // Get category for tax rate calculation
+            const category = await this.productRepository.findCategoryById(catalogItem.associated_category_unique_identifier, trx);
+            const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
+            
+            const isDiscount = actualPriceDifference < 0;
+            const label = isDiscount ? 'DISCOUNT' : 'SURCHARGE';
+            const compensatingTaxAmount = Math.abs(actualPriceDifference) - (Math.abs(actualPriceDifference) / (1 + taxRate / 100));
+            
+            const compensatingItemData = {
+              active_transaction_id: transactionId,
+              item_id: payload.item_id,
+              quantity: 1, // Always 1 for price adjustments
+              unit_price: actualPriceDifference, // The actual difference from original price
+              total_price: actualPriceDifference,
+              tax_rate: taxRate,
+              tax_amount: isDiscount ? -compensatingTaxAmount : compensatingTaxAmount,
+              notes: label
+            };
+            
+            await this.transactionRepository.addItem(compensatingItemData, trx);
+          }
+        }
+      }
+    }
   }
 }
 

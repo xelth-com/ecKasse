@@ -57,10 +57,30 @@
   }
 
   function getItemName(item) {
+    if (item.notes === 'STORNO' && item.display_names && item.display_names.menu && item.display_names.menu.de) {
+      return `STORNO: ${item.display_names.menu.de}`;
+    }
+    if (item.notes === 'DISCOUNT') {
+      return 'DISCOUNT';
+    }
+    if (item.notes === 'SURCHARGE') {
+      return 'SURCHARGE';
+    }
     if (item.display_names && item.display_names.menu && item.display_names.menu.de) {
       return item.display_names.menu.de;
     }
     return 'Unnamed Item';
+  }
+  
+  function isModificationItem(item) {
+    return item.notes === 'STORNO' || item.notes === 'DISCOUNT' || item.notes === 'SURCHARGE';
+  }
+  
+  function formatQuantityForItem(item) {
+    if (item.notes === 'DISCOUNT' || item.notes === 'SURCHARGE') {
+      return ''; // Hide quantity for discount/surcharge items
+    }
+    return parseFloat(item.quantity) + 'x';
   }
 
   async function handleReprintReceipt(receipt) {
@@ -142,10 +162,10 @@
             <div class="receipt-details">
               <div class="items-list">
                 {#each receipt.items as item (item.id)}
-                  <div class="item-row">
-                    <span class="item-qty">{parseFloat(item.quantity)}x</span>
-                    <span class="item-name">{getItemName(item)}</span>
-                    <span class="item-price">{formatCurrency(item.total_price)}</span>
+                  <div class="item-row" class:modification-item={isModificationItem(item)}>
+                    <span class="item-qty">{formatQuantityForItem(item)}</span>
+                    <span class="item-name" class:modification-name={isModificationItem(item)}>{getItemName(item)}</span>
+                    <span class="item-price" class:negative-price={parseFloat(item.total_price) < 0}>{formatCurrency(item.total_price)}</span>
                   </div>
                 {/each}
               </div>
@@ -317,6 +337,12 @@
     border-bottom: 1px dashed #555;
     font-size: 13px;
   }
+  
+  .item-row.modification-item {
+    padding-left: 16px;
+    font-style: italic;
+    opacity: 0.9;
+  }
 
   .item-row:last-child {
     border-bottom: none;
@@ -336,6 +362,14 @@
   .item-price {
     font-weight: bold;
     color: #4CAF50; /* Green color for all prices */
+  }
+  
+  .item-price.negative-price {
+    color: #f44336; /* Red color for negative prices */
+  }
+  
+  .modification-name {
+    color: #ff9800; /* Orange color for modification item names */
   }
 
   .receipt-totals {

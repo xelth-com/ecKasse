@@ -944,15 +944,10 @@
   }
 
   function formatTime(date) {
-    const time = date.toLocaleTimeString('de-DE', {
+    return date.toLocaleTimeString('de-DE', {
       hour: '2-digit',
       minute: '2-digit'
     });
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${time}\n${day}.${month}\n${year}`;
   }
 
   function handlePaymentClick(paymentType) {
@@ -1310,10 +1305,9 @@
     };
     if (cell.content.isTimeButton) {
       const timeText = formatTime($currentTime);
-      const dateText = $currentTime.toLocaleDateString('de-DE', { 
-        day: '2-digit', 
-        month: '2-digit' 
-      });
+      const day = $currentTime.getDate().toString().padStart(2, '0');
+      const month = ($currentTime.getMonth() + 1).toString().padStart(2, '0');
+      const dateText = `${day}.${month}`;
       
       return { 
         icon: `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">

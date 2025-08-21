@@ -124,7 +124,10 @@
       "Bash(dos2unix:*)",
       "Bash(git branch:*)",
       "Bash(./test-env-setup.sh:*)",
-      "Bash(./env-check-test.sh)"
+      "Bash(./env-check-test.sh)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT event_type, payload FROM operational_logs WHERE payload::text LIKE ''%transaction_uuid\"\":\"\"08c95acb-09c0-41d2-90ba-9493537adb16%'' ORDER BY created_at;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"CREATE TABLE IF NOT EXISTS operational_logs (\n    id SERIAL PRIMARY KEY,\n    event_type VARCHAR(50) NOT NULL,\n    user_id INTEGER,\n    payload JSONB,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\")",
+      "Bash(NODE_ENV=production DB_CLIENT=pg npx knex migrate:status --knexfile packages/core/db/knexfile.js)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
