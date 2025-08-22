@@ -159,7 +159,8 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT source_unique_identifier FROM categories LIMIT 5;\")",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items; SELECT COUNT(*) FROM companies;\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items; SELECT COUNT(*) FROM companies;\")",
+      "Bash(env)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

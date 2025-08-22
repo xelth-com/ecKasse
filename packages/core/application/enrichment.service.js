@@ -68,6 +68,37 @@ Now, apply this logic to the following product.
 Full Name: "{productName}"
 `;
 
+const COLOR_PROMPT_TEMPLATE = `
+You are an expert UI designer creating semantic color schemes for restaurant POS systems.
+Your task is to suggest an appropriate background color for a menu item button based on the product name.
+
+## INSTRUCTIONS ##
+1.  **Output Format:** Return ONLY a valid HEX color code (e.g., #3A5F2B).
+2.  **Color Logic:**
+    - Use semantic colors that match the food type (e.g., green for salads/vegetables, brown for coffee/chocolate, red for meat, blue for seafood)
+    - Choose colors that work well as button backgrounds (not too bright, not too dark)
+    - Ensure colors are distinct and professional for POS system use
+3.  **CRITICAL OUTPUT RULE:** Your response MUST contain ONLY the HEX color code. DO NOT include explanations, descriptions, or any other text.
+
+## EXAMPLES ##
+
+- Product Name: "Caesar Salad"
+- Correct Output: #4A7C59
+
+- Product Name: "Espresso"
+- Correct Output: #8B4513
+
+- Product Name: "Grilled Salmon"
+- Correct Output: #FF6B6B
+
+- Product Name: "Blueberry Muffin"
+- Correct Output: #6495ED
+
+## YOUR TASK ##
+Suggest a HEX color for the following product.
+Product Name: "{productName}"
+`;
+
 /**
  * Main enrichment function that orchestrates the multi-pass process
  * @param {Object} mdfData - The OOP-POS-MDF configuration object
@@ -206,6 +237,9 @@ async function enrichItemsWithWebData(enrichedData, progressCallback = null) {
                             
                             // Generate button abbreviation
                             await generateButtonAbbreviation(item);
+                            
+                            // Generate UI color suggestion
+                            await generateUIColorSuggestion(item);
                             
                             // Small delay to avoid rate limiting
                             await new Promise(resolve => setTimeout(resolve, 500));
@@ -385,6 +419,61 @@ async function generateButtonAbbreviation(item) {
             item.display_names = {};
         }
         item.display_names.button = { de: fallbackButton };
+    }
+}
+
+/**
+ * Generate UI color suggestion for an item using intelligent prompt
+ * @param {Object} item - The item to generate color suggestion for
+ */
+async function generateUIColorSuggestion(item) {
+    const itemName = item.display_names?.menu?.de || 'Unknown Item';
+    
+    try {
+        const colorQuery = COLOR_PROMPT_TEMPLATE.replace('{productName}', itemName);
+        const response = await invokeSimpleQuery(colorQuery);
+        
+        // Clean up the response and validate HEX color
+        let colorHex = response.trim();
+        
+        // Remove quotes if present
+        colorHex = colorHex.replace(/^["']|["']$/g, '');
+        
+        // Validate HEX color format
+        const hexColorRegex = /^#[0-9A-F]{6}$/i;
+        if (!hexColorRegex.test(colorHex)) {
+            console.log(chalk.yellow(`     Warning: Invalid color response '${colorHex}' for ${itemName}, using fallback`));
+            colorHex = '#3a3a3c'; // Default fallback color
+        }
+        
+        // Initialize additional_item_attributes if not present
+        if (!item.additional_item_attributes) {
+            item.additional_item_attributes = {};
+        }
+        
+        // Initialize ui_suggestions if not present
+        if (!item.additional_item_attributes.ui_suggestions) {
+            item.additional_item_attributes.ui_suggestions = {};
+        }
+        
+        // Store the color suggestion
+        item.additional_item_attributes.ui_suggestions.background_color_hex = colorHex;
+        
+    } catch (error) {
+        console.log(chalk.yellow(`     Warning: UI color suggestion failed for ${itemName}: ${error.message}`));
+        
+        // Initialize additional_item_attributes if not present
+        if (!item.additional_item_attributes) {
+            item.additional_item_attributes = {};
+        }
+        
+        // Initialize ui_suggestions if not present
+        if (!item.additional_item_attributes.ui_suggestions) {
+            item.additional_item_attributes.ui_suggestions = {};
+        }
+        
+        // Fallback color
+        item.additional_item_attributes.ui_suggestions.background_color_hex = '#3a3a3c';
     }
 }
 
