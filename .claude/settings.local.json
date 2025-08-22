@@ -155,7 +155,11 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, name, SUBSTR(layout_data::text, 1, 200) as layout_preview FROM menu_layouts WHERE id = 8;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\\d categories\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, category_names->>''de'' as name, category_type FROM categories ORDER BY id;\")",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items;\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT source_unique_identifier FROM categories LIMIT 5;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM categories; SELECT COUNT(*) FROM items; SELECT COUNT(*) FROM companies;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

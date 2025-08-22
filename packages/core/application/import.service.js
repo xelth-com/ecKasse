@@ -340,7 +340,7 @@ async function importHierarchicalData(trx, jsonData, stats, progressCallback = n
 
           const categoryResult = await trx('categories').insert({
             pos_device_id: posDeviceId,
-            source_unique_identifier: String(category.category_unique_identifier),
+            source_unique_identifier: `cat-${(category.category_names?.de || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${crypto.randomBytes(3).toString('hex')}`,
             category_names: JSON.stringify(category.category_names || {}),
             category_type: category.category_type || 'food',
             parent_category_id: category.parent_category_unique_identifier || null,
@@ -430,7 +430,7 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
       // Step 1: Insert item data into items table
       const itemResult = await trx('items').insert({
         pos_device_id: posDeviceId,
-        source_unique_identifier: String(item.item_unique_identifier),
+        source_unique_identifier: `item-${(item.display_names?.menu?.de || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${crypto.randomBytes(3).toString('hex')}`,
         associated_category_unique_identifier: categoryId,
         display_names: JSON.stringify(item.display_names || {}),
         item_price_value: item.item_price_value || 0,
