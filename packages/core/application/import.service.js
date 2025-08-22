@@ -47,10 +47,7 @@ async function importFromOopMdf(jsonData, progressCallback = null, options = {})
   try {
     // Wrap entire operation in a transaction for atomicity
     const result = await db.transaction(async (trx) => {
-      // Step 1: Clean existing data (respecting foreign key constraints)
-      await cleanExistingData(trx);
-      
-      // Step 2: Import hierarchical data
+      // Import hierarchical data (cleanup managed externally by controller)
       const importResult = await importHierarchicalData(trx, jsonData, stats, progressCallback);
       
       return importResult;

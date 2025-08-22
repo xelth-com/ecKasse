@@ -320,16 +320,16 @@
   // Export functions for use by SelectionArea
   export { scrollToBottom, cycleViews, getIsAtBottom, displayLanguageSelector };
   
-  // Set up IPC listeners for menu import progress
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    // Listen for import progress messages
-    if (window.electronAPI.onImportProgress) {
-      window.electronAPI.onImportProgress((progressMessage) => {
+  // Set up WebSocket listener for menu import progress
+  onMount(() => {
+    // Subscribe to WebSocket store for menu import progress messages
+    const unsubscribe = wsStore.subscribe(wsState => {
+      if (wsState.lastMessage?.command === 'menu-import-progress') {
         const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         agentStore.addMessage({
           timestamp,
           type: 'agent',
-          message: progressMessage
+          message: wsState.lastMessage.payload.message
         });
         
         // Auto-scroll to show progress
@@ -339,9 +339,17 @@
             checkScrollPosition();
           }
         }, 100);
-      });
-    }
+      }
+    });
     
+    // Cleanup function
+    return () => {
+      unsubscribe();
+    };
+  });
+  
+  // Legacy fallback for electronAPI if still needed
+  if (typeof window !== 'undefined' && window.electronAPI) {
     // Listen for import completion
     if (window.electronAPI.onImportComplete) {
       window.electronAPI.onImportComplete((success, finalMessage) => {

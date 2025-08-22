@@ -17,7 +17,7 @@ function sendProgress(message, isComplete = false) {
 }
 
 // Create MDF data structure from layout
-function createMdfFromLayout(layoutData, restaurantName) {
+function createMdfFromLayout(layoutData, restaurantName, posDeviceId = null) {
   const mdfData = {
     company_details: {
       company_name: restaurantName || "Imported Restaurant",
@@ -25,6 +25,7 @@ function createMdfFromLayout(layoutData, restaurantName) {
         branch_name: "Hauptfiliale",
         point_of_sale_devices: [{
           pos_device_name: "Terminal 1",
+          pos_device_id: posDeviceId, // Set the POS device ID
           categories_for_this_pos: layoutData.map(category => ({
             audit_trail: category.audit_trail,
             category_type: category.category_type,
@@ -54,11 +55,16 @@ async function uploadAndImportMenu(req, res) {
   try {
     sendProgress('Starting direct service-based menu import...');
     
-    // For now, we'll use the existing successful layout as a template
-    // This bypasses the problematic MenuParserLLM while maintaining the same workflow
+    // === Step 1: Get POS device info and existing layout ===
+    sendProgress('Step 1/6: Loading system configuration...');
     
-    // === Step 1: Get existing successful layout data ===
-    sendProgress('Step 1/6: Loading existing menu template...');
+    // Get existing POS device
+    const posDevice = await db('pos_devices').first();
+    if (!posDevice) {
+      throw new Error('No POS device found. Please ensure system is properly initialized.');
+    }
+    
+    // Get existing successful layout data
     const existingLayout = await db('menu_layouts')
       .where('name', 'AI Optimized Layout')
       .whereNotNull('layout_data')
@@ -72,40 +78,33 @@ async function uploadAndImportMenu(req, res) {
     const layoutData = existingLayout.layout_data;
     const restaurantName = path.basename(originalFilenames[0], path.extname(originalFilenames[0])).replace(/menu|karte/i, '').trim();
     
-    // Create MDF data structure from the layout
-    const mdfData = createMdfFromLayout(layoutData, restaurantName);
-    sendProgress('Step 1/6: Menu template loaded successfully', true);
+    // Create MDF data structure from the layout with POS device ID
+    const mdfData = createMdfFromLayout(layoutData, restaurantName, posDevice.id);
+    sendProgress('Step 1/6: System configuration loaded successfully', true);
 
-    // The rest of the steps involve heavy DB operations, wrap them in a transaction
+    // === Step 2: Selective cleaning of existing menu data ===
+    sendProgress('Step 2/6: Cleaning existing menu data...');
+    
     await db.transaction(async (trx) => {
-      // === Step 2 & 3: Selective cleaning and Import Data ===
-      sendProgress('Step 2/6: Cleaning menu data...');
-      
       // Only clean items and menu-related categories, preserve system data
       await trx('items').del();
-      await trx('categories').where('source_unique_identifier', 'not in', ['DEFAULT_FOOD', 'DEFAULT_DRINK']).del();
-      
-      sendProgress('Step 3/6: Importing menu structure...');
-      
-      // Import categories manually instead of using the problematic importFromOopMdf
-      const categories = mdfData.company_details.branches[0].point_of_sale_devices[0].categories_for_this_pos;
-      let imported = 0;
-      
-      for (const category of categories) {
-        await trx('categories').insert({
-          category_names: JSON.stringify(category.category_names),
-          category_type: category.category_type,
-          source_unique_identifier: category.category_unique_identifier.toString(),
-          default_linked_main_group_unique_identifier: category.default_linked_main_group_unique_identifier,
-          audit_trail: JSON.stringify(category.audit_trail),
-          created_at: new Date(),
-          updated_at: new Date()
-        });
-        imported++;
-        sendProgress(`Step 3 (${imported}/${categories.length}): Importing ${category.category_names?.de || 'Unknown'}...`);
-      }
-      
-      sendProgress('Step 3/6: Data import completed', true);
+      await trx('categories').where('pos_device_id', posDevice.id).del();
+    });
+    
+    sendProgress('Step 2/6: Existing menu data cleaned', true);
+    
+    // === Step 3: Import new menu structure using service ===
+    sendProgress('Step 3/6: Importing menu structure...');
+    
+    // Use the import service (cleanup is now managed externally)
+    await importFromOopMdf(mdfData, (current, total, name) => {
+      sendProgress(`Step 3 (${current}/${total}): Processing ${name}...`);
+    });
+    
+    sendProgress('Step 3/6: Menu structure imported successfully', true);
+
+    // === Step 4-6: Layout management ===
+    await db.transaction(async (trx) => {
 
       // === Step 4: Save "Original Menu" Layout ===
       sendProgress('Step 4/6: Saving original menu layout...');
