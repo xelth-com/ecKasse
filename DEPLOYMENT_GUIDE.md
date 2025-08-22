@@ -1,6 +1,6 @@
 # ecKasse Production Deployment Guide
 
-This document contains a **verified** step-by-step guide for deploying the ecKasse application to a production server, based on real deployment experience with commit `06f0ced`.
+This document contains a **verified** step-by-step guide for deploying the ecKasse application to a production server, based on real deployment experience with commit `9c6afd9`.
 
 ## Tested Environment
 
@@ -66,7 +66,7 @@ cd eckasse.com
 
 # Switch to tested commit
 git fetch
-git checkout 06f0ced
+git checkout 9c6afd9
 ```
 
 ### 3.2 Environment variables configuration - SECURE WORKFLOW
@@ -134,7 +134,7 @@ npm install
 ### 3.4 Fixing excessive logging issue
 This issue was discovered during deployment - `SelectionArea.svelte` generated thousands of logs on window resize, causing server crashes.
 
-**⚠️ IMPORTANT: This fix is NOT included in commit 06f0ced and must be applied manually:**
+**⚠️ IMPORTANT: This fix is NOT included in commit 9c6afd9 and must be applied manually:**
 
 ```bash
 # Comment out all addLog calls in SelectionArea.svelte
@@ -146,7 +146,7 @@ sed -i 's/addLog(/\/\/ addLog(/g' packages/desktop/frontend/src/SelectionArea.sv
 ### 3.5 Fixing vite.svg issue
 Remove reference to non-existent favicon (404 error):
 
-**⚠️ IMPORTANT: This fix is NOT included in commit 06f0ced and must be applied manually:**
+**⚠️ IMPORTANT: This fix is NOT included in commit 9c6afd9 and must be applied manually:**
 
 ```bash
 # Remove vite.svg line from HTML
@@ -292,7 +292,7 @@ The project has a **completely secure** deployment script `deploy-server.sh` wit
 ### 🛠️ DEPLOYMENT CAPABILITIES
 - ✅ Applies all known fixes (log storm, vite.svg)
 - ✅ Builds frontend with fixes
-- ✅ Skips problematic database migrations
+- ✅ Runs database migrations (required for new features)
 - ✅ Starts application through PM2 with ecosystem.config.js
 - ✅ Sets up PM2 startup scripts
 
@@ -356,8 +356,8 @@ echo "📥 Fetching updates..."
 git fetch
 
 # Switch to needed commit (replace with current)
-echo "🔀 Checking out commit 06f0ced..."
-git checkout 06f0ced
+echo "🔀 Checking out commit 9c6afd9..."
+git checkout 9c6afd9
 
 echo "📦 Installing dependencies..."
 npm install
@@ -638,7 +638,23 @@ certbot renew --dry-run
 certbot certificates
 ```
 
-### 8.4 Log issues (Log Storm)
+### 8.4 Database Migration Issues
+If transaction operations fail with column errors:
+```bash
+# Check if migrations are pending
+NODE_ENV=production DB_CLIENT=pg npx knex migrate:status --knexfile packages/core/db/knexfile.js
+
+# Apply pending migrations
+NODE_ENV=production DB_CLIENT=pg npx knex migrate:latest --knexfile packages/core/db/knexfile.js
+
+# Verify table structure
+PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c "\d active_transaction_items"
+
+# Restart application
+pm2 restart eckasse-desktop-server
+```
+
+### 8.5 Log issues (Log Storm)
 If you see thousands of identical messages in logs:
 ```bash
 # This is a sign of log storm - stop application
@@ -689,7 +705,7 @@ ufw enable
 
 ## 10. Verified Problem Fixes
 
-### 10.1 Log Storm ⚠️ (NOT fixed in commit 06f0ced)
+### 10.1 Log Storm ⚠️ (NOT fixed in commit 9c6afd9)
 **Problem**: SelectionArea.svelte generated thousands of logs on window resize, causing server crashes
 **Symptoms**: PM2 process crashes, logs filled with thousands of identical `addLog` messages
 **Solution**: Commented out all 32 `addLog()` calls in the component
@@ -703,7 +719,7 @@ ufw enable
 - `root /var/www/eckasse.com/packages/desktop/frontend/dist;`
 **Status**: ✅ Fixed in Nginx configuration
 
-### 10.3 Missing vite.svg ⚠️ (NOT fixed in commit 06f0ced)
+### 10.3 Missing vite.svg ⚠️ (NOT fixed in commit 9c6afd9)
 **Problem**: 404 error for non-existent favicon `/vite.svg`
 **Symptoms**: Browser console shows `GET https://domain.com/vite.svg 404 (Not Found)`
 **Solution**: Removed `<link rel="icon" type="image/svg+xml" href="/vite.svg" />` from HTML
@@ -721,17 +737,34 @@ PG_PORT=5432
 ```
 **Status**: ✅ Configured and tested
 
-### 10.5 Database Migrations (known issue)
+### 10.5 Database Migration Issues
+
+#### 10.5.1 Missing parent_transaction_item_id Column ⚠️ (Fixed in 9c6afd9)
+**Problem**: Production deployments fail with `finishTransaction` operations due to missing database column
+**Symptoms**: 
+```
+error: insert into "active_transaction_items" (..., "parent_transaction_item_id", ...) values (...) 
+- Spalte »parent_transaction_item_id« von Relation »active_transaction_items« existiert nicht
+```
+**Root Cause**: Migration `20250821200221_add_parent_transaction_item_id.js` was not applied in production PostgreSQL
+**Solution**: Run pending migrations after deployment:
+```bash
+NODE_ENV=production DB_CLIENT=pg npx knex migrate:latest --knexfile packages/core/db/knexfile.js
+pm2 restart eckasse-desktop-server
+```
+**Status**: ✅ Fixed - migrations now run automatically in deployment scripts
+
+#### 10.5.2 Authentication Errors (known issue)
 **Problem**: Knex migrations sometimes fail with PostgreSQL authentication error
 **Symptoms**: `error: Passwort-Authentifizierung für Benutzer »root« fehlgeschlagen`
-**Workaround**: Migrations are skipped in automatic scripts, can be run manually if needed
-**Status**: ⚠️ Workaround applied
+**Workaround**: If migrations fail, check database credentials and connection settings in `.env`
+**Status**: ⚠️ Monitor during deployment
 
 ---
 
 ## Conclusion
 
-This guide is based on real experience deploying ecKasse on a Netcup server with ARM64 architecture. All steps are verified and working for commit `06f0ced`.
+This guide is based on real experience deploying ecKasse on a Netcup server with ARM64 architecture. All steps are verified and working for commit `9c6afd9`.
 
 **Key features of successful deployment:**
 - Using PostgreSQL instead of SQLite for production

@@ -469,7 +469,7 @@ class TransactionManagementService {
       
       const oldTotalPrice = parseFloat(transactionItem.total_price);
       const oldTaxAmount = parseFloat(transactionItem.tax_amount);
-      const oldUnitPrice = parseFloat(transactionItem.unit_price);
+      const originalCatalogPrice = parseFloat(item.item_price_value);
       
       // Calculate new amounts
       const quantity = parseFloat(transactionItem.quantity);
@@ -489,13 +489,13 @@ class TransactionManagementService {
       
       // Calculate price difference for fiscal logging
       const priceDifference = newTotalPrice - oldTotalPrice;
-      const effectiveDiscountOrSurcharge = newUnitPrice - oldUnitPrice;
+      const effectiveDiscountOrSurcharge = newUnitPrice - originalCatalogPrice;
       
       // Log price override as operational event
       await this.loggingService.logOperationalEvent('price_override', userId, {
         transaction_uuid: transaction.uuid,
         transaction_item_id: transactionItemId,
-        original_unit_price: oldUnitPrice,
+        original_unit_price: originalCatalogPrice,
         new_unit_price: newUnitPrice,
         effective_discount_surcharge: effectiveDiscountOrSurcharge,
         quantity: quantity,
@@ -573,6 +573,45 @@ class TransactionManagementService {
         .orderBy('timestamp_utc', 'asc');
     }
 
+    // Reconstruct the TRUE initial state by working backwards from operational logs
+    const trueInitialState = new Map();
+    
+    // Initialize with current state
+    for (const item of initialItems) {
+      trueInitialState.set(item.id, {
+        id: item.id,
+        quantity: parseFloat(item.quantity),
+        unit_price: parseFloat(item.unit_price)
+      });
+    }
+    
+    // Work backwards through logs to find original values
+    for (const log of operationalLogs.reverse()) {
+      const payload = parseJsonIfNeeded(log.details);
+      const itemId = payload.transaction_item_id;
+      
+      if (log.event_type === 'partial_storno') {
+        // This log shows: original_quantity -> new_quantity
+        // So the TRUE original was original_quantity
+        const originalQty = parseFloat(payload.original_quantity);
+        if (trueInitialState.has(itemId)) {
+          trueInitialState.get(itemId).quantity = originalQty;
+        }
+      }
+      
+      if (log.event_type === 'price_override') {
+        // This log shows: original_unit_price -> new_unit_price
+        // So the TRUE original was original_unit_price  
+        const originalPrice = parseFloat(payload.original_unit_price);
+        if (trueInitialState.has(itemId)) {
+          trueInitialState.get(itemId).unit_price = originalPrice;
+        }
+      }
+    }
+    
+    // Convert back to array and restore chronological order
+    operationalLogs.reverse();
+
     // Process logs to reconstruct transaction history
     for (const log of operationalLogs) {
       const payload = parseJsonIfNeeded(log.details);
@@ -580,9 +619,14 @@ class TransactionManagementService {
       if (log.event_type === 'partial_storno') {
         // STEP 1: Find the current transaction item and revert it to original quantity
         const transactionItemId = payload.transaction_item_id;
-        const originalQuantity = parseFloat(payload.original_quantity);
+        
+        // Find the ACTUAL original quantity from the reconstructed initial state
+        const trueOriginalQuantity = trueInitialState.has(transactionItemId) 
+          ? trueInitialState.get(transactionItemId).quantity 
+          : parseFloat(payload.original_quantity);
+        
         const newQuantity = parseFloat(payload.new_quantity);
-        const stornoQuantity = originalQuantity - newQuantity;
+        const stornoQuantity = trueOriginalQuantity - newQuantity;
         
         if (stornoQuantity > 0) {
           // Get the original item from catalog to get original price
@@ -595,11 +639,11 @@ class TransactionManagementService {
             const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
             
             // STEP 2: UPDATE the original transaction item back to original quantity and original price
-            const originalTotalPrice = originalUnitPrice * originalQuantity;
+            const originalTotalPrice = originalUnitPrice * trueOriginalQuantity;
             const originalTaxAmount = originalTotalPrice - (originalTotalPrice / (1 + taxRate / 100));
             
             await this.transactionRepository.updateTransactionItem(transactionItemId, {
-              quantity: originalQuantity,
+              quantity: trueOriginalQuantity,
               unit_price: originalUnitPrice,
               total_price: originalTotalPrice,
               tax_amount: originalTaxAmount
@@ -625,51 +669,55 @@ class TransactionManagementService {
           }
         }
       } else if (log.event_type === 'price_override') {
-        // STEP 1: Find the current transaction item and revert it to original price
+        // STEP 1: Get data for the price override operation
         const transactionItemId = payload.transaction_item_id;
-        const originalUnitPrice = parseFloat(payload.original_unit_price);
+        const originalUnitPriceFromLog = parseFloat(payload.original_unit_price);
         const newUnitPrice = parseFloat(payload.new_unit_price);
-        const quantity = parseFloat(payload.quantity);
-        
-        // Calculate actual discount/surcharge from original price
-        const unitPriceDifference = newUnitPrice - originalUnitPrice;
-        const actualPriceDifference = unitPriceDifference * quantity;
-        
-        if (Math.abs(actualPriceDifference) > 0.001) { // Only create if significant difference
-          // Get the original item from catalog
+        const currentQuantityInLog = parseFloat(payload.quantity);
+
+        // Find the original state of the item from the reconstructed initial state
+        const originalQuantity = trueInitialState.has(transactionItemId) 
+          ? trueInitialState.get(transactionItemId).quantity 
+          : currentQuantityInLog;
+
+        // Calculate the actual price difference based on the ORIGINAL quantity
+        const unitPriceDifference = newUnitPrice - originalUnitPriceFromLog;
+        const actualPriceDifference = unitPriceDifference * originalQuantity;
+
+        if (Math.abs(actualPriceDifference) > 0.001) { // Only create if there's a significant difference
           const catalogItem = await this.productRepository.findById(payload.item_id, trx);
           if (catalogItem) {
-            // Get category for tax rate calculation
             const category = await this.productRepository.findCategoryById(catalogItem.associated_category_unique_identifier, trx);
             const taxRate = category.category_type === 'drink' ? 19.00 : 7.00;
-            
-            // STEP 2: UPDATE the original transaction item back to original catalog price
-            const originalTotalPrice = parseFloat(catalogItem.item_price_value) * quantity;
+
+            // STEP 2: Revert the original item line to its state before this modification, using the ORIGINAL quantity
+            const originalTotalPrice = parseFloat(catalogItem.item_price_value) * originalQuantity;
             const originalTaxAmount = originalTotalPrice - (originalTotalPrice / (1 + taxRate / 100));
-            
+
             await this.transactionRepository.updateTransactionItem(transactionItemId, {
+              quantity: originalQuantity, // CRITICAL: Use original quantity
               unit_price: parseFloat(catalogItem.item_price_value),
               total_price: originalTotalPrice,
               tax_amount: originalTaxAmount
             }, trx);
-            
-            // STEP 3: INSERT a new DISCOUNT/SURCHARGE line item for the price difference
+
+            // STEP 3: Insert a new line item for the DISCOUNT or SURCHARGE
             const isDiscount = actualPriceDifference < 0;
             const label = isDiscount ? 'DISCOUNT' : 'SURCHARGE';
-            const taxAmount = actualPriceDifference - (actualPriceDifference / (1 + taxRate / 100));
-            
+            const taxAmountForDifference = actualPriceDifference - (actualPriceDifference / (1 + taxRate / 100));
+
             const compensatingItemData = {
               active_transaction_id: transactionId,
               item_id: payload.item_id,
-              quantity: 1, // Always 1 for price adjustments
-              unit_price: actualPriceDifference, // The actual difference from original price
+              quantity: 1, // Price adjustments are a single line item
+              unit_price: actualPriceDifference,
               total_price: actualPriceDifference,
               tax_rate: taxRate,
-              tax_amount: taxAmount,
+              tax_amount: taxAmountForDifference,
               notes: label,
-              parent_transaction_item_id: transactionItemId // Add parent reference
+              parent_transaction_item_id: transactionItemId
             };
-            
+
             await this.transactionRepository.addItem(compensatingItemData, trx);
           }
         }
