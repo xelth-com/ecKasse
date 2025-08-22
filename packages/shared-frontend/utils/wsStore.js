@@ -23,13 +23,14 @@ function createWebSocketStore() {
 
   // Always use current host for WebSocket connections
   const getServerList = () => {
-    // DEBUG: Force localhost connection for debugging getCategories issue
-    if (window.location.host === 'eckasse.com' || window.location.host === 'www.eckasse.com') {
-      console.log('🔧 [wsStore] Forcing localhost connection for debugging');
-      return ['localhost:3030'];
+    // For HTTPS sites, use standard port (443) - nginx proxies to 3030
+    // For HTTP/localhost, use port 3030 directly
+    const host = window.location.hostname;
+    if (window.location.protocol === 'https:') {
+      return [host]; // HTTPS uses standard port 443, nginx proxies
+    } else {
+      return [`${host}:3030`]; // HTTP/localhost uses port 3030 directly
     }
-    // Always use the current host to avoid cross-domain issues
-    return [window.location.host];
   };
 
   let ws = null;
@@ -159,12 +160,8 @@ function createWebSocketStore() {
 
     try {
       const currentServer = getNextServer();
-      // DEBUG: Force ws:// for localhost debugging
+      // Use WSS for HTTPS sites, WS for HTTP/localhost
       let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      if (currentServer.includes('localhost')) {
-        protocol = 'ws:';
-        console.log('🔧 [wsStore] Forcing ws:// protocol for localhost');
-      }
       const wsUrl = `${protocol}//${currentServer}`;
       
       console.log(`Attempting WebSocket connection to ${wsUrl} (attempt ${retryCount + 1}/${maxReconnectAttempts})`);

@@ -108,9 +108,19 @@ async function cleanExistingData(trx) {
   await trx('branches').del();
   await trx('companies').del();
   
-  // Reset auto-increment sequences (excluding users and roles)
-  await trx.raw('UPDATE sqlite_sequence SET seq = 0 WHERE name IN (?, ?, ?, ?, ?)', 
-    ['companies', 'branches', 'pos_devices', 'categories', 'items']);
+  // Reset auto-increment sequences (database-specific)
+  const client = trx.client.config.client;
+  if (client === 'sqlite3') {
+    await trx.raw('UPDATE sqlite_sequence SET seq = 0 WHERE name IN (?, ?, ?, ?, ?)', 
+      ['companies', 'branches', 'pos_devices', 'categories', 'items']);
+  } else if (client === 'pg') {
+    // PostgreSQL sequence reset
+    await trx.raw('ALTER SEQUENCE companies_id_seq RESTART WITH 1');
+    await trx.raw('ALTER SEQUENCE branches_id_seq RESTART WITH 1');
+    await trx.raw('ALTER SEQUENCE pos_devices_id_seq RESTART WITH 1');
+    await trx.raw('ALTER SEQUENCE categories_id_seq RESTART WITH 1');
+    await trx.raw('ALTER SEQUENCE items_id_seq RESTART WITH 1');
+  }
   
   logger.info('Database cleanup completed');
 }
@@ -140,7 +150,8 @@ async function importHierarchicalData(trx, jsonData, stats, progressCallback = n
     global_configurations: JSON.stringify(companyDetails.global_configurations || {})
   }).returning('id');
   
-  const companyId = companyResult[0].id || companyResult[0];
+  // Handle different return formats between SQLite and PostgreSQL
+  const companyId = typeof companyResult[0] === 'object' ? companyResult[0].id : companyResult[0];
 
   stats.companies++;
 
@@ -291,7 +302,8 @@ async function importHierarchicalData(trx, jsonData, stats, progressCallback = n
       branch_address: branch.branch_address || ''
     }).returning('id');
     
-    const branchId = branchResult[0].id || branchResult[0];
+    // Handle different return formats between SQLite and PostgreSQL
+    const branchId = typeof branchResult[0] === 'object' ? branchResult[0].id : branchResult[0];
 
     stats.branches++;
 
@@ -314,7 +326,8 @@ async function importHierarchicalData(trx, jsonData, stats, progressCallback = n
         pos_device_settings: JSON.stringify(posDevice.pos_device_settings || {})
       }).returning('id');
       
-      const posDeviceId = posDeviceResult[0].id || posDeviceResult[0];
+      // Handle different return formats between SQLite and PostgreSQL
+      const posDeviceId = typeof posDeviceResult[0] === 'object' ? posDeviceResult[0].id : posDeviceResult[0];
 
       stats.posDevices++;
 
@@ -338,7 +351,8 @@ async function importHierarchicalData(trx, jsonData, stats, progressCallback = n
             audit_trail: JSON.stringify(category.audit_trail || {})
           }).returning('id');
           
-          const categoryId = categoryResult[0].id || categoryResult[0];
+          // Handle different return formats between SQLite and PostgreSQL
+          const categoryId = typeof categoryResult[0] === 'object' ? categoryResult[0].id : categoryResult[0];
 
           // Store mapping for item linking
           categoryIdMap.set(category.category_unique_identifier, categoryId);
@@ -426,11 +440,12 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
         pricing_schedules: JSON.stringify(item.pricing_schedules || []),
         availability_schedule: JSON.stringify(item.availability_schedule || {}),
         additional_item_attributes: JSON.stringify(item.additional_item_attributes || {}),
-        item_flags: JSON.stringify(item.item_flags || {}),
-        audit_trail: JSON.stringify(item.audit_trail || {})
+        item_flags: JSON.stringify(item.item_flags || { is_sellable: true }),
+        audit_trail: JSON.stringify(item.audit_trail || { created_at: new Date().toISOString(), created_by: 'import_service' })
       }).returning('id');
       
-      const itemId = itemResult[0].id || itemResult[0];
+      // Handle different return formats between SQLite and PostgreSQL
+      const itemId = typeof itemResult[0] === 'object' ? itemResult[0].id : itemResult[0];
 
       stats.items++;
 

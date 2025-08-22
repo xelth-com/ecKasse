@@ -18,7 +18,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const winston = require('winston');
 const { v4: uuidv4 } = require('uuid');
-const { getGeminiModel } = require('../services/llm.provider');
+const { getGeminiModel } = require('../application/llm.provider');
 
 class MenuParserLLM {
   constructor(options = {}) {

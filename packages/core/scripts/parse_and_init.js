@@ -18,9 +18,9 @@ const path = require('path');
 const axios = require('axios');
 const db = require('../db/knex');
 const MenuParserLLM = require('../lib/menu_parser_llm');
-const { importFromOopMdf } = require('../services/import.service');
-const { enrichMdfData } = require('../services/enrichment.service');
-const layoutService = require('../services/layout.service');
+const { importFromOopMdf } = require('../application/import.service');
+const { enrichMdfData } = require('../application/enrichment.service');
+const layoutService = require('../application/layout.service');
 const logger = require('../config/logger');
 const chalk = require('chalk');
 
@@ -68,8 +68,11 @@ async function main() {
     // === Step 2: Clean Database ===
     reportStep(2, 6, 'Cleaning existing data');
     await db.transaction(async (trx) => {
+        // Clean in order to respect foreign key constraints
         await trx('menu_layouts').del();
         await trx('vec_items').del();
+        await trx('active_transaction_items').del();  // Clean dependent table first
+        await trx('active_transactions').del();       // Clean parent transaction table
         await trx('items').del();
         await trx('categories').del();
         await trx('pos_devices').del();
@@ -117,6 +120,8 @@ async function main() {
     }
 
   } catch (error) {
+    console.error('❌ Full initialization script failed:', error.message);
+    console.error('Stack trace:', error.stack);
     logger.error('❌ Full initialization script failed:', { error: error.message, stack: error.stack });
     process.exit(1);
   } finally {

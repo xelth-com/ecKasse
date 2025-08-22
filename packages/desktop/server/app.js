@@ -10,6 +10,7 @@ const logger = require('../../core/config/logger');
 
 // Import routes
 const llmRoutes = require('./routes/llm.routes');
+const menuRoutes = require('./routes/menu.routes');
 
 class DesktopServer {
   constructor(services, authService, reportingService) {
@@ -59,6 +60,9 @@ class DesktopServer {
   setupRoutes() {
     // Mount LLM routes
     this.app.use('/api/llm', llmRoutes);
+    
+    // Mount menu routes
+    this.app.use('/api/menu', menuRoutes);
 
     // Simple users API endpoint for login screen
     this.app.get('/api/users', async (req, res) => {
