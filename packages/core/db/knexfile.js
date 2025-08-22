@@ -1,6 +1,10 @@
 const path = require('path');
-// const sqliteVec = require('sqlite-vec'); // Temporarily disabled
+const sqliteVec = require('sqlite-vec');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+
+// Определяем корневую директорию проекта (3 уровня вверх от packages/core/db)
+const PROJECT_ROOT = path.resolve(__dirname, '../../../');
+
 
 module.exports = {
   development: process.env.DB_CLIENT === 'pg' ? {
@@ -30,7 +34,20 @@ module.exports = {
   } : {
     client: 'sqlite3',
     connection: {
-      filename: process.env.DB_FILENAME || path.resolve(__dirname, 'eckasse_dev.sqlite3')
+      filename: process.env.DB_FILENAME ? 
+        path.resolve(PROJECT_ROOT, process.env.DB_FILENAME) : 
+        path.resolve(__dirname, 'eckasse_dev.sqlite3')
+    },
+    pool: {
+      afterCreate: (conn, cb) => {
+        // Load sqlite-vec extension
+        try {
+          sqliteVec.load(conn);
+        } catch (error) {
+          console.error('Failed to load sqlite-vec extension:', error);
+        }
+        cb();
+      }
     },
     migrations: {
       directory: path.resolve(__dirname, 'migrations')

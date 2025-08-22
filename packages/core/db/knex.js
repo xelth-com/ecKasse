@@ -6,6 +6,7 @@ const config = require('./knexfile.js');
 const environment = process.env.NODE_ENV || 'development';
 const knexConfig = config[environment];
 
+
 const db = knex(knexConfig);
 
 // PostgreSQL is used for both development and production
