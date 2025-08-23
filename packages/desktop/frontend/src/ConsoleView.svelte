@@ -468,7 +468,7 @@
         <div class="scroll-content" bind:this={agentScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <div class="agent-messages">
             {#each $agentStore.messages as message}
-              <div class="agent-message" class:user={message.type === 'user'} class:agent={message.type === 'agent'}>
+              <div class="agent-message" class:user={message.type === 'user'} class:agent={message.type === 'agent'} class:error={message.style === 'error'} class:success={message.style === 'success'} class:warning={message.style === 'warning'} class:print={message.style?.startsWith('print')}>
                 <div class="message-header">
                   <span class="message-timestamp">{message.timestamp}</span>
                   <span class="message-type">{message.type === 'user' ? 'User' : 'Agent'}</span>
@@ -753,6 +753,26 @@
     align-self: flex-start;
     background-color: #444;
     color: #e0e0e0;
+  }
+
+  .agent-message.error {
+    background-color: #4a1a1a;
+    border-left: 3px solid #d32f2f;
+  }
+
+  .agent-message.success {
+    background-color: #1a4a1a;
+    border-left: 3px solid #28a745;
+  }
+
+  .agent-message.warning {
+    background-color: #4a4a1a;
+    border-left: 3px solid #ffc107;
+  }
+
+  .agent-message.print {
+    background-color: #2a1a4a;
+    border-left: 3px solid #6366f1;
   }
 
   .message-header {

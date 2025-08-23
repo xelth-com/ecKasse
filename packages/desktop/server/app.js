@@ -334,7 +334,26 @@ class DesktopServer {
           if (!transactionId) {
             throw new Error('transactionId is required for reprint');
           }
-          responsePayload = await this.services.printer.reprintReceipt(transactionId);
+          const printResult = await this.services.printer.reprintReceipt(transactionId);
+          
+          // Send feedback via WebSocket instead of returning payload
+          if (printResult.status === 'success') {
+            this.services.websocket.broadcast('displayAgentMessage', {
+              timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              type: 'agent',
+              message: `Beleg №${transactionId} Nachdruck erfolgreich`,
+              style: 'print-success'
+            });
+          } else {
+            this.services.websocket.broadcast('displayAgentMessage', {
+              timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              type: 'agent',
+              message: `Nachdruck-Fehler: ${printResult.message}`,
+              style: 'print-error'
+            });
+          }
+          
+          responsePayload = { success: printResult.status === 'success' };
           responseCommand = 'reprintResult';
         } else if (command === 'getCategories') {
           console.log('🔍 [Backend] Executing getCategories - fetching from database...');

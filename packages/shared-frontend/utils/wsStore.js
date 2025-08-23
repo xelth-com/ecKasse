@@ -225,6 +225,15 @@ function createWebSocketStore() {
             return;
           }
           
+          // Handle agent message display requests
+          if (message.command === 'displayAgentMessage') {
+            // Dynamically import agentStore to avoid circular dependencies
+            import('@eckasse/shared-frontend/utils/agentStore.js').then(({ agentStore }) => {
+              agentStore.addMessage(message.payload);
+            });
+            return;
+          }
+          
           // Handle operation responses
           if (message.operationId && pendingOperations.has(message.operationId)) {
             const resolve = pendingOperations.get(message.operationId);

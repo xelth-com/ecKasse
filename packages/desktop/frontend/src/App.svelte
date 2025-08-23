@@ -3,7 +3,6 @@
   import ConsoleView from './ConsoleView.svelte';
   import SelectionArea from './SelectionArea.svelte';
   import ControlCenter from '@eckasse/shared-frontend/components/ControlCenter.svelte';
-  import NotificationDisplay from '@eckasse/shared-frontend/components/NotificationDisplay.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { currentView } from '@eckasse/shared-frontend/utils/viewStore.js';
@@ -57,9 +56,6 @@
 
 
 <ControlCenter />
-
-
-<NotificationDisplay />
 
 <style>
   .pos-grid {

@@ -174,50 +174,6 @@ async function startServer() {
     ws.id = Date.now() + '_' + Math.random().toString(36).substring(2,7);
     logger.info({ msg: 'WebSocket client connected', clientId: ws.id, remoteAddress: req.socket.remoteAddress });
 
-    // Auto-login for eckasse.com domain
-    if (req.headers.host === 'eckasse.com' || req.headers.host === 'www.eckasse.com') {
-      try {
-        logger.info({ msg: 'eckasse.com domain: Auto-authenticating client', clientId: ws.id });
-        
-        const authResult = await authService.authenticateUser(
-          'admin', 
-          '1234', 
-          req.socket.remoteAddress || 'eckasse.com-client', 
-          'eckasse.com Auto-Login'
-        );
-        
-        if (authResult.success) {
-          const sessionMessage = {
-            command: 'sessionEstablished',
-            payload: {
-              user: authResult.user,
-              session: authResult.session
-            },
-            timestamp: new Date().toISOString(),
-            clientId: ws.id
-          };
-          
-          ws.send(JSON.stringify(sessionMessage));
-          logger.info({ 
-            msg: 'eckasse.com domain: Auto-authentication successful', 
-            clientId: ws.id,
-            username: authResult.user.username
-          });
-        } else {
-          logger.error({ 
-            msg: 'eckasse.com domain: Auto-authentication failed', 
-            clientId: ws.id,
-            error: authResult.error 
-          });
-        }
-      } catch (error) {
-        logger.error({ 
-          msg: 'eckasse.com domain: Auto-authentication error', 
-          clientId: ws.id,
-          error: error.message 
-        });
-      }
-    }
 
     ws.on('message', (message) => {
       desktopServer.handleWebSocketMessage(ws, message, db);

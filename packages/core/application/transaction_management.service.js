@@ -197,14 +197,35 @@ class TransactionManagementService {
       const receiptData = await this.printerService._prepareReceiptData(finishedTransaction, fiscalLogResult.log);
       const printResult = await this.printerService.printReceipt(receiptData);
       if (printResult.status === 'success') {
-        return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_result: printResult, printStatus: { status: 'success' } };
+        // Broadcast success message to frontend
+        this.printerService.websocketService.broadcast('displayAgentMessage', {
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: `Beleg №${finishedTransaction.id} erfolgreich gedruckt`,
+          style: 'print-success'
+        });
+        return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_result: printResult };
       } else {
         await this.loggingService.logOperationalEvent('print_failed', userId, { transaction_uuid: transaction.uuid, print_error: printResult.message, printer: printResult.printer || 'unknown' });
-        return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_warning: printResult.message, printStatus: { status: 'failed', error: printResult.message } };
+        // Broadcast error message to frontend
+        this.printerService.websocketService.broadcast('displayAgentMessage', {
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: `Druckfehler: ${printResult.message}`,
+          style: 'print-error'
+        });
+        return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_warning: printResult.message };
       }
     } catch (printError) {
       await this.loggingService.logOperationalEvent('print_error', userId, { transaction_uuid: transaction.uuid, error_message: printError.message });
-      return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_error: printError.message, printStatus: { status: 'failed', error: printError.message } };
+      // Broadcast error message to frontend
+      this.printerService.websocketService.broadcast('displayAgentMessage', {
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: `Druckfehler: ${printError.message}`,
+        style: 'print-error'
+      });
+      return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_error: printError.message };
     }
   }
 

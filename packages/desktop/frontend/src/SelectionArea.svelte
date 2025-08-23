@@ -863,6 +863,25 @@
     gridRows = rows;
   }
 
+  // Universal authentication check for protected actions
+  async function handleProtectedAction(asyncAction) {
+    try {
+      await asyncAction();
+    } catch (error) {
+      if (error.message && error.message.includes('User must be authenticated')) {
+        agentStore.addMessage({
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: 'Действие требует авторизации. Пожалуйста, введите ваш PIN-код.',
+          style: 'error'
+        });
+        pinpadStore.activate('agent', null, null, 'numeric');
+        return; // Don't rethrow auth errors
+      }
+      throw error; // Re-throw other errors
+    }
+  }
+
   function handleCategoryClick(event) {
     const categoryData = event.detail.data;
     if (categoryData && categoryData.id) {
@@ -875,11 +894,13 @@
     }
   }
 
-  function handleProductClick(event) {
+  async function handleProductClick(event) {
     const productData = event.detail.data;
     if (productData && productData.id) {
-      // Always call addItem - it will handle initialization automatically
-      orderStore.addItem(productData.id, 1);
+      await handleProtectedAction(async () => {
+        // Always call addItem - it will handle initialization automatically
+        await orderStore.addItem(productData.id, 1);
+      });
     }
   }
 
@@ -894,9 +915,11 @@
     layoutType = layoutType === '6-6-6' ? '4-4-4' : '6-6-6';
   }
 
-  function handleTimeClick() {
-    // // addLog('INFO', 'Control Center accessed');
-    toggleControlCenter();
+  async function handleTimeClick() {
+    await handleProtectedAction(async () => {
+      // // addLog('INFO', 'Control Center accessed');
+      toggleControlCenter();
+    });
   }
 
   async function handleUserButtonClick() {
@@ -1009,17 +1032,18 @@
   }
 
   async function handleTableClick() {
-    // Always switch to orders view first
-    consoleView.set('order');
-    
-    // Get current order state
-    let currentOrderState;
-    orderStore.subscribe(state => currentOrderState = state)();
-    
-    const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
-    const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
-    const isActive = currentOrderState.status === 'active';
-    const hasActiveTransaction = currentOrderState.transactionId;
+    await handleProtectedAction(async () => {
+      // Always switch to orders view first
+      consoleView.set('order');
+      
+      // Get current order state
+      let currentOrderState;
+      orderStore.subscribe(state => currentOrderState = state)();
+      
+      const hasItems = currentOrderState.items && currentOrderState.items.length > 0;
+      const hasTable = currentOrderState.metadata && currentOrderState.metadata.table;
+      const isActive = currentOrderState.status === 'active';
+      const hasActiveTransaction = currentOrderState.transactionId;
     
     if (isActive && hasActiveTransaction && (hasItems || hasTable)) {
       // Есть активный заказ - сворачиваем и возвращаемся к стартовому состоянию
@@ -1057,6 +1081,7 @@
       // // addLog('INFO', 'Activating pinpad for table number entry');
       pinpadStore.activateTableEntry();
     }
+    });
   }
 
 

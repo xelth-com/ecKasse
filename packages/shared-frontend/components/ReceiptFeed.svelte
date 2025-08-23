@@ -3,7 +3,7 @@
   import { receiptsStore } from '../utils/receiptsStore.js';
   import { addLog } from '../utils/logStore.js';
   import { wsStore } from '../utils/wsStore.js';
-  import { notificationStore } from '../utils/notificationStore.js';
+  import { agentStore } from '../utils/agentStore.js';
 
   export let autoExpandLatest = false; // Prop to auto-expand latest receipt
   
@@ -90,39 +90,18 @@
   async function handleReprintReceipt(receipt) {
     addLog('INFO', `Reprint requested for receipt №${receipt.id}`);
     
-    try {
-      // Show loading notification
-      notificationStore.showInfo(`Reprinting receipt №${receipt.id}...`, 3000);
-      
-      // Send reprint command via WebSocket
-      const result = await wsStore.send('reprintReceipt', { 
-        transactionId: receipt.id 
-      });
-      
-      if (result.status === 'success') {
-        notificationStore.showPrintNotification(
-          `Receipt №${receipt.id} reprinted successfully`, 
-          'success',
-          4000
-        );
-        addLog('SUCCESS', `Receipt №${receipt.id} reprinted successfully`);
-      } else {
-        notificationStore.showPrintNotification(
-          `Reprint failed: ${result.message}`, 
-          'error',
-          6000
-        );
-        addLog('ERROR', `Reprint failed for receipt №${receipt.id}: ${result.message}`);
-      }
-    } catch (error) {
-      console.error('Reprint error:', error);
-      notificationStore.showPrintNotification(
-        `Reprint error: ${error.message}`, 
-        'error',
-        6000
-      );
-      addLog('ERROR', `Reprint error for receipt №${receipt.id}: ${error.message}`);
-    }
+    // Add informational message to agent console
+    agentStore.addMessage({
+      timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+      type: 'agent',
+      message: `Reprint initiated for receipt №${receipt.id}`,
+      style: 'info'
+    });
+    
+    // Send reprint command via WebSocket - backend will handle feedback
+    wsStore.send('reprintReceipt', { 
+      transactionId: receipt.id 
+    });
   }
 </script>
 

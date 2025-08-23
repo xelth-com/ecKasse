@@ -35,10 +35,10 @@ function createAgentStore() {
 
   return {
     subscribe,
-    addMessage: (message) => {
+    addMessage: (messageObject) => {
       update(store => ({
         ...store,
-        messages: [...store.messages, message]
+        messages: [...store.messages, messageObject]
       }));
     },
     setHistory: (history) => {

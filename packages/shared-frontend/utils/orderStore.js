@@ -1,7 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { wsStore } from './wsStore.js';
 import { addLog } from './logStore.js';
-import { notificationStore } from './notificationStore.js';
 import { authStore } from './authStore.js';
 import { currentView } from './viewStore.js';
 
@@ -129,20 +128,11 @@ function createOrderStore() {
 		} else if (state.lastMessage?.command === 'transactionFinished' && state.lastMessage.status === 'success') {
 			const finishedTx = state.lastMessage.payload;
 			
-			// Check print status and show notifications
+			// Backend now handles print notifications via WebSocket
 			if (finishedTx.printStatus) {
 				if (finishedTx.printStatus.status === 'failed') {
-					notificationStore.showError(
-						`Receipt print failed: ${finishedTx.printStatus.error}. Use the reprint button in receipts view.`,
-						8000  // Longer duration for important error
-					);
 					addLog('ERROR', `Receipt print failed: ${finishedTx.printStatus.error}`);
 				} else if (finishedTx.printStatus.status === 'success') {
-					notificationStore.showPrintNotification(
-						'Receipt printed successfully',
-						'success',
-						3000
-					);
 					addLog('SUCCESS', 'Receipt printed successfully');
 				}
 			}
