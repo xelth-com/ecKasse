@@ -204,7 +204,7 @@
     word-break: break-word;
     white-space: normal;
     padding: 5px;
-    text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
+    text-shadow: 0 0 6px rgba(0,0,0,1.0);
     color: var(--button-text-color, inherit);
   }
 
@@ -225,7 +225,7 @@
   .button-icon {
     font-size: 24px;
     font-weight: bold;
-    text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
+    text-shadow: 0 0 6px rgba(0,0,0,1.0);
     color: var(--button-text-color, inherit);
     display: flex;
     align-items: center;
@@ -236,7 +236,7 @@
   .universal-button.hex.half .button-text {
     font-size: 14px;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 0 0 4px rgba(0,0,0,1.0);
     padding: 5px;
   }
 
@@ -251,7 +251,7 @@
   .universal-button.hex.half .button-icon {
     font-size: 48px;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 0 0 4px rgba(0,0,0,1.0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -261,7 +261,7 @@
   .universal-button.rect.half .button-text {
     font-size: 14px;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 0 0 4px rgba(0,0,0,1.0);
     padding: 5px;
   }
 
@@ -276,7 +276,7 @@
   .universal-button.rect.half .button-icon {
     font-size: 48px;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    text-shadow: 0 0 4px rgba(0,0,0,1.0);
     display: flex;
     align-items: center;
     justify-content: center;

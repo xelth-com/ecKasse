@@ -1364,12 +1364,37 @@
       : parseJsonField(cell.content.display_names).menu.de || 'Unnamed Product';
     const onClick = isCategory ? handleCategoryClick : handleProductClick;
     
-    return { 
+    // For product buttons, check for AI-suggested color
+    let buttonColor = undefined;
+    if (!isCategory && cell.content?.additional_item_attributes?.ui_suggestions?.background_color_hex) {
+      buttonColor = cell.content.additional_item_attributes.ui_suggestions.background_color_hex;
+      console.log('🎨 [Frontend] Using AI color for product:', label, 'color:', buttonColor);
+    } else if (!isCategory) {
+      buttonColor = '#666666'; // Default gray for products without color suggestion
+      console.log('🎨 [Frontend] Using default color for product:', label, 'additional_item_attributes:', cell.content?.additional_item_attributes);
+    }
+    
+    // Build return object with appropriate styling
+    const buttonProps = { 
       label, 
       data: cell.content, 
       onClick,
       active: true
     };
+    
+    // Add styling based on button type
+    if (isCategory) {
+      // Categories get pale gradient - table edge color for edges, pale yellow center, 30% transition 
+      buttonProps.color = '#3A2F20';
+buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5A4B35 30%, #4A3B28 70%, #3A2F20 100%)';
+      buttonProps.textColor = '#DDDDD0';
+      console.log('🎨 [Category] Setting gradient for:', label, 'backgroundStyle:', buttonProps.backgroundStyle);
+    } else if (buttonColor) {
+      // Products with AI-suggested colors
+      buttonProps.color = buttonColor;
+    }
+    
+    return buttonProps;
   }
 </script>
 
@@ -1423,7 +1448,7 @@
         {/if}
         {#each gridRows as row, rowIndex}
           <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
-            {#each row as cell (`${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
+            {#each row as cell (`${currentView}-${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
                 {@const content = getButtonContent(cell)}
                 {#if content.paymentButton}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
@@ -1446,7 +1471,7 @@
                 {:else if content.icon !== undefined || content.showShape}
                   <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.label}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
                 {/if}
             {/each}
           </div>
