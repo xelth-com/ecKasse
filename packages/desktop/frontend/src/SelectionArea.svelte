@@ -15,7 +15,8 @@
   import { pinpadStore } from '@eckasse/shared-frontend/utils/pinpadStore.js';
   import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
   import { uiConstantsStore } from '@eckasse/shared-frontend/utils/uiConstantsStore.js';
-  import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/BetrugerCapIconOutline.svelte';
+  import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/icons/BetrugerCapIconOutline.svelte';
+  import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
 
   let categories = [];
@@ -1217,39 +1218,7 @@
 
   function getButtonContent(cell) {
     if (cell.isPinpadTrigger) return { 
-      icon: `<svg width="168" height="126" viewBox="0 0 168 126" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      .key-bg { stroke: #333; stroke-width: 0.5; rx: 3; }
-      .key-bg-dark { fill: #2a2a2a; }
-      .key-bg-cancel { fill: #4a2424; }
-      .key-bg-correct { fill: #3a3324; }
-      .key-bg-enter { fill: #243a24; }
-      .key-text { font-family: sans-serif; font-size: 14px; font-weight: normal; text-anchor: middle; dominant-baseline: central; fill: #888; }
-    </style>
-  </defs>
-  
-  <rect class="key-bg key-bg-dark" x="6" y="5" width="36" height="26"/><text x="24" y="18" class="key-text">1</text>
-  <rect class="key-bg key-bg-dark" x="46" y="5" width="36" height="26"/><text x="64" y="18" class="key-text">2</text>
-  <rect class="key-bg key-bg-dark" x="86" y="5" width="36" height="26"/><text x="104" y="18" class="key-text">3</text>
-  <rect class="key-bg key-bg-cancel" x="126" y="5" width="36" height="26"/><text x="144" y="18" class="key-text">X</text>
-  
-  <rect class="key-bg key-bg-dark" x="6" y="35" width="36" height="26"/><text x="24" y="48" class="key-text">4</text>
-  <rect class="key-bg key-bg-dark" x="46" y="35" width="36" height="26"/><text x="64" y="48" class="key-text">5</text>
-  <rect class="key-bg key-bg-dark" x="86" y="35" width="36" height="26"/><text x="104" y="48" class="key-text">6</text>
-  <rect class="key-bg key-bg-correct" x="126" y="35" width="36" height="26"/><text x="144" y="48" class="key-text">←</text>
-  
-  <rect class="key-bg key-bg-dark" x="6" y="65" width="36" height="26"/><text x="24" y="78" class="key-text">7</text>
-  <rect class="key-bg key-bg-dark" x="46" y="65" width="36" height="26"/><text x="64" y="78" class="key-text">8</text>
-  <rect class="key-bg key-bg-dark" x="86" y="65" width="36" height="26"/><text x="104" y="78" class="key-text">9</text>
-  
-  <rect class="key-bg key-bg-dark" x="6" y="95" width="36" height="26"/><text x="24" y="108" class="key-text">+</text>
-  <rect class="key-bg key-bg-dark" x="46" y="95" width="36" height="26"/><text x="64" y="108" class="key-text">0</text>
-  <rect class="key-bg key-bg-dark" x="86" y="95" width="36" height="26"/><text x="104" y="108" class="key-text">-</text>
-
-  <rect class="key-bg key-bg-enter" x="126" y="65" width="36" height="56"/>
-  <text x="144" y="93" class="key-text">↵</text>
-</svg>`,
+      component: PinpadIcon,
       onClick: () => pinpadStore.activate('general', null, null),
       active: true
     };
@@ -1491,6 +1460,10 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
                   </UniversalButton>
                 {:else if content.isKeyboardToggle}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
+                {:else if content.component}
+                  <UniversalButton {...getButtonProps(cell)} active={content.active} on:click={content.onClick}>
+                    <svelte:component this={content.component} />
+                  </UniversalButton>
                 {:else if content.label && !content.data}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.disabled}

@@ -10,7 +10,7 @@
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import ReceiptFeed from '@eckasse/shared-frontend/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from '@eckasse/shared-frontend/components/ParkedOrdersDisplay.svelte';
-  import BetrugerCapIcon from '@eckasse/shared-frontend/components/BetrugerCapIcon.svelte';
+  import BetrugerCapIcon from '@eckasse/shared-frontend/components/icons/BetrugerCapIcon.svelte';
   import UniversalButton from '@eckasse/shared-frontend/components/UniversalButton.svelte';
   
   const dispatch = createEventDispatcher();
