@@ -120,17 +120,22 @@ async function startServer() {
   const productService = new ProductService(productRepository, db);
   logger.info('ProductService instantiated with ProductRepository');
   
-  // 4. Instantiate TransactionManagementService with repositories and services
+  // 4. Initialize WebSocket service first (needed for TransactionManagementService)
+  const websocketService = require('../../core/application/websocket.service');
+  logger.info('WebSocket service initialized');
+  
+  // 5. Instantiate TransactionManagementService with repositories and services
   const transactionRepository = databaseAdapter.getTransactionRepository();
   const transactionManagementService = new TransactionManagementService(
     transactionRepository,
     productRepository,
     services.logging,
-    services.printer
+    services.printer,
+    websocketService
   );
   logger.info('TransactionManagementService instantiated with TransactionRepository');
   
-  // 5. Instantiate AuthService and ReportingService with their repositories
+  // 6. Instantiate AuthService and ReportingService with their repositories
   const authRepository = databaseAdapter.getAuthRepository();
   const authService = new AuthService(authRepository);
   // Start session cleanup interval for AuthService
@@ -143,7 +148,7 @@ async function startServer() {
   const reportingService = new ReportingService(reportingRepository);
   logger.info('ReportingService instantiated with ReportingRepository');
   
-  // 6. Create services object with instantiated services
+  // 7. Create services object with instantiated services
   const instantiatedServices = {
     ...services,
     product: productService,  // Replace the old product service with the new class instance
@@ -152,7 +157,7 @@ async function startServer() {
     reporting: reportingService  // Use the new ReportingService instance
   };
   
-  // 7. Pass the instantiated services to DesktopServer
+  // 8. Pass the instantiated services to DesktopServer
   const desktopServer = new DesktopServer(instantiatedServices, authService, reportingService);
   const app = await desktopServer.initialize();
   logger.info('DesktopServer initialized with dependency-injected services');
@@ -165,8 +170,7 @@ async function startServer() {
   // Create WebSocket server
   const wss = new WebSocket.Server({ server: httpServer });
   
-  // Initialize WebSocket service for broadcasting
-  const websocketService = require('../../core/application/websocket.service');
+  // Initialize WebSocket service for broadcasting (websocketService already required above)
   websocketService.init(wss);
 
   // WebSocket connection handler

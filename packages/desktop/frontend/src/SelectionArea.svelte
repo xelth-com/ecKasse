@@ -869,10 +869,12 @@
       await asyncAction();
     } catch (error) {
       if (error.message && error.message.includes('User must be authenticated')) {
+        // Активируем консоль агента чтобы сообщение было видно
+        consoleView.set('agent');
         agentStore.addMessage({
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: 'Действие требует авторизации. Пожалуйста, введите ваш PIN-код.',
+          message: 'Aktion erfordert Anmeldung. Bitte geben Sie Ihren PIN-Code ein.',
           style: 'error'
         });
         pinpadStore.activate('agent', null, null, 'numeric');

@@ -3,11 +3,12 @@ const crypto = require('crypto');
 const { parseJsonIfNeeded } = require('../utils/db-helper');
 
 class TransactionManagementService {
-  constructor(transactionRepository, productRepository, loggingService, printerService) {
+  constructor(transactionRepository, productRepository, loggingService, printerService, websocketService) {
     this.transactionRepository = transactionRepository;
     this.productRepository = productRepository;
     this.loggingService = loggingService;
     this.printerService = printerService;
+    this.websocketService = websocketService;
   }
 
   async findOrCreateActiveTransaction(criteria, userId) {
@@ -198,7 +199,7 @@ class TransactionManagementService {
       const printResult = await this.printerService.printReceipt(receiptData);
       if (printResult.status === 'success') {
         // Broadcast success message to frontend
-        this.printerService.websocketService.broadcast('displayAgentMessage', {
+        this.websocketService.broadcast('displayAgentMessage', {
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
           message: `Beleg №${finishedTransaction.id} erfolgreich gedruckt`,
@@ -208,7 +209,7 @@ class TransactionManagementService {
       } else {
         await this.loggingService.logOperationalEvent('print_failed', userId, { transaction_uuid: transaction.uuid, print_error: printResult.message, printer: printResult.printer || 'unknown' });
         // Broadcast error message to frontend
-        this.printerService.websocketService.broadcast('displayAgentMessage', {
+        this.websocketService.broadcast('displayAgentMessage', {
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
           message: `Druckfehler: ${printResult.message}`,
@@ -219,7 +220,7 @@ class TransactionManagementService {
     } catch (printError) {
       await this.loggingService.logOperationalEvent('print_error', userId, { transaction_uuid: transaction.uuid, error_message: printError.message });
       // Broadcast error message to frontend
-      this.printerService.websocketService.broadcast('displayAgentMessage', {
+      this.websocketService.broadcast('displayAgentMessage', {
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
         message: `Druckfehler: ${printError.message}`,

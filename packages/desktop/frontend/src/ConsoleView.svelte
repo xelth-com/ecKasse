@@ -734,19 +734,20 @@
   .agent-message {
     padding: 12px;
     border-radius: 8px;
-    max-width: 85%;
   }
 
   .agent-message.user {
     align-self: flex-end;
     background-color: #4a69bd;
     color: white;
+    max-width: 85%; /* Только пользовательские сообщения ограничены по ширине */
   }
 
   .agent-message.user.draft {
     background-color: transparent;
     border: 2px solid #4a69bd;
     color: #e0e0e0;
+    max-width: 85%; /* Также ограничиваем draft сообщения пользователя */
   }
 
   .agent-message.agent {
