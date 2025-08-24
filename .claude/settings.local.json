@@ -167,7 +167,8 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\nUPDATE items \nSET additional_item_attributes = ''{\"\"ui_suggestions\"\": {\"\"background_color_hex\"\": \"\"#8FBC8F\"\"}}'' \nWHERE id = 17;\n\nUPDATE items \nSET additional_item_attributes = ''{\"\"ui_suggestions\"\": {\"\"background_color_hex\"\": \"\"#DEB887\"\"}}'' \nWHERE id = 18;\n\nUPDATE items \nSET additional_item_attributes = ''{\"\"ui_suggestions\"\": {\"\"background_color_hex\"\": \"\"#CD853F\"\"}}'' \nWHERE id = 19;\n\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, category_names FROM categories WHERE id = 56;\")",
       "Bash(pm2 show:*)",
-      "Bash(pm2 save:*)"
+      "Bash(pm2 save:*)",
+      "Read(//root/.pm2/logs/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

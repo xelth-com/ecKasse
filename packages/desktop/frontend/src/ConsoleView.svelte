@@ -8,6 +8,8 @@
   import { uiConstantsStore } from '@eckasse/shared-frontend/utils/uiConstantsStore.js';
   import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
+  import { notificationStore } from '@eckasse/shared-frontend/utils/notificationStore.js';
+  import { get } from 'svelte/store';
   import ReceiptFeed from '@eckasse/shared-frontend/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from '@eckasse/shared-frontend/components/ParkedOrdersDisplay.svelte';
   import BetrugerCapIcon from '@eckasse/shared-frontend/components/icons/BetrugerCapIcon.svelte';
@@ -36,6 +38,11 @@
   let previousItemsCount = $orderStore.items.length;
   let previousTransactionId = $orderStore.transactionId;
   let previousTable = $orderStore.metadata?.table;
+  
+  // Clear notification when agent view is active
+  $: if ($currentView === 'agent') {
+    notificationStore.clearNotification();
+  }
   
   // Auto-switch to receipts after transaction is finished and then reset
   $: {
@@ -321,6 +328,13 @@
   
   // Function to cycle through views with dynamic order based on last activated view
   function cycleViews() {
+    // Check for notifications first - if there's a notification, go to agent view
+    const notificationState = get(notificationStore);
+    if (notificationState.hasNotification) {
+      currentView.set('agent');
+      return;
+    }
+    
     // Define specific cycle orders based on last activated view
     let cycle;
     

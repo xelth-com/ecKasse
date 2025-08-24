@@ -15,6 +15,7 @@
   export let side = ''; // for half buttons: 'left' | 'right'
   export let active = false; // for active half buttons (back button, layout toggle)
   export let showShape = ''; // for layout toggle: 'hex' | 'rect' - shape to display as overlay
+  export let notificationStyle = null; // for notification styling: 'error', 'warning', 'success', 'print'
   
   const dispatch = createEventDispatcher();
   
@@ -86,6 +87,11 @@
   class:left={side === 'left'}
   class:right={side === 'right'}
   class:active
+  class:notification={!!notificationStyle}
+  class:error={notificationStyle === 'error'}
+  class:warning={notificationStyle === 'warning'}
+  class:success={notificationStyle === 'success'}
+  class:print={notificationStyle?.startsWith('print')}
   style="
     --button-width: {width}px; 
     --button-height: {height}px; 
@@ -340,5 +346,22 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
+  }
+
+  /* Notification colors for the smart navigation button */
+  .universal-button.notification.hex.half.active.error .button-shape {
+    background-color: #d32f2f;
+  }
+
+  .universal-button.notification.hex.half.active.warning .button-shape {
+    background-color: #ffc107;
+  }
+
+  .universal-button.notification.hex.half.active.success .button-shape {
+    background-color: #28a745;
+  }
+
+  .universal-button.notification.hex.half.active.print .button-shape {
+    background-color: #6366f1;
   }
 </style>

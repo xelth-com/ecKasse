@@ -9,7 +9,9 @@
   
   // Form state
   let formData = {
-    name: '',
+    name_menu: '',
+    name_button: '',
+    name_receipt: '',
     price: '',
     categoryName: '',
     description: ''
@@ -44,17 +46,31 @@
   $: if (product && visible) {
     // Parse display names from the product structure
     const displayNames = product.display_names ? parseJsonField(product.display_names) : {};
-    const productName = displayNames.menu?.de || product.name || '';
     
-    // Get category name - need to look it up from categories
-    // For now, we'll use a placeholder or existing category info
-    const categoryName = product.categoryName || 'Unknown Category';
+    // Extract all three name types
+    const menuName = displayNames.menu?.de || product.name || '';
+    const buttonName = displayNames.button?.de || displayNames.menu?.de || product.name || '';
+    const receiptName = displayNames.receipt?.de || displayNames.menu?.de || product.name || '';
+    
+    // Get category name from product data
+    // The product should have category information from the backend
+    let categoryName = 'Unknown Category';
+    if (product.category_name) {
+      categoryName = product.category_name;
+    } else if (product.categoryName) {
+      categoryName = product.categoryName;
+    } else {
+      // Category ID is available, but name needs to be resolved
+      categoryName = `Category ID: ${product.associated_category_unique_identifier || 'N/A'}`;
+    }
     
     formData = {
-      name: productName,
+      name_menu: menuName,
+      name_button: buttonName,
+      name_receipt: receiptName,
       price: (product.item_price_value || product.price || 0).toString(),
       categoryName: categoryName,
-      description: product.description || productName
+      description: product.description || menuName
     };
     
     originalData = { ...formData };
@@ -62,9 +78,11 @@
     validationErrors = {};
   }
 
-  // Check if form has changes
+  // Check if form has changes - deep comparison
   $: isDirty = visible && (
-    formData.name !== originalData.name ||
+    formData.name_menu !== originalData.name_menu ||
+    formData.name_button !== originalData.name_button ||
+    formData.name_receipt !== originalData.name_receipt ||
     formData.price !== originalData.price ||
     formData.categoryName !== originalData.categoryName ||
     formData.description !== originalData.description
@@ -73,8 +91,16 @@
   function validateForm() {
     validationErrors = {};
     
-    if (!formData.name.trim()) {
-      validationErrors.name = 'Product name is required';
+    if (!formData.name_menu.trim()) {
+      validationErrors.name_menu = 'Menu name is required';
+    }
+    
+    if (!formData.name_button.trim()) {
+      validationErrors.name_button = 'Button name is required';
+    }
+    
+    if (!formData.name_receipt.trim()) {
+      validationErrors.name_receipt = 'Receipt name is required';
     }
     
     if (!formData.price.trim()) {
@@ -104,8 +130,16 @@
       const updates = {};
       
       // Only include changed fields
-      if (formData.name !== originalData.name) {
-        updates.name = formData.name.trim();
+      if (formData.name_menu !== originalData.name_menu) {
+        updates.name_menu = formData.name_menu.trim();
+      }
+      
+      if (formData.name_button !== originalData.name_button) {
+        updates.name_button = formData.name_button.trim();
+      }
+      
+      if (formData.name_receipt !== originalData.name_receipt) {
+        updates.name_receipt = formData.name_receipt.trim();
       }
       
       if (formData.price !== originalData.price) {
@@ -167,17 +201,47 @@
       
       <form on:submit|preventDefault={handleSave} class="product-form">
         <div class="form-group">
-          <label for="product-name">Product Name</label>
+          <label for="product-name-menu">Name (Menu)</label>
           <input
-            id="product-name"
+            id="product-name-menu"
             type="text"
-            bind:value={formData.name}
-            class:error={validationErrors.name}
-            placeholder="Enter product name"
+            bind:value={formData.name_menu}
+            class:error={validationErrors.name_menu}
+            placeholder="Enter menu name"
             disabled={isSubmitting}
           />
-          {#if validationErrors.name}
-            <span class="error-message">{validationErrors.name}</span>
+          {#if validationErrors.name_menu}
+            <span class="error-message">{validationErrors.name_menu}</span>
+          {/if}
+        </div>
+
+        <div class="form-group">
+          <label for="product-name-button">Name (Button)</label>
+          <input
+            id="product-name-button"
+            type="text"
+            bind:value={formData.name_button}
+            class:error={validationErrors.name_button}
+            placeholder="Enter button name"
+            disabled={isSubmitting}
+          />
+          {#if validationErrors.name_button}
+            <span class="error-message">{validationErrors.name_button}</span>
+          {/if}
+        </div>
+
+        <div class="form-group">
+          <label for="product-name-receipt">Name (Receipt)</label>
+          <input
+            id="product-name-receipt"
+            type="text"
+            bind:value={formData.name_receipt}
+            class:error={validationErrors.name_receipt}
+            placeholder="Enter receipt name"
+            disabled={isSubmitting}
+          />
+          {#if validationErrors.name_receipt}
+            <span class="error-message">{validationErrors.name_receipt}</span>
           {/if}
         </div>
 

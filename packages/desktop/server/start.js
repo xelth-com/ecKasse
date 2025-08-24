@@ -148,7 +148,11 @@ async function startServer() {
   const reportingService = new ReportingService(reportingRepository);
   logger.info('ReportingService instantiated with ReportingRepository');
   
-  // 7. Create services object with instantiated services
+  // 7. Initialize category service with database
+  services.category.initialize(db);
+  logger.info('Category service initialized with database connection');
+
+  // 8. Create services object with instantiated services
   const instantiatedServices = {
     ...services,
     product: productService,  // Replace the old product service with the new class instance
@@ -157,7 +161,7 @@ async function startServer() {
     reporting: reportingService  // Use the new ReportingService instance
   };
   
-  // 8. Pass the instantiated services to DesktopServer
+  // 9. Pass the instantiated services to DesktopServer
   const desktopServer = new DesktopServer(instantiatedServices, authService, reportingService);
   const app = await desktopServer.initialize();
   logger.info('DesktopServer initialized with dependency-injected services');

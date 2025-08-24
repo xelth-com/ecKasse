@@ -525,6 +525,24 @@ class DesktopServer {
               }));
           }
           responseCommand = 'orderUpdated';
+        } else if (command === 'updateCategory') {
+          const { categoryId, updates } = payload;
+          if (!categoryId || !updates) {
+            throw new Error('categoryId and updates are required');
+          }
+          responsePayload = await this.services.category.updateExistingCategory(categoryId, updates);
+        } else if (command === 'getEntityJson') {
+          const { entityType, entityId } = payload;
+          if (!entityType || !entityId) {
+            throw new Error('entityType and entityId are required');
+          }
+          responsePayload = await this.services.export.exportEntityToOopMdf(entityType, entityId);
+        } else if (command === 'saveEntityJson') {
+          const { entityType, entityId, jsonSnippet } = payload;
+          if (!entityType || !entityId || !jsonSnippet) {
+            throw new Error('entityType, entityId, and jsonSnippet are required');
+          }
+          responsePayload = await this.services.import.updateEntityFromOopMdf(entityType, entityId, jsonSnippet);
         } else {
           status = 'error';
           responsePayload = { message: 'Unknown command', originalCommand: command };

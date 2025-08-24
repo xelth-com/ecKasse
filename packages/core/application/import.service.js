@@ -253,6 +253,184 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
   }
 }
 
+/**
+ * Update a single entity (item or category) from OOP-POS-MDF format
+ * @param {string} entityType - 'item' or 'category'
+ * @param {number} entityId - Entity ID
+ * @param {Object} jsonSnippet - Updated entity data in OOP-POS-MDF format
+ * @returns {Promise<Object>} - Update result
+ */
+async function updateEntityFromOopMdf(entityType, entityId, jsonSnippet) {
+  logger.info('Updating entity from OOP-POS-MDF format', { entityType, entityId });
+
+  try {
+    return await db.transaction(async (trx) => {
+      if (entityType === 'item') {
+        // Update an item
+        const currentItem = await trx('items').where('id', entityId).first();
+        if (!currentItem) {
+          throw new Error(`Item with ID ${entityId} not found`);
+        }
+
+        // Build update data from the JSON snippet
+        const updateData = {};
+        
+        if (jsonSnippet.display_names) {
+          updateData.display_names = JSON.stringify(jsonSnippet.display_names);
+        }
+        
+        if (jsonSnippet.item_price_value !== undefined) {
+          updateData.item_price_value = parseFloat(jsonSnippet.item_price_value);
+        }
+        
+        if (jsonSnippet.pricing_schedules) {
+          updateData.pricing_schedules = JSON.stringify(jsonSnippet.pricing_schedules);
+        }
+        
+        if (jsonSnippet.availability_schedule) {
+          updateData.availability_schedule = JSON.stringify(jsonSnippet.availability_schedule);
+        }
+        
+        if (jsonSnippet.additional_item_attributes) {
+          updateData.additional_item_attributes = JSON.stringify(jsonSnippet.additional_item_attributes);
+        }
+        
+        if (jsonSnippet.item_flags) {
+          updateData.item_flags = JSON.stringify(jsonSnippet.item_flags);
+        }
+
+        // Update audit trail
+        const currentAudit = parseJsonIfNeeded(currentItem.audit_trail);
+        updateData.audit_trail = JSON.stringify({
+          ...currentAudit,
+          updated_at: new Date().toISOString(),
+          last_modified_by: 'system', // TODO: Use actual user when auth is available
+          version: (currentAudit.version || 0) + 1,
+          change_log: [
+            ...(currentAudit.change_log || []),
+            {
+              timestamp: new Date().toISOString(),
+              action: 'advanced_json_update',
+              source: 'agent_console'
+            }
+          ]
+        });
+
+        // Apply updates
+        if (Object.keys(updateData).length > 0) {
+          await trx('items').where('id', entityId).update(updateData);
+          
+          // Update embedding if display names or attributes changed
+          if (jsonSnippet.display_names || jsonSnippet.additional_item_attributes) {
+            const categoryRow = await trx('categories').where('id', currentItem.associated_category_unique_identifier).first();
+            const categoryNames = parseJsonIfNeeded(categoryRow?.category_names || '{}');
+            const categoryName = categoryNames.de || categoryNames.en || 'Unknown';
+            
+            const displayNames = jsonSnippet.display_names || parseJsonIfNeeded(currentItem.display_names);
+            const additionalAttrs = jsonSnippet.additional_item_attributes || parseJsonIfNeeded(currentItem.additional_item_attributes);
+            
+            const itemName = displayNames?.menu?.de || displayNames?.menu?.en || 'Unknown Item';
+            const description = additionalAttrs?.description || '';
+            
+            const semanticString = `Category: ${categoryName}. Product: ${itemName}. Description: ${description}`.trim();
+            const embedding = await generateEmbedding(semanticString);
+            const embeddingBuffer = embeddingToBuffer(embedding);
+            
+            // Update embedding in database-agnostic way
+            const dbClient = trx.client.config.client;
+            if (dbClient === 'pg') {
+              const tableExists = await trx.schema.hasTable('item_embeddings');
+              if (tableExists) {
+                await trx('item_embeddings').insert({
+                  item_id: entityId,
+                  item_embedding: embedding
+                }).onConflict('item_id').merge();
+              }
+            } else {
+              await trx.raw('INSERT OR REPLACE INTO vec_items(rowid, item_embedding) VALUES (?, ?)', [entityId, embeddingBuffer]);
+            }
+          }
+        }
+
+        return {
+          success: true,
+          entityType: 'item',
+          entityId: entityId,
+          message: 'Item updated successfully'
+        };
+
+      } else if (entityType === 'category') {
+        // Update a category
+        const currentCategory = await trx('categories').where('id', entityId).first();
+        if (!currentCategory) {
+          throw new Error(`Category with ID ${entityId} not found`);
+        }
+
+        // Build update data from the JSON snippet
+        const updateData = {};
+        
+        if (jsonSnippet.category_names) {
+          updateData.category_names = JSON.stringify(jsonSnippet.category_names);
+        }
+        
+        if (jsonSnippet.category_type) {
+          updateData.category_type = jsonSnippet.category_type;
+        }
+        
+        if (jsonSnippet.default_linked_main_group_unique_identifier !== undefined) {
+          updateData.default_linked_main_group_unique_identifier = jsonSnippet.default_linked_main_group_unique_identifier;
+        }
+
+        // Update audit trail
+        const currentAudit = parseJsonIfNeeded(currentCategory.audit_trail);
+        updateData.audit_trail = JSON.stringify({
+          ...currentAudit,
+          updated_at: new Date().toISOString(),
+          last_modified_by: 'system', // TODO: Use actual user when auth is available
+          version: (currentAudit.version || 0) + 1,
+          change_log: [
+            ...(currentAudit.change_log || []),
+            {
+              timestamp: new Date().toISOString(),
+              action: 'advanced_json_update',
+              source: 'agent_console'
+            }
+          ]
+        });
+
+        // Apply updates
+        if (Object.keys(updateData).length > 0) {
+          await trx('categories').where('id', entityId).update(updateData);
+        }
+
+        return {
+          success: true,
+          entityType: 'category',
+          entityId: entityId,
+          message: 'Category updated successfully'
+        };
+
+      } else {
+        throw new Error(`Unsupported entity type: ${entityType}`);
+      }
+    });
+
+  } catch (error) {
+    logger.error('Failed to update entity from OOP-POS-MDF format', { 
+      entityType, 
+      entityId, 
+      error: error.message 
+    });
+    
+    return {
+      success: false,
+      error: error.message,
+      message: 'Failed to update entity'
+    };
+  }
+}
+
 module.exports = {
-  importFromOopMdf
+  importFromOopMdf,
+  updateEntityFromOopMdf
 };

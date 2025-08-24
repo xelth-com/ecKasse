@@ -228,13 +228,41 @@ class ProductService {
     async applyProductUpdateDirectly(trx, id, updates, userSession, currentProduct) {
         const updateData = {};
         
-        // Handle name update
-        if (updates.name && updates.name !== JSON.parse(currentProduct.display_names).menu.de) {
-            updateData.display_names = JSON.stringify({
-                menu: { de: updates.name },
-                button: { de: updates.name },
-                receipt: { de: updates.name }
-            });
+        // Handle name updates - support individual name fields or legacy name field
+        let needsDisplayNamesUpdate = false;
+        const currentDisplayNames = JSON.parse(currentProduct.display_names || '{}');
+        const newDisplayNames = {
+            menu: currentDisplayNames.menu || {},
+            button: currentDisplayNames.button || {},
+            receipt: currentDisplayNames.receipt || {}
+        };
+
+        // Handle individual name field updates
+        if (updates.name_menu && updates.name_menu !== (currentDisplayNames.menu?.de || '')) {
+            newDisplayNames.menu.de = updates.name_menu;
+            needsDisplayNamesUpdate = true;
+        }
+        
+        if (updates.name_button && updates.name_button !== (currentDisplayNames.button?.de || '')) {
+            newDisplayNames.button.de = updates.name_button;
+            needsDisplayNamesUpdate = true;
+        }
+        
+        if (updates.name_receipt && updates.name_receipt !== (currentDisplayNames.receipt?.de || '')) {
+            newDisplayNames.receipt.de = updates.name_receipt;
+            needsDisplayNamesUpdate = true;
+        }
+
+        // Handle legacy single name field (for backward compatibility)
+        if (updates.name && updates.name !== (currentDisplayNames.menu?.de || '')) {
+            newDisplayNames.menu.de = updates.name;
+            newDisplayNames.button.de = updates.name;
+            newDisplayNames.receipt.de = updates.name;
+            needsDisplayNamesUpdate = true;
+        }
+
+        if (needsDisplayNamesUpdate) {
+            updateData.display_names = JSON.stringify(newDisplayNames);
         }
         
         // Handle price update
@@ -406,12 +434,36 @@ class ProductService {
 
         try {
             const products = await this.db('items')
-                .where('associated_category_unique_identifier', categoryId)
-                .select('*');
+                .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
+                .where('items.associated_category_unique_identifier', categoryId)
+                .select('items.*', 'categories.category_names as category_names_raw');
 
-            logger.info({ service: 'ProductService', categoryId, count: products.length }, 'Products fetched successfully');
+            // Process the products to add category name
+            const processedProducts = products.map(product => {
+                let categoryName = 'Unknown Category';
+                
+                if (product.category_names_raw) {
+                    try {
+                        const categoryNames = JSON.parse(product.category_names_raw);
+                        categoryName = categoryNames.de || categoryNames.en || 'Unknown Category';
+                    } catch (e) {
+                        // If parsing fails, keep default name
+                        categoryName = 'Unknown Category';
+                    }
+                }
+                
+                // Remove the raw category names field and add the processed name
+                const { category_names_raw, ...productData } = product;
+                
+                return {
+                    ...productData,
+                    category_name: categoryName
+                };
+            });
+
+            logger.info({ service: 'ProductService', categoryId, count: processedProducts.length }, 'Products fetched successfully');
             
-            return products;
+            return processedProducts;
         } catch (error) {
             logger.error({ service: 'ProductService', error: error.message, categoryId }, 'Failed to fetch products by category');
             throw error;

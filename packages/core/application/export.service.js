@@ -409,7 +409,74 @@ async function exportToOopMdfWithFileName(options = {}) {
   };
 }
 
+/**
+ * Export a single entity (item or category) to OOP-POS-MDF format for editing
+ * @param {string} entityType - 'item' or 'category'
+ * @param {number} entityId - Entity ID
+ * @returns {Promise<Object>} - Single entity in OOP-POS-MDF format
+ */
+async function exportEntityToOopMdf(entityType, entityId) {
+  logger.info('Exporting single entity for editing', { entityType, entityId });
+
+  try {
+    if (entityType === 'item') {
+      // Export a single item
+      const item = await db('items')
+        .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
+        .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
+        .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'vec_items.item_embedding as embedding_vector')
+        .where('items.id', entityId)
+        .first();
+
+      if (!item) {
+        throw new Error(`Item with ID ${entityId} not found`);
+      }
+
+      // Process the item using existing logic
+      const processedItems = processItems([item], true);
+      return {
+        success: true,
+        entity: processedItems[0],
+        entityType: 'item',
+        entityId: entityId
+      };
+
+    } else if (entityType === 'category') {
+      // Export a single category
+      const category = await db('categories')
+        .select('*')
+        .where('id', entityId)
+        .first();
+
+      if (!category) {
+        throw new Error(`Category with ID ${entityId} not found`);
+      }
+
+      // Process the category using existing logic
+      const processedCategories = processCategories([category]);
+      return {
+        success: true,
+        entity: processedCategories[0],
+        entityType: 'category',
+        entityId: entityId
+      };
+
+    } else {
+      throw new Error(`Unsupported entity type: ${entityType}`);
+    }
+
+  } catch (error) {
+    logger.error('Failed to export entity for editing', { 
+      entityType, 
+      entityId, 
+      error: error.message 
+    });
+    throw error;
+  }
+}
+
 module.exports = {
   exportToOopMdf,
-  exportToOopMdfWithFileName
+  exportToOopMdfWithFileName,
+  exportEntityToOopMdf
 };

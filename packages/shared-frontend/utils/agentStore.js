@@ -1,6 +1,8 @@
 import { writable, get } from 'svelte/store';
 import { authStore } from './authStore.js';
 import { wsStore } from './wsStore.js';
+import { notificationStore } from './notificationStore.js';
+import { currentView } from './viewStore.js';
 
 function createAgentStore() {
   const { subscribe, set, update } = writable({
@@ -40,6 +42,11 @@ function createAgentStore() {
         ...store,
         messages: [...store.messages, messageObject]
       }));
+      
+      // Trigger notification if message has a style and we're not on agent view
+      if (messageObject.style && get(currentView) !== 'agent') {
+        notificationStore.setNotification(messageObject.style);
+      }
     },
     setHistory: (history) => {
       update(store => ({ ...store, history }));

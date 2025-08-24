@@ -166,6 +166,11 @@
     dispatch('edit', { item });
     dispatch('close'); // Close the context menu after dispatching edit
   }
+
+  function handleAdvancedEdit() {
+    dispatch('advanced-edit', { item });
+    dispatch('close'); // Close the context menu after dispatching advanced edit
+  }
 </script>
 
 {#if visible && item}
@@ -221,6 +226,20 @@
           </div>
         {/if}
         
+        {#if item.item_flags && item.item_flags.is_sellable !== undefined}
+          <div class="detail-row">
+            <span class="label">Status:</span>
+            <span class="value">{item.item_flags.is_sellable ? 'Available' : 'Not Available'}</span>
+          </div>
+        {/if}
+        
+        {#if item.audit_trail}
+          <div class="detail-row">
+            <span class="label">Last Modified:</span>
+            <span class="value">{new Date(item.audit_trail.updated_at || item.audit_trail.created_at).toLocaleDateString()}</span>
+          </div>
+        {/if}
+        
         {#if item.id}
           <div class="detail-row">
             <span class="label">Product ID:</span>
@@ -242,6 +261,20 @@
           </div>
         {/if}
         
+        {#if item.parent_category_unique_identifier}
+          <div class="detail-row">
+            <span class="label">Parent Category:</span>
+            <span class="value">{item.parent_category_unique_identifier}</span>
+          </div>
+        {/if}
+        
+        {#if item.default_linked_main_group_unique_identifier}
+          <div class="detail-row">
+            <span class="label">Main Group:</span>
+            <span class="value">{item.default_linked_main_group_unique_identifier}</span>
+          </div>
+        {/if}
+        
         {#if item.source_unique_identifier}
           <div class="detail-row">
             <span class="label">Source ID:</span>
@@ -254,6 +287,9 @@
     <div class="menu-footer">
       <button class="edit-button" on:click={() => handleEdit()}>
         Edit
+      </button>
+      <button class="advanced-edit-button" on:click={() => handleAdvancedEdit()}>
+        Advanced Edit
       </button>
       <button class="close-button" on:click={() => dispatch('close')}>
         Close
@@ -345,6 +381,24 @@
     background-color: #2ecc71;
   }
 
+  .advanced-edit-button {
+    background-color: #3498db;
+    color: white;
+    border: 1px solid #2980b9;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    height: 60px;
+    min-width: 80px;
+    padding: 0 16px;
+  }
+
+  .advanced-edit-button:hover {
+    background-color: #2980b9;
+  }
+
   .close-button {
     background-color: #666;
     color: white;
@@ -395,6 +449,7 @@
     }
     
     .edit-button,
+    .advanced-edit-button,
     .close-button {
       height: 50px; /* Slightly smaller on very small screens but still touch-friendly */
       min-width: 100%;
