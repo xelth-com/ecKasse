@@ -9,37 +9,75 @@ const { invokeSimpleQuery } = require('./llm.service');
 
 // Intelligent prompt templates for name abbreviation
 const BUTTON_NAME_PROMPT_TEMPLATE = `
-You are an expert UI text designer creating concise labels for POS system buttons.
-Your task is to create a short name for a button from a full product name.
+You are an expert UI text designer creating flexible, multi-line labels for POS system buttons.
+Your task is to create an optimal button label layout and hyphenation suggestions for a product name.
 
-## INSTRUCTIONS ##
-1.  **Output Format:** The result MUST be two lines, separated by a single newline character (\\n).
-2.  **Character Limit:** Each of the two lines MUST NOT exceed 10 characters.
-3.  **Content Logic:**
-    - Analyze the full product name to identify the two most significant and descriptive words.
-    - Remove all articles, prepositions, and connector words (e.g., "di", "and", "with").
-    - Place the most important word on the first line and the second most important word on the second line.
-4.  **CRITICAL OUTPUT RULE:** Your response MUST contain ONLY the resulting text for the button. DO NOT include any explanations, markdown, JSON formatting, or any other characters.
+## CRITICAL OUTPUT REQUIREMENT ##
+You MUST respond with ONLY a valid JSON object containing two keys:
+- "lines": an array of strings for each line of text
+- "hyphenation": an array of objects with "word" and "syllables" keys for hyphenation suggestions
+
+## LAYOUT CONSTRAINTS ##
+Choose the best layout from these options:
+1. **3×13 Layout:** 3 lines, max 13 characters each
+2. **4-Line Layout:** 4 lines with max characters: [8, 13, 13, 8]
+
+## CONTENT STRATEGY ##
+- Prioritize the most descriptive and important words
+- Remove articles, prepositions, and connector words when space is limited
+- Use natural word breaks and meaningful chunks
+- Consider readability and visual balance
+- Shorter words on outer lines (first/last) for better visual hierarchy
+
+## HYPHENATION RULES ##
+For words longer than 8 characters, provide hyphenation suggestions:
+- Break at natural syllable boundaries
+- Avoid breaking after single letters
+- Maintain pronunciation clarity
+- Use standard dictionary hyphenation patterns
 
 ## EXAMPLES ##
 
-- Full Name: "Pesto di Mykonos"
-- Correct Output: Pesto\\nMykonos
+Input: "Pesto di Mykonos Special"
+Output:
+{
+  "lines": ["Pesto", "Mykonos", "Special"],
+  "hyphenation": [
+    {"word": "Mykonos", "syllables": ["My", "ko", "nos"]},
+    {"word": "Special", "syllables": ["Spe", "cial"]}
+  ]
+}
 
-- Full Name: "Lemon Garlic Shrimps"
-- Correct Output: Lemon\\nShrimps
+Input: "Avocado Pistachio Cream Sauce with Herbs"
+Output:
+{
+  "lines": ["Avocado", "Pistachio", "Cream", "Herbs"],
+  "hyphenation": [
+    {"word": "Avocado", "syllables": ["Av", "o", "ca", "do"]},
+    {"word": "Pistachio", "syllables": ["Pis", "ta", "chio"]}
+  ]
+}
 
-- Full Name: "90s Pasta Salad"
-- Incorrect Output: 90s Pasta\\nSalad (First line is too long)
-- Correct Output: Pasta\\nSalad
+Input: "90s Pasta Salad"
+Output:
+{
+  "lines": ["90s Pasta", "Salad"],
+  "hyphenation": []
+}
 
-- Full Name: "Avocado Pistachio Cream"
-- Incorrect Output: {"button": "Avocado..."} (Contains JSON)
-- Correct Output: Avocado\\nPistachio
+Input: "Mediterranean Grilled Chicken with Lemon"
+Output:
+{
+  "lines": ["Med", "Grilled", "Chicken", "Lemon"],
+  "hyphenation": [
+    {"word": "Mediterranean", "syllables": ["Med", "i", "ter", "ra", "ne", "an"]},
+    {"word": "Grilled", "syllables": ["Grill", "ed"]},
+    {"word": "Chicken", "syllables": ["Chick", "en"]}
+  ]
+}
 
 ## YOUR TASK ##
-Now, apply this logic to the following product.
-Full Name: "{productName}"
+Create optimal button text layout and hyphenation for: "{productName}"
 `;
 
 const RECEIPT_NAME_PROMPT_TEMPLATE = `
@@ -381,25 +419,44 @@ async function generateButtonAbbreviation(item) {
         const buttonQuery = BUTTON_NAME_PROMPT_TEMPLATE.replace('{productName}', itemName);
         const response = await invokeSimpleQuery(buttonQuery);
         
-        // Clean up the response
-        let buttonText = response.trim();
+        // Try to parse JSON response
+        let buttonData;
+        try {
+            // Extract JSON from response text
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                buttonData = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('No JSON object found in response');
+            }
+        } catch (parseError) {
+            console.log(chalk.yellow(`     Warning: Could not parse JSON response for ${itemName}, falling back to simple parsing`));
+            
+            // Fallback: try to parse as simple text (backward compatibility)
+            let buttonText = response.trim();
+            buttonText = buttonText.replace(/^["']|["']$/g, '');
+            buttonText = buttonText.replace(/\\n/g, '\n');
+            
+            const lines = buttonText.split('\n');
+            let line1 = lines[0] || itemName.substring(0, 10);
+            let line2 = lines[1] || '';
+            
+            line1 = line1.substring(0, 10).trim();
+            line2 = line2.substring(0, 10).trim();
+            
+            buttonData = {
+                lines: line2 ? [line1, line2] : [line1],
+                hyphenation: []
+            };
+        }
         
-        // Remove quotes if present
-        buttonText = buttonText.replace(/^["']|["']$/g, '');
+        // Validate and process the button data
+        if (!buttonData.lines || !Array.isArray(buttonData.lines) || buttonData.lines.length === 0) {
+            throw new Error('Invalid or missing lines in response');
+        }
         
-        // Handle literal \n in the response and convert to actual newline
-        buttonText = buttonText.replace(/\\n/g, '\n');
-        
-        // Ensure we have exactly two lines
-        const lines = buttonText.split('\n');
-        let line1 = lines[0] || itemName.substring(0, 10);
-        let line2 = lines[1] || '';
-        
-        // Truncate lines to 10 characters to ensure compliance
-        line1 = line1.substring(0, 10).trim();
-        line2 = line2.substring(0, 10).trim();
-        
-        const finalButtonText = line2 ? `${line1}\n${line2}` : line1;
+        // Create the final button text by joining lines with newlines
+        const finalButtonText = buttonData.lines.join('\n');
         
         // Ensure we have display_names structure
         if (!item.display_names) {
@@ -408,6 +465,22 @@ async function generateButtonAbbreviation(item) {
         
         // Update button name
         item.display_names.button = { de: finalButtonText };
+        
+        // Store hyphenation data in additional_item_attributes
+        if (!item.additional_item_attributes) {
+            item.additional_item_attributes = {};
+        }
+        
+        if (!item.additional_item_attributes.ui_suggestions) {
+            item.additional_item_attributes.ui_suggestions = {};
+        }
+        
+        // Store hyphenation suggestions if provided
+        if (buttonData.hyphenation && Array.isArray(buttonData.hyphenation)) {
+            item.additional_item_attributes.ui_suggestions.hyphenation_suggestions = buttonData.hyphenation;
+        }
+        
+        console.log(chalk.gray(`     Generated button text: "${finalButtonText}" with ${buttonData.hyphenation?.length || 0} hyphenation suggestions`));
         
     } catch (error) {
         console.log(chalk.yellow(`     Warning: Button abbreviation failed for ${itemName}: ${error.message}`));

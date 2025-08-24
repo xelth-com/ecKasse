@@ -602,6 +602,10 @@
     box-sizing: border-box;
   }
 
+  .view-content.agent-view {
+    padding: 7px;
+  }
+
   .view-content.order-view {
     padding: 8px;
   }
@@ -848,6 +852,15 @@
     align-items: center;
     margin-bottom: 4px;
     gap: 8px;
+  }
+
+  /* Light background separator for agent messages */
+  .agent-message.agent .message-header {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 6px 12px;
+    margin: -2px 0 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .message-timestamp {

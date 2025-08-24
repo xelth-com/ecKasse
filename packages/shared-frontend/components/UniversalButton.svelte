@@ -207,7 +207,8 @@
     text-align: center;
     line-height: 1.1;
     letter-spacing: -0.5px;
-    word-break: break-word;
+    word-break: normal;
+    hyphens: auto;
     white-space: normal;
     padding: 5px;
     text-shadow: 0 0 6px rgba(0,0,0,1.0);
