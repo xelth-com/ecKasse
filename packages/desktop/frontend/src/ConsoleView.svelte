@@ -21,6 +21,7 @@
   let isAtBottom = false; // Track if current panel is scrolled to bottom - start as false until we verify
   let isAutoScrolling = false; // Flag to prevent infinite scroll loops
   let hasInitializedScroll = false; // Flag to track if initial scroll was done
+  let isAgentViewScrollable = false; // Track if agent view content is scrollable
 
   // Track the last activated view to determine cycle order
   let lastActivatedView = 'order'; // Default to order as the initial view
@@ -84,6 +85,25 @@
           'numeric'         // layout - start in numeric mode for PIN
         );
       }
+      
+      // Set up ResizeObserver for agent view scrollability detection
+      if (agentScrollElement) {
+        const resizeObserver = new ResizeObserver(() => {
+          if (agentScrollElement) {
+            isAgentViewScrollable = agentScrollElement.scrollHeight > agentScrollElement.clientHeight;
+          }
+        });
+        
+        resizeObserver.observe(agentScrollElement);
+        
+        // Initial check
+        isAgentViewScrollable = agentScrollElement.scrollHeight > agentScrollElement.clientHeight;
+        
+        // Cleanup function
+        return () => {
+          resizeObserver.disconnect();
+        };
+      }
     }, 200); // Longer timeout to ensure content is loaded
   });
 
@@ -99,6 +119,14 @@
         setTimeout(() => {
           if (currentScrollElement && !isAutoScrolling) {
             checkScrollPosition(); // First check actual position
+            
+            // For agent view, also check scrollability after content updates
+            if ($currentView === 'agent' && agentScrollElement) {
+              const newScrollable = agentScrollElement.scrollHeight > agentScrollElement.clientHeight;
+              if (newScrollable !== isAgentViewScrollable) {
+                isAgentViewScrollable = newScrollable;
+              }
+            }
             
             // Only scroll if we're actually not at bottom
             if (!isAtBottom) {
@@ -117,6 +145,18 @@
       }
     }
   });
+  
+  // Watch for agent messages changes and update scrollability  
+  $: if ($agentStore.messages && agentScrollElement && $currentView === 'agent') {
+    setTimeout(() => {
+      if (agentScrollElement) {
+        const newScrollable = agentScrollElement.scrollHeight > agentScrollElement.clientHeight;
+        if (newScrollable !== isAgentViewScrollable) {
+          isAgentViewScrollable = newScrollable;
+        }
+      }
+    }, 100);
+  }
   
   // Auto-scroll orders to bottom only on meaningful changes
   $: {
@@ -462,9 +502,11 @@
       </div>
     {:else if $currentView === 'agent'}
       <div class="view-content agent-view">
-        <div class="agent-header-icon">
-          <BetrugerCapIcon />
-        </div>
+        {#if !isAgentViewScrollable}
+          <div class="agent-header-icon">
+            <BetrugerCapIcon />
+          </div>
+        {/if}
         <div class="scroll-content" bind:this={agentScrollElement} on:scroll={() => !isAutoScrolling && checkScrollPosition()}>
           <div class="agent-messages">
             {#each $agentStore.messages as message}
@@ -732,48 +774,59 @@
   }
 
   .agent-message {
-    padding: 12px;
     border-radius: 8px;
   }
 
   .agent-message.user {
     align-self: flex-end;
-    background-color: #4a69bd;
-    color: white;
-    max-width: 85%; /* Только пользовательские сообщения ограничены по ширине */
+    background-color: #444;
+    color: #e0e0e0;
+    max-width: 85%;
+    padding: 12px;
   }
 
   .agent-message.user.draft {
-    background-color: transparent;
+    background-color: #444;
     border: 2px solid #4a69bd;
     color: #e0e0e0;
-    max-width: 85%; /* Также ограничиваем draft сообщения пользователя */
+    max-width: 85%;
+    padding: 12px;
+  }
+
+  .agent-message.user.draft .message-content {
+    font-size: 2em;
+    font-weight: bold;
   }
 
   .agent-message.agent {
     align-self: flex-start;
-    background-color: #444;
+    background-color: transparent;
     color: #e0e0e0;
+    padding: 8px 0;
   }
 
   .agent-message.error {
     background-color: #4a1a1a;
     border-left: 3px solid #d32f2f;
+    padding: 12px;
   }
 
   .agent-message.success {
     background-color: #1a4a1a;
     border-left: 3px solid #28a745;
+    padding: 12px;
   }
 
   .agent-message.warning {
     background-color: #4a4a1a;
     border-left: 3px solid #ffc107;
+    padding: 12px;
   }
 
   .agent-message.print {
     background-color: #2a1a4a;
     border-left: 3px solid #6366f1;
+    padding: 12px;
   }
 
   .message-header {
@@ -837,7 +890,7 @@
   .agent-header-icon {
     position: absolute;
     top: 20px;
-    left: 20px;
+    right: 20px;
     width: 120px;
     height: 120px;
     z-index: 1;
