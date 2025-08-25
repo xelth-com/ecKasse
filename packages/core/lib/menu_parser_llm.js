@@ -55,8 +55,8 @@ class MenuParserLLM {
 
   initializeLLMClients(options) {
     // Google Gemini - use centralized provider
-    this.gemini25Model = getGeminiModel({ modelName: 'gemini-2.5-flash' });
-    this.gemini20Model = getGeminiModel({ modelName: 'gemini-2.0-flash' });
+    this.gemini25Model = getGeminiModel({ modelName: process.env.GEMINI_PRIMARY_MODEL || 'gemini-2.5-flash' });
+    this.gemini20Model = getGeminiModel({ modelName: process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash' });
     
     console.log('Using Gemini through centralized provider');
   }
@@ -279,10 +279,10 @@ class MenuParserLLM {
 
     // Try different models for best results using unified provider
     const models = [
-      getGeminiModel({ modelName: 'gemini-2.5-flash' }),
-      getGeminiModel({ modelName: 'gemini-2.0-flash' })
+      getGeminiModel({ modelName: process.env.GEMINI_PRIMARY_MODEL || 'gemini-2.5-flash' }),
+      getGeminiModel({ modelName: process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash' })
     ].map((client, index) => ({
-      name: index === 0 ? 'gemini-2.5-flash' : 'gemini-2.0-flash',
+      name: index === 0 ? (process.env.GEMINI_PRIMARY_MODEL || 'gemini-2.5-flash') : (process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash'),
       client: client,
       type: 'gemini'
     }));

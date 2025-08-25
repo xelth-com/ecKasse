@@ -368,8 +368,8 @@ const toolFunctions = {
  */
 function getPrioritizedModels() {
     return [
-        { name: "gemini-2.5-flash", temperature: 0.1 },
-        { name: "gemini-2.0-flash", temperature: 0.1 }
+        { name: process.env.GEMINI_PRIMARY_MODEL || "gemini-2.5-flash", temperature: 0.1 },
+        { name: process.env.GEMINI_FALLBACK_MODEL || "gemini-2.0-flash", temperature: 0.1 }
     ];
 }
 
@@ -686,7 +686,7 @@ async function sendMessage(userMessage, chatHistory = [], sessionId = null) {
 async function invokeSimpleQuery(promptText) {
     try {
         const result = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: process.env.GEMINI_PRIMARY_MODEL || 'gemini-2.5-flash',
             systemInstruction: "You are a helpful assistant that responds accurately and concisely. If the user asks for JSON, provide only the valid JSON object and nothing else.",
             generationConfig: {
                 temperature: 0.1

@@ -18,7 +18,7 @@ async function generateEmbedding(text, options = {}) {
     console.log(`🔍 Генерирую embedding для: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
     
     const response = await ai.models.embedContent({
-      model: options.model || 'gemini-embedding-001',
+      model: options.model || process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
       contents: [text],
       config: {
         taskType: options.taskType || "RETRIEVAL_DOCUMENT",
@@ -85,7 +85,7 @@ async function generateBatchEmbeddings(texts, options = {}) {
     console.log(`🔍 Генерирую batch embeddings для ${texts.length} текстов`);
     
     const response = await ai.models.embedContent({
-      model: options.model || 'gemini-embedding-001',
+      model: options.model || process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
       contents: texts,
       config: {
         taskType: options.taskType || "RETRIEVAL_DOCUMENT",
@@ -124,7 +124,7 @@ async function getEmbeddingStats(text, options = {}) {
   
   try {
     const response = await ai.models.embedContent({
-      model: options.model || 'gemini-embedding-001',
+      model: options.model || process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
       contents: [text],
       config: {
         taskType: options.taskType || "RETRIEVAL_DOCUMENT",

@@ -22,7 +22,7 @@ function getGeminiModel(options = {}) {
         throw new Error('Gemini AI is not available. GEMINI_API_KEY is not configured.');
     }
     
-    const modelName = options.modelName || 'gemini-2.0-flash';
+    const modelName = options.modelName || process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
     
     // Return the native SDK interface exactly as in the working version
     return {
