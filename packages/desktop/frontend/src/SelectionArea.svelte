@@ -1188,7 +1188,7 @@
       const entityType = item.category_names ? 'category' : 'item';
       
       // Send getEntityJson command to load the entity data in the agent console
-      const response = await get(wsStore).sendMessage({
+      const response = await get(wsStore).send({
         command: 'getEntityJson',
         payload: {
           entityType: entityType,

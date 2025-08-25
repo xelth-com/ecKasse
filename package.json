@@ -14,7 +14,7 @@
     "dist:client:desktop": "npm run dist --workspace=@eckasse/client-desktop",
     "predev": "npm run build --workspace=@eckasse/desktop-frontend",
     "dev:desktop:full": "concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"npm:dev:electron:wait-and-watch\"",
-    "dev": "npm run predev && concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"wait-on packages/desktop/frontend/dist/index.html && npm run dev:electron:watch --workspace=@eckasse/desktop\"",
+    "dev": "npm run predev && concurrently -k -n \"BACKEND,ELECTRON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm:dev:backend\" \"wait-on http://localhost:3030 && npm run dev:electron:watch --workspace=@eckasse/desktop\"",
     "lint:all": "npm run lint --workspaces --if-present",
     "format:all": "prettier --write \"packages/**/*.{js,json,md,css,html}\" \"shared/**/*.{js,json,md,css,html}\" \"*.{json,md}\"",
     "test:all": "npm run test --workspaces --if-present",
