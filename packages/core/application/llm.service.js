@@ -12,6 +12,7 @@ const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErro
 const { searchProducts } = require('./search.service');
 const { generateSalesReport } = require('./reporting.service');
 const { createProduct, updateExistingProduct } = require('./product.service');
+const { services } = require('../index');
 
 // Language detection utilities
 const LANGUAGE_PATTERNS = {
@@ -221,9 +222,28 @@ const updateProductDeclaration = {
     }
 };
 
+const generateDsfinvkExportDeclaration = {
+    name: "generateDsfinvkExport",
+    description: "Generates a DSFinV-K compliant data export for a given date range.",
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            startDate: {
+                type: Type.STRING,
+                description: "Start date in YYYY-MM-DD format"
+            },
+            endDate: {
+                type: Type.STRING,
+                description: "End date in YYYY-MM-DD format"
+            }
+        },
+        required: ["startDate", "endDate"]
+    }
+};
+
 // Tools configuration EXACTLY like working version
 const toolsConfig = {
-    functionDeclarations: [findProductDeclaration, createProductDeclaration, getSalesReportDeclaration, updateProductDeclaration]
+    functionDeclarations: [findProductDeclaration, createProductDeclaration, getSalesReportDeclaration, updateProductDeclaration, generateDsfinvkExportDeclaration]
 };
 
 // Tool function implementations
@@ -334,6 +354,12 @@ const toolFunctions = {
                 error: error.message
             };
         }
+    },
+
+    generateDsfinvkExport: async (args) => {
+        logger.info({ tool: 'generateDsfinvkExport', input: args }, '🤖 Agent is calling the DSFinV-K export service...');
+        const { startDate, endDate } = args;
+        return await services.dsfinvk.generateExport({ startDate, endDate });
     }
 };
 

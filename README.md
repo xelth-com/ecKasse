@@ -31,6 +31,7 @@ ecKasse is built on a flexible monorepo architecture that separates core busines
 -   **Reliable Fiscal Logging:** A three-tier logging system (Fiscal, Operational, System) with a write-ahead log ensures no transaction data is ever lost, even during power failures.
 -   **Automatic Printer Discovery:** Automatically finds and configures ESC/POS compatible receipt printers on the network, supporting both DHCP and static IPs.
 -   **Hybrid Search:** A powerful search service combining traditional text search with semantic vector search to find products intelligently.
+-   **DSFinV-K 2.4 Compliant Export:** Generate complete, audit-ready fiscal data exports for German tax authorities, including all required master data (Stammdaten), transaction logs (Einzelaufzeichnungen), and cash closing summaries (Kassenabschluss).
 -   **LLM-Powered Configuration:** Use natural language to add products, create sales promotions, and configure system settings.
 -   **Dual Licensing Model:** A free, open-source desktop version for single-location businesses and a scalable, commercial web version for multi-tenant SaaS deployments.
 

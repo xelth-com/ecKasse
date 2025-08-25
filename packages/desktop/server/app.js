@@ -11,6 +11,7 @@ const logger = require('../../core/config/logger');
 // Import routes
 const llmRoutes = require('./routes/llm.routes');
 const menuRoutes = require('./routes/menu.routes');
+const exportRoutes = require('./routes/export.routes');
 
 class DesktopServer {
   constructor(services, authService, reportingService) {
@@ -63,6 +64,9 @@ class DesktopServer {
     
     // Mount menu routes
     this.app.use('/api/menu', menuRoutes);
+    
+    // Mount export routes
+    this.app.use('/api/export', exportRoutes);
 
     // Simple users API endpoint for login screen
     this.app.get('/api/users', async (req, res) => {
@@ -543,6 +547,10 @@ class DesktopServer {
             throw new Error('entityType, entityId, and jsonSnippet are required');
           }
           responsePayload = await this.services.import.updateEntityFromOopMdf(entityType, entityId, jsonSnippet);
+        } else if (command === 'generateDsfinvkExport') {
+          const { handleGenerateExport } = require('./controllers/export.controller');
+          responsePayload = await handleGenerateExport(payload);
+          responseCommand = 'generateDsfinvkExportResponse';
         } else {
           status = 'error';
           responsePayload = { message: 'Unknown command', originalCommand: command };

@@ -171,7 +171,12 @@
       "Read(//root/.pm2/logs/**)",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names->''button''->>''de'' as button_text FROM items WHERE display_names->''button''->>''de'' LIKE ''%\\n%'' LIMIT 5;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names->''button''->>''de'' as button_text, position(chr(10) in display_names->''button''->>''de'') as newline_pos FROM items WHERE position(chr(10) in display_names->''button''->>''de'') > 0 LIMIT 5;\")",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT username, full_name FROM users WHERE is_active = true LIMIT 3;\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT username, full_name FROM users WHERE is_active = true LIMIT 3;\")",
+      "Bash(NODE_ENV=development npx knex raw \"SELECT name FROM sqlite_master WHERE type=''table'' AND name LIKE ''dsfinvk_%'';\" --knexfile packages/core/db/knexfile.js)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT version();\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT current_database(), current_user;\")",
+      "Bash(NODE_ENV=development DB_CLIENT=pg npx knex migrate:status --knexfile packages/core/db/knexfile.js)",
+      "Bash(NODE_ENV=development npx knex seed:run --specific=03_dsfinvk_vat_mapping.js --knexfile packages/core/db/knexfile.js)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

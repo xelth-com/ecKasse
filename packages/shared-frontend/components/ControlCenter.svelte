@@ -2,6 +2,7 @@
   import { controlCenterVisible, hideControlCenter } from '../utils/controlCenterStore.js';
   import { currentTime } from '../utils/timeStore.js';
   import MenuImporter from './MenuImporter.svelte';
+  import DsfinvkExporter from './DsfinvkExporter.svelte';
   import { createEventDispatcher } from 'svelte';
   
   const dispatch = createEventDispatcher();
@@ -52,6 +53,10 @@
         
         <div class="section">
           <MenuImporter on:close={handleMenuImporterClose} />
+        </div>
+        
+        <div class="section">
+          <DsfinvkExporter />
         </div>
         
         <div class="section">

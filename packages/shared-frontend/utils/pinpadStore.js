@@ -296,7 +296,7 @@ function createPinpadStore() {
                             agentStore.addMessage({
                                 timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                                 type: 'agent',
-                                message: `🤖 KI-Assistent bereit!\n\nVerfügbare Tools:\n• findProduct - Produkte suchen und finden\n• createProduct - Neue Produkte erstellen\n• updateProduct - Produktdaten aktualisieren\n• getSalesReport - Verkaufsberichte abrufen\n\nIch wähle automatisch das richtige Tool für Ihre Anfrage aus. Stellen Sie einfach Ihre Frage!`
+                                message: `🤖 KI-Assistent bereit!\n\nVerfügbare Tools:\n• findProduct - Produkte suchen und finden\n• createProduct - Neue Produkte erstellen\n• updateProduct - Produktdaten aktualisieren\n• getSalesReport - Verkaufsberichte abrufen\n• generateDsfinvkExport - DSFinV-K konforme Datenexporte erstellen\n\nIch wähle automatisch das richtige Tool für Ihre Anfrage aus. Stellen Sie einfach Ihre Frage!`
                             });
                             
                             // Check for system issues asynchronously

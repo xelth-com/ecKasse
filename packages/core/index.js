@@ -22,6 +22,7 @@ const archivalService = require('./application/archival.service');
 const hieroService = require('./application/hiero.service');
 const systemService = require('./application/system.service');
 const categoryService = require('./application/category.service');
+const dsfinvkService = require('./application/dsfinvk.service');
 
 // LLM services
 const llmProvider = require('./application/llm.provider');
@@ -50,6 +51,7 @@ module.exports = {
     hiero: hieroService,
     system: systemService,
     category: categoryService,
+    dsfinvk: dsfinvkService,
     llm: llmService,
   },
   
@@ -84,6 +86,7 @@ module.exports = {
   hieroService,
   systemService,
   categoryService,
+  dsfinvkService,
   llmProvider,
   llmService,
   dbInit,

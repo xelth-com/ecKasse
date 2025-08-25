@@ -16,8 +16,14 @@
   },
   "dependencies": {
     "@hashgraph/sdk": "^2.70.0",
+    "archiver": "^7.0.1",
     "ip-address": "^10.0.1",
+    "json2csv": "^5.0.7",
     "sqlite3": "^5.1.7",
-    "tcp-ping": "^0.1.1"
+    "tcp-ping": "^0.1.1",
+    "xmlbuilder": "^15.1.1"
+  },
+  "devDependencies": {
+    "tar": "^6.2.1"
   }
 }
