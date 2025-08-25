@@ -33,6 +33,21 @@ function createAgentStore() {
         }]
       }));
     }
+    
+    if (wsState.lastMessage && wsState.lastMessage.command === 'getEntityJsonResponse') {
+      const payload = wsState.lastMessage.payload;
+      if (payload.success && payload.entity) {
+        const formattedJson = JSON.stringify(payload.entity, null, 2);
+        update(store => ({
+          ...store,
+          messages: [...store.messages, {
+            timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            type: 'system',
+            message: `JSON for advanced editing of ${payload.entityType} ID ${payload.entityId}:\n\`\`\`json\n${formattedJson}\n\`\`\``
+          }]
+        }));
+      }
+    }
   });
 
   return {
