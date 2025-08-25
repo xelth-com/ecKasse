@@ -523,12 +523,15 @@ class DsfinvkService {
         const tarPath = path.join(__dirname, `../../../../tmp/${exportId}.tar`);
         const zipPath = path.join(__dirname, `../../../../tmp/${exportId}.zip`);
         
+        // Use the original exportId as TAR filename (preserves technical naming)
+        const tarNameInZip = `${exportId}.tar`;
+        
         try {
             // First create TAR archive
             await this.createTarArchive(sourceDir, tarPath);
             
-            // Then embed TAR into ZIP
-            await this.createZipArchive(tarPath, zipPath, 'export.tar');
+            // Then embed TAR into ZIP with proper technical name
+            await this.createZipArchive(tarPath, zipPath, tarNameInZip);
             
             // Cleanup intermediate TAR file
             await fsp.unlink(tarPath);
@@ -577,7 +580,7 @@ class DsfinvkService {
     /**
      * Creates ZIP archive containing the TAR file
      */
-    async createZipArchive(tarPath, zipPath, tarNameInZip = 'export.tar') {
+    async createZipArchive(tarPath, zipPath, tarNameInZip) {
         return new Promise((resolve, reject) => {
             const output = fs.createWriteStream(zipPath);
             const archive = archiver('zip', { zlib: { level: 9 } }); // Maximum compression
