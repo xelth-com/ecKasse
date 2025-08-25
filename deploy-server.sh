@@ -104,6 +104,11 @@ fi
 echo "📦 Installing dependencies..."
 npm install
 
+# Run database migrations for production
+echo "🗄️ Running database migrations..."
+NODE_ENV=production npx knex migrate:latest --knexfile packages/core/db/knexfile.js
+
+
 # Fix logging issue in SelectionArea.svelte (if not already fixed)
 echo "🔧 Checking and fixing logging issues..."
 if grep -q "addLog(" packages/desktop/frontend/src/SelectionArea.svelte 2>/dev/null; then
@@ -128,11 +133,7 @@ fi
 echo "🏗️ Building desktop frontend..."
 npm run build --workspace=@eckasse/desktop-frontend
 
-# Skip database migrations (they often fail with auth issues)
-# Users should run migrations manually if needed
-echo "⚠️  Skipping database migrations (run manually if needed)"
-echo "ℹ️  To run migrations manually:"
-echo "    NODE_ENV=production npx knex migrate:latest --knexfile ./packages/core/db/knexfile.js"
+# Database migrations are now automatically run above after npm install
 
 # Install PM2 globally if not already installed
 if ! command -v pm2 &> /dev/null; then
