@@ -1203,10 +1203,48 @@
       
       if (response && response.success) {
         console.log('Entity data loaded for advanced editing:', response);
+        
+        // Format the JSON data for display
+        const formattedJson = JSON.stringify(response.data, null, 2);
+        
+        // Add message to agent console showing the fetched entity data
+        agentStore.addMessage({
+          type: 'system',
+          content: `Advanced Edit - ${entityType === 'category' ? 'Category' : 'Item'} Data:\n\n${formattedJson}`,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Start a new draft message and pre-fill it with the JSON data
+        agentStore.startDraftMessage();
+        agentStore.updateDraftMessage(formattedJson);
+        
+        // Activate the alpha pinpad to allow immediate editing
+        pinpadStore.activateAlphaInput(
+          () => {}, // confirm callback
+          () => {}, // cancel callback 
+          agentStore
+        );
+        
+        // Pre-fill the pinpad with the JSON data
+        // Use a small delay to ensure the pinpad is activated first
+        setTimeout(() => {
+          pinpadStore.clear(agentStore); // Clear first
+          // Add each character of the JSON to properly set the text
+          for (let char of formattedJson) {
+            pinpadStore.append(char, agentStore);
+          }
+        }, 50);
       }
       
     } catch (error) {
       console.error('Error loading entity for advanced editing:', error);
+      
+      // Add error message to agent console
+      agentStore.addMessage({
+        type: 'error',
+        content: `Failed to load ${item.category_names ? 'category' : 'item'} data for advanced editing: ${error.message}`,
+        timestamp: new Date().toISOString()
+      });
     }
     
     // Close context menu
