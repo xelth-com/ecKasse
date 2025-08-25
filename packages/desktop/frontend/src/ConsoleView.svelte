@@ -9,6 +9,7 @@
   import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { notificationStore } from '@eckasse/shared-frontend/utils/notificationStore.js';
+  import { formatCurrency } from '@eckasse/shared-frontend/utils/formatting.js';
   import { get } from 'svelte/store';
   import ReceiptFeed from '@eckasse/shared-frontend/components/ReceiptFeed.svelte';
   import ParkedOrdersDisplay from '@eckasse/shared-frontend/components/ParkedOrdersDisplay.svelte';
@@ -492,7 +493,7 @@
                           <span class="input-overlay">{$pinpadStore.liveValue}</span>
                         {/if}
                       </div>
-                      <span class="price">{parseFloat(item.total_price).toFixed(2)}€</span>
+                      <span class="price">{formatCurrency(parseFloat(item.total_price))}</span>
                     </li>
                   {/each}
                 </ul>
@@ -502,7 +503,7 @@
               <!-- Fixed total at bottom -->
               <div class="total">
                 <span>Total:</span>
-                <span class="price">{$orderStore.total.toFixed(2)}€</span>
+                <span class="price">{formatCurrency($orderStore.total)}</span>
               </div>
             </div>
           </div>

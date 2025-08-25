@@ -6,13 +6,15 @@ const archiver = require('archiver');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
-// Helper to format numbers with a comma decimal separator
+// Helper to format numbers with a period decimal separator (DSFinV-K compliant)
 const formatNumber = (num, decimals = 2) => {
     if (num === null || num === undefined) return '';
     const numValue = parseFloat(num);
     if (isNaN(numValue)) return '';
-    return numValue.toFixed(decimals).replace('.', ',');
+    return numValue.toFixed(decimals);
 };
 
 // Helper to format dates to the required ISO 8601 format with timezone
@@ -27,15 +29,70 @@ const formatDate = (date) => {
 
 class DsfinvkService {
 
+    /**
+     * Generates DSFinV-K export in different modes based on environment
+     * @param {Object} options - Export options
+     * @param {string} options.startDate - Start date for export
+     * @param {string} options.endDate - End date for export
+     * @param {number} options.userId - User ID for tracking
+     * @param {boolean} options.async - Force async mode (optional)
+     * @returns {Promise} Export result based on mode
+     */
     async generateExport(options = {}) {
         logger.info({ service: 'DsfinvkService', function: 'generateExport', options }, 'Starting DSFinV-K export process...');
-        const { startDate, endDate } = options;
+        const { startDate, endDate, userId, async: forceAsync } = options;
+        
         if (!startDate || !endDate) {
             throw new Error('Start date and end date are required for export.');
         }
 
+        const isProduction = process.env.NODE_ENV === 'production' || forceAsync;
+        
+        if (isProduction) {
+            return await this.generateAsyncExport(options);
+        } else {
+            return await this.generateSyncExport(options);
+        }
+    }
+
+    /**
+     * Generates export asynchronously for production use
+     */
+    async generateAsyncExport(options) {
+        const { startDate, endDate, userId } = options;
+        const jobId = uuidv4();
+        const downloadToken = crypto.randomBytes(32).toString('hex');
+        
+        // Create job record
+        await db('export_jobs').insert({
+            job_id: jobId,
+            status: 'PENDING',
+            export_type: 'dsfinvk',
+            parameters: JSON.stringify({ startDate, endDate }),
+            download_token: downloadToken,
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+            created_by: userId
+        });
+
+        // Start background processing
+        setImmediate(() => this.processAsyncExport(jobId, { startDate, endDate }));
+        
+        return { 
+            success: true, 
+            jobId, 
+            status: 'PENDING',
+            message: 'Export job started. Use jobId to check status.' 
+        };
+    }
+
+    /**
+     * Generates export synchronously for development use
+     */
+    async generateSyncExport(options) {
+        const { startDate, endDate } = options;
         const exportId = `dsfinvk-export-${Date.now()}`;
         const exportPath = path.join(__dirname, `../../../../tmp/${exportId}`);
+        
         await fsp.mkdir(exportPath, { recursive: true });
 
         try {
@@ -46,31 +103,86 @@ class DsfinvkService {
                 kasseId: 'kasse_1' 
             };
 
-            await this.generateIndexXml(exportPath);
-            // Stammdaten
-            await this.generateCashRegisterCsv(exportPath, context);
-            await this.generateTseCsv(exportPath, context);
-            await this.generateVatCsv(exportPath, context);
-            // Einzelaufzeichnungen
-            await this.generateTransactionsCsv(exportPath, context);
-            await this.generateLinesCsv(exportPath, context);
-            await this.generateTransactionsVatCsv(exportPath, context);
-            // Kassenabschluss
-            await this.generateCashpointClosingCsv(exportPath, context);
-            await this.generateBusinessCasesCsv(exportPath, context);
-            await this.generatePaymentTypesCsv(exportPath, context);
-
-            const tarPath = `${exportPath}.tar`;
-            await this.createTarArchive(exportPath, tarPath);
+            await this.generateAllFiles(exportPath, context);
+            const zipPath = await this.createZipWithTar(exportPath, exportId);
             
-            logger.info({ exportId, tarPath }, 'DSFinV-K export package created successfully.');
-            return { success: true, path: tarPath, exportId };
+            logger.info({ exportId, zipPath }, 'DSFinV-K export package created successfully.');
+            return { success: true, path: zipPath, exportId };
         } catch (error) {
-            logger.error({ service: 'DsfinvkService', function: 'generateExport', error: error.message, stack: error.stack }, 'DSFinV-K export failed.');
+            logger.error({ service: 'DsfinvkService', function: 'generateSyncExport', error: error.message, stack: error.stack }, 'DSFinV-K export failed.');
             throw error;
         } finally {
             fsp.rm(exportPath, { recursive: true, force: true }).catch(err => logger.warn(`Failed to cleanup temp dir: ${err.message}`));
         }
+    }
+
+    /**
+     * Background processor for async exports
+     */
+    async processAsyncExport(jobId, options) {
+        try {
+            // Update status to processing
+            await db('export_jobs').where('job_id', jobId).update({
+                status: 'PROCESSING',
+                updated_at: new Date()
+            });
+
+            const { startDate, endDate } = options;
+            const exportId = `dsfinvk-export-${Date.now()}`;
+            const exportPath = path.join(__dirname, `../../../../tmp/${exportId}`);
+            
+            await fsp.mkdir(exportPath, { recursive: true });
+
+            const context = {
+                startDate: new Date(startDate).toISOString(),
+                endDate: new Date(`${endDate}T23:59:59.999Z`).toISOString(),
+                kassenabschlussNr: 1, 
+                kasseId: 'kasse_1' 
+            };
+
+            await this.generateAllFiles(exportPath, context);
+            const zipPath = await this.createZipWithTar(exportPath, exportId);
+            
+            // Update job as complete
+            await db('export_jobs').where('job_id', jobId).update({
+                status: 'COMPLETE',
+                file_path: zipPath,
+                updated_at: new Date()
+            });
+
+            logger.info({ jobId, zipPath }, 'Async DSFinV-K export completed successfully.');
+            
+            // Cleanup temp directory
+            await fsp.rm(exportPath, { recursive: true, force: true });
+            
+        } catch (error) {
+            logger.error({ jobId, error: error.message, stack: error.stack }, 'Async DSFinV-K export failed.');
+            
+            await db('export_jobs').where('job_id', jobId).update({
+                status: 'FAILED',
+                error_message: error.message,
+                updated_at: new Date()
+            });
+        }
+    }
+
+    /**
+     * Generate all DSFinV-K files
+     */
+    async generateAllFiles(exportPath, context) {
+        await this.generateIndexXml(exportPath);
+        // Stammdaten
+        await this.generateCashRegisterCsv(exportPath, context);
+        await this.generateTseCsv(exportPath, context);
+        await this.generateVatCsv(exportPath, context);
+        // Einzelaufzeichnungen
+        await this.generateTransactionsCsv(exportPath, context);
+        await this.generateLinesCsv(exportPath, context);
+        await this.generateTransactionsVatCsv(exportPath, context);
+        // Kassenabschluss
+        await this.generateCashpointClosingCsv(exportPath, context);
+        await this.generateBusinessCasesCsv(exportPath, context);
+        await this.generatePaymentTypesCsv(exportPath, context);
     }
 
     async generateCsv(filePath, data, fields) {
@@ -404,22 +516,127 @@ class DsfinvkService {
         await this.generateCsv(path.join(exportPath, 'transactions_vat.csv'), data, fields);
     }
 
+    /**
+     * Creates a ZIP file containing a TAR archive (ZIP-in-TAR format)
+     */
+    async createZipWithTar(sourceDir, exportId) {
+        const tarPath = path.join(__dirname, `../../../../tmp/${exportId}.tar`);
+        const zipPath = path.join(__dirname, `../../../../tmp/${exportId}.zip`);
+        
+        try {
+            // First create TAR archive
+            await this.createTarArchive(sourceDir, tarPath);
+            
+            // Then embed TAR into ZIP
+            await this.createZipArchive(tarPath, zipPath, 'export.tar');
+            
+            // Cleanup intermediate TAR file
+            await fsp.unlink(tarPath);
+            
+            return zipPath;
+        } catch (error) {
+            // Cleanup on error
+            try {
+                await fsp.unlink(tarPath);
+                await fsp.unlink(zipPath);
+            } catch (cleanupError) {
+                logger.warn('Failed to cleanup files during error:', cleanupError.message);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Creates TAR archive from directory
+     */
     async createTarArchive(sourceDir, outPath) {
         return new Promise((resolve, reject) => {
             const output = fs.createWriteStream(outPath);
             const archive = archiver('tar');
+            
             output.on('close', () => {
-                logger.info(`${archive.pointer()} total bytes written to ${outPath}`);
+                logger.info(`${archive.pointer()} total bytes written to TAR: ${outPath}`);
                 resolve();
             });
+            
             archive.on('warning', (err) => {
-                if (err.code === 'ENOENT') { logger.warn('Archiver warning:', err); } else { reject(err); }
+                if (err.code === 'ENOENT') { 
+                    logger.warn('Archiver warning:', err); 
+                } else { 
+                    reject(err); 
+                }
             });
+            
             archive.on('error', (err) => reject(err));
             archive.pipe(output);
             archive.directory(sourceDir, false);
             archive.finalize();
         });
+    }
+
+    /**
+     * Creates ZIP archive containing the TAR file
+     */
+    async createZipArchive(tarPath, zipPath, tarNameInZip = 'export.tar') {
+        return new Promise((resolve, reject) => {
+            const output = fs.createWriteStream(zipPath);
+            const archive = archiver('zip', { zlib: { level: 9 } }); // Maximum compression
+            
+            output.on('close', () => {
+                logger.info(`${archive.pointer()} total bytes written to ZIP: ${zipPath}`);
+                resolve();
+            });
+            
+            archive.on('warning', (err) => {
+                if (err.code === 'ENOENT') { 
+                    logger.warn('ZIP Archiver warning:', err); 
+                } else { 
+                    reject(err); 
+                }
+            });
+            
+            archive.on('error', (err) => reject(err));
+            archive.pipe(output);
+            archive.file(tarPath, { name: tarNameInZip });
+            archive.finalize();
+        });
+    }
+
+    /**
+     * Get job status for async exports
+     */
+    async getJobStatus(jobId) {
+        const job = await db('export_jobs')
+            .select('id', 'job_id', 'status', 'error_message', 'download_token', 'expires_at', 'created_at', 'updated_at')
+            .where('job_id', jobId)
+            .first();
+            
+        if (!job) {
+            throw new Error('Job not found');
+        }
+        
+        return job;
+    }
+
+    /**
+     * Get download info by secure token
+     */
+    async getDownloadInfo(token) {
+        const job = await db('export_jobs')
+            .select('file_path', 'expires_at')
+            .where('download_token', token)
+            .where('status', 'COMPLETE')
+            .first();
+            
+        if (!job) {
+            throw new Error('Invalid download token or file not ready');
+        }
+        
+        if (new Date() > new Date(job.expires_at)) {
+            throw new Error('Download link has expired');
+        }
+        
+        return job;
     }
 }
 

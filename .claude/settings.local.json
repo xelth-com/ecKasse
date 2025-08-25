@@ -176,7 +176,8 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT version();\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT current_database(), current_user;\")",
       "Bash(NODE_ENV=development DB_CLIENT=pg npx knex migrate:status --knexfile packages/core/db/knexfile.js)",
-      "Bash(NODE_ENV=development npx knex seed:run --specific=03_dsfinvk_vat_mapping.js --knexfile packages/core/db/knexfile.js)"
+      "Bash(NODE_ENV=development npx knex seed:run --specific=03_dsfinvk_vat_mapping.js --knexfile packages/core/db/knexfile.js)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\\d export_jobs\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

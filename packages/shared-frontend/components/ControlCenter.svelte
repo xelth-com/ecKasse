@@ -1,6 +1,7 @@
 <script>
   import { controlCenterVisible, hideControlCenter } from '../utils/controlCenterStore.js';
   import { currentTime } from '../utils/timeStore.js';
+  import { localeStore, setLocale } from '../utils/localeStore.js';
   import MenuImporter from './MenuImporter.svelte';
   import DsfinvkExporter from './DsfinvkExporter.svelte';
   import { createEventDispatcher } from 'svelte';
@@ -20,6 +21,11 @@
   
   function handleMenuImporterClose() {
     closeControlCenter();
+  }
+  
+  function handleLocaleChange(event) {
+    const newLocale = event.target.value;
+    setLocale(newLocale);
   }
   
   // Close on Escape key
@@ -48,6 +54,21 @@
           </div>
           <p class="time-description">
             Current system time. Time synchronization is managed automatically.
+          </p>
+        </div>
+        
+        <div class="section">
+          <h3>Language & Region</h3>
+          <div class="locale-settings">
+            <label for="locale-select" class="locale-label">Display Locale:</label>
+            <select id="locale-select" bind:value={$localeStore} on:change={handleLocaleChange} class="locale-select">
+              <option value="de-DE">Deutsch (Deutschland)</option>
+              <option value="en-US">English (United States)</option>
+              <option value="en-GB">English (United Kingdom)</option>
+            </select>
+          </div>
+          <p class="locale-description">
+            Changes how numbers, currencies, and dates are displayed in the interface.
           </p>
         </div>
         
@@ -176,6 +197,45 @@
     color: #aaa;
     font-size: 14px;
     margin: 0;
+    line-height: 1.4;
+  }
+  
+  .locale-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .locale-label {
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .locale-select {
+    background-color: #444;
+    color: #e0e0e0;
+    border: 1px solid #666;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  
+  .locale-select:focus {
+    border-color: #4CAF50;
+  }
+  
+  .locale-select option {
+    background-color: #444;
+    color: #e0e0e0;
+  }
+  
+  .locale-description {
+    color: #aaa;
+    font-size: 14px;
+    margin: 10px 0 0 0;
     line-height: 1.4;
   }
   

@@ -4,6 +4,7 @@
   import { addLog } from '../utils/logStore.js';
   import { wsStore } from '../utils/wsStore.js';
   import { agentStore } from '../utils/agentStore.js';
+  import { formatCurrency, formatDateTime } from '../utils/formatting.js';
 
   export let autoExpandLatest = false; // Prop to auto-expand latest receipt
   
@@ -42,18 +43,7 @@
   }
 
   function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
-  function formatCurrency(amount) {
-    return parseFloat(amount).toFixed(2) + '€';
+    return formatDateTime(dateString);
   }
 
   function getItemName(item) {

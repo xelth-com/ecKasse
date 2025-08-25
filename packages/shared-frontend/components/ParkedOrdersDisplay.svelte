@@ -6,6 +6,7 @@
   import { timeStore } from '../utils/timeStore.js';
   import { pinpadStore } from '../utils/pinpadStore.js';
   import { currentView as consoleView } from '../utils/viewStore.js';
+  import { formatCurrency } from '../utils/formatting.js';
 
   let parkedOrders = [];
   let unsubscribe;
@@ -75,9 +76,6 @@
     }
   }
 
-  function formatCurrency(amount) {
-    return (parseFloat(amount) || 0).toFixed(2) + ' €';
-  }
 
   function getTableName(order) {
     const metadata = order.metadata || {};
