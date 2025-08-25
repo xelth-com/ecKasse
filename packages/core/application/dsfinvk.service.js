@@ -41,7 +41,7 @@ class DsfinvkService {
         try {
             const context = {
                 startDate: new Date(startDate).toISOString(),
-                endDate: new Date(endDate).toISOString(),
+                endDate: new Date(`${endDate}T23:59:59.999Z`).toISOString(),
                 kassenabschlussNr: 1, 
                 kasseId: 'kasse_1' 
             };

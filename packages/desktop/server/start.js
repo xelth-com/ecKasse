@@ -1,6 +1,27 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
+// =============================================================================
+// GLOBAL CRASH HANDLERS - MUST BE AT THE TOP
+// =============================================================================
+const logger = require('../../core/config/logger');
+const crypto = require('crypto');
+
+process.on('unhandledRejection', (reason, promise) => {
+  const correlationId = crypto.randomUUID();
+  logger.fatal({ err: reason, promise, correlationId }, 'Unhandled Rejection at Promise');
+  // pino-roll with sync:true will attempt to flush before exit
+  process.exit(1);
+});
+
+process.on('uncaughtException', (error) => {
+  const correlationId = crypto.randomUUID();
+  logger.fatal({ err: error, correlationId }, 'Uncaught Exception');
+  // pino-roll with sync:true will attempt to flush before exit
+  process.exit(1);
+});
+// =============================================================================
+
 // Desktop server entry point - Dependency Injection Container
 const http = require('http');
 const WebSocket = require('ws');
@@ -10,7 +31,6 @@ const { DesktopServer } = require('./app');
 const { services, db, dbInit, ProductService, TransactionManagementService, AuthService, ReportingService } = require('../../core');
 const { SQLiteAdapter } = require('../../adapters/database/sqlite');
 const { PostgreSQLAdapter } = require('../../adapters/database/postgresql');
-const logger = require('../../core/config/logger');
 
 const PORT = process.env.BACKEND_PORT || 3030;
 const nodeVersionRequired = '20.0.0';

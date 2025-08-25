@@ -11,8 +11,8 @@ class TransactionManagementService {
     this.websocketService = websocketService;
   }
 
-  async findOrCreateActiveTransaction(criteria, userId) {
-    logger.info({ service: 'TransactionManagementService', function: 'findOrCreateActiveTransaction', criteria, userId });
+  async findOrCreateActiveTransaction(criteria, userId, correlationId) {
+    logger.info({ service: 'TransactionManagementService', function: 'findOrCreateActiveTransaction', criteria, userId, correlationId });
     let existingTransaction = null;
     if (criteria.transactionId) {
       existingTransaction = await this.transactionRepository.findActiveById(criteria.transactionId);
@@ -50,8 +50,8 @@ class TransactionManagementService {
     return newTransaction;
   }
 
-  async addItemToTransaction(transactionId, itemId, quantity, userId, options = {}) {
-    logger.info({ service: 'TransactionManagementService', function: 'addItemToTransaction', transactionId, itemId, quantity });
+  async addItemToTransaction(transactionId, itemId, quantity, userId, options = {}, correlationId) {
+    logger.info({ service: 'TransactionManagementService', function: 'addItemToTransaction', transactionId, itemId, quantity, correlationId });
     let updatedTransaction, item;
     const result = await this.transactionRepository.db.transaction(async (trx) => {
       const transaction = await this.transactionRepository.findActiveById(transactionId, trx);
@@ -106,12 +106,14 @@ class TransactionManagementService {
     return { ...result.transaction, items: result.items };
   }
 
-  async finishTransaction(transactionId, paymentData, userId) {
+  async finishTransaction(transactionId, paymentData, userId, correlationId) {
     let transaction, processData, finishedTransaction;
-    const updateResult = await this.transactionRepository.db.transaction(async (trx) => {
+
+    // --- Step 1: Finalize Transaction and Log Fiscally (Atomic Operation) ---
+    const fiscalLogResult = await this.transactionRepository.db.transaction(async (trx) => {
       transaction = await this.transactionRepository.findActiveById(transactionId, trx);
       if (!transaction) throw new Error(`Active transaction with ID ${transactionId} not found.`);
-      
+
       // Get the initial items before fiscal compliance to preserve display order
       const initialItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
       const displayOrderMap = new Map(initialItems.map((item, index) => [item.id, index]));
@@ -119,42 +121,31 @@ class TransactionManagementService {
       // Create fiscal compliance records based on operational logs FIRST - this reconstructs the transaction
       await this.createFiscalComplianceRecords(transactionId, transaction.uuid, trx, initialItems);
       
-      const paymentAmount = parseFloat(paymentData.amount);
+      // Recalculate total amounts after fiscal compliance records are created
+      const allItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
+      const totalAmount = allItems.reduce((sum, item) => sum + parseFloat(item.total_price), 0);
+      const taxAmount = allItems.reduce((sum, item) => sum + parseFloat(item.tax_amount), 0);
+      const paymentAmount = parseFloat(paymentData.amount) || totalAmount;
+
       const taxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
       const taxRatesOrder = [19.00, 7.00, 10.70, 5.50, 0.00];
       const bruttoSteuerumsaetze = taxRatesOrder.map(rate => {
         const found = taxBreakdown.find(b => parseFloat(b.tax_rate) === rate);
         return found ? parseFloat(found.total).toFixed(2) : '0.00';
       }).join('_');
-      // Note: zahlungen will be recalculated after fiscal compliance records
-      let zahlungen = `${paymentAmount.toFixed(2)}:${paymentData.type}`;
+      const zahlungen = `${paymentAmount.toFixed(2)}:${paymentData.type}`;
       processData = `Beleg^${bruttoSteuerumsaetze}^${zahlungen}`;
-      
-      // Recalculate total amounts after fiscal compliance records are created
-      const allItems = await this.transactionRepository.getItemsWithDetailsByTransactionId(transactionId, trx);
-      const recalculatedTotal = allItems.reduce((sum, item) => sum + parseFloat(item.total_price), 0);
-      const recalculatedTax = allItems.reduce((sum, item) => sum + parseFloat(item.tax_amount), 0);
-      
-      // Update payment amount to match recalculated total (fiscal compliance may change the total)
-      const finalPaymentAmount = recalculatedTotal;
-      
-      // Recalculate processData with correct amounts
-      const finalTaxBreakdown = await this.transactionRepository.getTaxBreakdown(transactionId, trx);
-      const finalBruttoSteuerumsaetze = taxRatesOrder.map(rate => {
-        const found = finalTaxBreakdown.find(b => parseFloat(b.tax_rate) === rate);
-        return found ? parseFloat(found.total).toFixed(2) : '0.00';
-      }).join('_');
-      zahlungen = `${finalPaymentAmount.toFixed(2)}:${paymentData.type}`;
-      processData = `Beleg^${finalBruttoSteuerumsaetze}^${zahlungen}`;
-      
+
       const updateData = { 
         status: 'finished', 
         payment_type: paymentData.type, 
-        payment_amount: finalPaymentAmount,
-        total_amount: recalculatedTotal,
-        tax_amount: recalculatedTax
+        payment_amount: paymentAmount,
+        total_amount: totalAmount,
+        tax_amount: taxAmount,
+        updated_at: new Date().toISOString()
       };
-      const updatedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
+      
+      finishedTransaction = await this.transactionRepository.update(transactionId, updateData, trx);
       
       // Sort items using sophisticated criteria to preserve display order with compliance records grouped
       const sortedItems = [...allItems].sort((a, b) => {
@@ -175,59 +166,53 @@ class TransactionManagementService {
         return a.id - b.id;
       });
       
-      finishedTransaction = { ...updatedTransaction, items: sortedItems };
-      return { totalAmount: recalculatedTotal };
+      finishedTransaction.items = sortedItems;
+
+      const fiscalPayload = {
+        transaction_uuid: transaction.uuid,
+        processType: 'Kassenbeleg-V1',
+        processData: processData,
+        payment_type: paymentData.type,
+        final_amount: totalAmount,
+        metadata: parseJsonIfNeeded(transaction.metadata) || {}
+      };
+
+      const fiscalLog = await this.loggingService.logFiscalEvent('finishTransaction', userId, fiscalPayload, trx, correlationId);
+      if (!fiscalLog.success) {
+        throw new Error(`Failed to create fiscal log: ${fiscalLog.error}`);
+      }
+      return fiscalLog;
     });
-    
-    const fiscalPayload = {
-      transaction_uuid: transaction.uuid,
-      processType: 'Kassenbeleg-V1',
-      processData: processData,
-      payment_type: paymentData.type,
-      final_amount: updateResult.totalAmount,
-      metadata: parseJsonIfNeeded(transaction.metadata) || {}
-    };
-    // Diagnostic Log: Log payload before sending
-    logger.info({ fiscalPayload, operation: 'finishTransaction' }, 'Preparing to send payload to logFiscalEvent');
-    const fiscalLogResult = await this.loggingService.logFiscalEvent('finishTransaction', userId, fiscalPayload);
-    if (!fiscalLogResult.success) {
-      logger.error({ msg: 'Failed to create fiscal log for finished transaction', error: fiscalLogResult.error, transactionId });
-      return { success: true, warning: 'Transaction finished but fiscal logging failed', fiscal_log_error: fiscalLogResult.error, transaction: finishedTransaction };
-    }
+
+    // --- Step 2: Attempt to Print Receipt (Non-Blocking) ---
+    // This part runs outside the database transaction.
+    // A failure here will be logged but will NOT roll back the fiscal record.
     try {
       const receiptData = await this.printerService._prepareReceiptData(finishedTransaction, fiscalLogResult.log);
       const printResult = await this.printerService.printReceipt(receiptData);
+
       if (printResult.status === 'success') {
-        // Broadcast success message to frontend
         this.websocketService.broadcast('displayAgentMessage', {
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
           message: `Beleg №${finishedTransaction.id} erfolgreich gedruckt`,
           style: 'print-success'
         });
-        return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_result: printResult };
       } else {
-        await this.loggingService.logOperationalEvent('print_failed', userId, { transaction_uuid: transaction.uuid, print_error: printResult.message, printer: printResult.printer || 'unknown' });
-        // Broadcast error message to frontend
-        this.websocketService.broadcast('displayAgentMessage', {
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          type: 'agent',
-          message: `Druckfehler: ${printResult.message}`,
-          style: 'print-error'
-        });
-        return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_warning: printResult.message };
+        throw new Error(printResult.message || 'Unknown printer error');
       }
     } catch (printError) {
-      await this.loggingService.logOperationalEvent('print_error', userId, { transaction_uuid: transaction.uuid, error_message: printError.message });
-      // Broadcast error message to frontend
+      logger.error({ msg: 'Receipt printing failed after fiscal commit', error: printError.message, transactionId });
+      await this.loggingService.logOperationalEvent('print_failed', userId, { transaction_uuid: transaction.uuid, print_error: printError.message });
       this.websocketService.broadcast('displayAgentMessage', {
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
         message: `Druckfehler: ${printError.message}`,
         style: 'print-error'
       });
-      return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction, print_error: printError.message };
     }
+
+    return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction };
   }
 
   async getPendingTransactions() {

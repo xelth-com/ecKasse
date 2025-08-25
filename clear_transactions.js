@@ -1,29 +1,30 @@
-// Подключаем конфигурацию базы данных из нашего проекта
 const db = require('./packages/core/db/knex.js');
 const logger = require('./packages/core/config/logger.js');
 
 async function clearTransactions() {
-  logger.info('Запуск скрипта для принудительной очистки транзакций...');
+  logger.info('Starting script to forcibly clear transactions...');
   try {
-    // Используем Knex для удаления всех записей из таблицы
+    // Use Knex to delete all records from the table
     const deletedRows = await db('active_transactions').del();
-    logger.info(`Успешно удалено ${deletedRows} незавершенных транзакций.`);
+    logger.info(`Successfully deleted ${deletedRows} stale transactions.`);
 
-    // Оптимизируем файл базы данных после удаления
-    await db.raw('VACUUM;');
-    logger.info('База данных успешно очищена и оптимизирована.');
+    // Optimize the database file after deletion (for SQLite)
+    if (db.client.config.client === 'sqlite3') {
+      await db.raw('VACUUM;');
+      logger.info('Database successfully cleaned and optimized.');
+    }
     
-    console.log('\n✅ Все незавершенные транзакции были успешно удалены.');
+    console.log(`\n✅ All ${deletedRows} active transactions have been successfully deleted.`);
 
   } catch (error) {
-    logger.error('Произошла ошибка при очистке транзакций:', error);
-    console.error('\n❌ Не удалось очистить транзакции. Ошибка:', error.message);
+    logger.error('An error occurred while clearing transactions:', error);
+    console.error('\n❌ Failed to clear transactions. Error:', error.message);
   } finally {
-    // Важно: закрываем соединение с базой данных
+    // Important: close the database connection
     await db.destroy();
-    logger.info('Соединение с базой данных закрыто.');
+    logger.info('Database connection closed.');
   }
 }
 
-// Запускаем функцию
+// Run the function
 clearTransactions();

@@ -317,8 +317,9 @@ class PrinterService {
         // Additional metadata for advanced features
         transaction_uuid: finishedTransaction.uuid,
         fiscal_log_number: fiscalLog?.log_number || 'DEMO',
+        // FIX: Use robust JSON parsing to handle both objects and strings
         table_number: finishedTransaction.metadata ? 
-          JSON.parse(finishedTransaction.metadata).table : null
+          (typeof finishedTransaction.metadata === 'string' ? JSON.parse(finishedTransaction.metadata).table : finishedTransaction.metadata.table) : null
       };
 
       logger.info({ 

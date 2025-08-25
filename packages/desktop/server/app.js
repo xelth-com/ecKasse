@@ -5,6 +5,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const logger = require('../../core/config/logger');
 
@@ -32,6 +33,11 @@ class DesktopServer {
   }
 
   setupMiddleware() {
+    this.app.use((req, res, next) => {
+      req.correlationId = req.headers['x-correlation-id'] || crypto.randomUUID();
+      res.setHeader('X-Correlation-ID', req.correlationId);
+      next();
+    });
     this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
@@ -39,10 +45,12 @@ class DesktopServer {
     // Request logging
     this.app.use((req, res, next) => {
       const operationId = req.query.operationId || (req.body && req.body.operationId);
+      const correlationId = req.correlationId;
       logger.info({
         type: 'http_request',
         direction: 'in',
         operationId,
+        correlationId,
         method: req.method,
         url: req.originalUrl,
         body: req.body,
@@ -251,6 +259,7 @@ class DesktopServer {
     }
 
     const { operationId, command, payload } = parsedMessage;
+    const correlationId = crypto.randomUUID();
     
     if (command === 'getCategories') {
       console.log('🔍 [Backend] Processing getCategories command with operationId:', operationId);
@@ -298,7 +307,7 @@ class DesktopServer {
           responsePayload = await this.services.layout.saveLayout(payload.name, categories);
         } else if (command === 'findOrCreateActiveTransaction') {
           const { criteria, userId } = payload;
-          responsePayload = await this.services.transactionManagement.findOrCreateActiveTransaction(criteria, userId);
+          responsePayload = await this.services.transactionManagement.findOrCreateActiveTransaction(criteria, userId, correlationId);
           if (responsePayload && responsePayload.id) {
               const items = await db('active_transaction_items')
                 .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
@@ -312,7 +321,7 @@ class DesktopServer {
           responseCommand = 'orderUpdated';
         } else if (command === 'addItemToTransaction') {
           const { transactionId, itemId, quantity, userId } = payload;
-          responsePayload = await this.services.transactionManagement.addItemToTransaction(transactionId, itemId, quantity, userId);
+          responsePayload = await this.services.transactionManagement.addItemToTransaction(transactionId, itemId, quantity, userId, {}, correlationId);
           if (responsePayload && responsePayload.id) {
               const items = await db('active_transaction_items')
                 .leftJoin('items', 'active_transaction_items.item_id', 'items.id')
@@ -326,7 +335,7 @@ class DesktopServer {
           responseCommand = 'orderUpdated';
         } else if (command === 'finishTransaction') {
           const { transactionId, paymentData, userId } = payload;
-          const result = await this.services.transactionManagement.finishTransaction(transactionId, paymentData, userId);
+          const result = await this.services.transactionManagement.finishTransaction(transactionId, paymentData, userId, correlationId);
           
           responsePayload = {
             ...result,
