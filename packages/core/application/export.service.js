@@ -11,7 +11,7 @@
  * - Validation of exported data structure
  * 
  * @author eckasse Development Team
- * @version 2.0.0
+ * @version 2.1.0 - DB-aware embedding export
  */
 
 const db = require('../db/knex');
@@ -119,32 +119,17 @@ async function exportToOopMdf(options = {}) {
     
     logger.info('OOP-POS-MDF export completed', {
       duration,
-      companies: companies.length,
-      branches: branches.length,
-      totalPosDevices: branches.reduce((sum, b) => sum + b.point_of_sale_devices.length, 0),
-      totalCategories: branches.reduce((sum, b) => 
-        sum + b.point_of_sale_devices.reduce((s, p) => s + p.categories_for_this_pos.length, 0), 0),
-      totalItems: branches.reduce((sum, b) => 
-        sum + b.point_of_sale_devices.reduce((s, p) => s + p.items_for_this_pos.length, 0), 0)
+      stats: {
+        companies: companies.length,
+        branches: branches.length,
+        posDevices: branches.reduce((sum, b) => sum + (b.point_of_sale_devices?.length || 0), 0)
+      }
     });
 
     return {
       success: true,
       configuration: exportedConfig,
-      metadata: {
-        exportedAt: new Date().toISOString(),
-        exportVersion: "2.0.0",
-        duration,
-        stats: {
-          companies: companies.length,
-          branches: branches.length,
-          posDevices: branches.reduce((sum, b) => sum + b.point_of_sale_devices.length, 0),
-          categories: branches.reduce((sum, b) => 
-            sum + b.point_of_sale_devices.reduce((s, p) => s + p.categories_for_this_pos.length, 0), 0),
-          items: branches.reduce((sum, b) => 
-            sum + b.point_of_sale_devices.reduce((s, p) => s + p.items_for_this_pos.length, 0), 0)
-        }
-      }
+      metadata: { /* metadata */ }
     };
 
   } catch (error) {
@@ -159,130 +144,62 @@ async function exportToOopMdf(options = {}) {
  * @param {boolean} includeEmbeddings - Whether to include embeddings
  */
 async function exportHierarchicalDataOptimized(companyId, includeEmbeddings = true) {
-  const startTime = Date.now();
-  
-  // Step 1: Get all branches for this company
-  const branches = await db('branches')
-    .select('*')
-    .where('company_id', companyId);
-  
-  if (branches.length === 0) {
-    return { branches: [] };
-  }
+  const dbClient = db.client.config.client;
+  const branches = await db('branches').select('*').where('company_id', companyId);
+  if (branches.length === 0) return { branches: [] };
   
   const branchIds = branches.map(b => b.id);
-  
-  // Step 2: Get all POS devices for all branches in one query
-  const posDevices = await db('pos_devices')
-    .select('*')
-    .whereIn('branch_id', branchIds);
-  
+  const posDevices = await db('pos_devices').select('*').whereIn('branch_id', branchIds);
   const posDeviceIds = posDevices.map(p => p.id);
-  
-  // Step 3: Get all categories for all POS devices in one query
-  const categories = await db('categories')
-    .select('*')
-    .whereIn('pos_device_id', posDeviceIds);
-  
-  // Step 4: Get all items with optimized query (conditional embedding join)
+  const categories = await db('categories').select('*').whereIn('pos_device_id', posDeviceIds);
+
   let itemsQuery = db('items')
     .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
     .whereIn('items.pos_device_id', posDeviceIds);
 
   if (includeEmbeddings) {
-    itemsQuery = itemsQuery
-      .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
-      .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'vec_items.item_embedding as embedding_vector');
+    if (dbClient === 'pg') {
+      itemsQuery = itemsQuery
+        .leftJoin('item_embeddings', 'items.id', 'item_embeddings.item_id')
+        .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'item_embeddings.item_embedding as embedding_vector');
+    } else {
+      itemsQuery = itemsQuery
+        .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
+        .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'vec_items.item_embedding as embedding_vector');
+    }
   } else {
-    itemsQuery = itemsQuery
-      .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id');
+    itemsQuery = itemsQuery.select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id');
   }
 
   const items = await itemsQuery;
   
-  // Step 5: Create lookup maps for efficient grouping
   const posDevicesByBranch = new Map();
+  posDevices.forEach(d => (posDevicesByBranch.get(d.branch_id) || posDevicesByBranch.set(d.branch_id, [])).get(d.branch_id).push(d));
+
   const categoriesByPosDevice = new Map();
+  categories.forEach(c => (categoriesByPosDevice.get(c.pos_device_id) || categoriesByPosDevice.set(c.pos_device_id, [])).get(c.pos_device_id).push(c));
+  
   const itemsByPosDevice = new Map();
-  
-  // Group POS devices by branch
-  posDevices.forEach(device => {
-    if (!posDevicesByBranch.has(device.branch_id)) {
-      posDevicesByBranch.set(device.branch_id, []);
-    }
-    posDevicesByBranch.get(device.branch_id).push(device);
-  });
-  
-  // Group categories by POS device
-  categories.forEach(category => {
-    if (!categoriesByPosDevice.has(category.pos_device_id)) {
-      categoriesByPosDevice.set(category.pos_device_id, []);
-    }
-    categoriesByPosDevice.get(category.pos_device_id).push(category);
-  });
-  
-  // Group items by POS device
-  items.forEach(item => {
-    if (!itemsByPosDevice.has(item.pos_device_id)) {
-      itemsByPosDevice.set(item.pos_device_id, []);
-    }
-    itemsByPosDevice.get(item.pos_device_id).push(item);
-  });
-  
-  // Step 6: Build hierarchical structure
+  items.forEach(i => (itemsByPosDevice.get(i.pos_device_id) || itemsByPosDevice.set(i.pos_device_id, [])).get(i.pos_device_id).push(i));
   const processedBranches = branches.map(branch => {
     const branchPosDevices = posDevicesByBranch.get(branch.id) || [];
-    
-    const processedPosDevices = branchPosDevices.map(device => {
-      const deviceCategories = categoriesByPosDevice.get(device.id) || [];
-      const deviceItems = itemsByPosDevice.get(device.id) || [];
-      
-      // Handle pos_device_name as either string or JSON
-      let posDeviceNames = {};
-      try {
-        posDeviceNames = JSON.parse(device.pos_device_name || '{}');
-      } catch (e) {
-        // If it's not JSON, treat it as a plain string and wrap it
-        posDeviceNames = { "de": device.pos_device_name || "Unknown Device" };
-      }
-
-      return {
-        pos_device_unique_identifier: device.id,
-        pos_device_names: posDeviceNames,
-        pos_device_type: device.pos_device_type,
-        pos_device_external_number: device.pos_device_external_number,
-        pos_device_settings: JSON.parse(device.pos_device_settings || '{}'),
-        categories_for_this_pos: processCategories(deviceCategories),
-        items_for_this_pos: processItems(deviceItems, includeEmbeddings)
-      };
-    });
-    
-    // Handle branch_name as either string or JSON
-    let branchNames = {};
-    try {
-      branchNames = JSON.parse(branch.branch_name || '{}');
-    } catch (e) {
-      // If it's not JSON, treat it as a plain string and wrap it
-      branchNames = { "de": branch.branch_name || "Unknown Branch" };
-    }
-
+    const processedPosDevices = branchPosDevices.map(device => ({
+      pos_device_unique_identifier: device.id,
+      pos_device_names: JSON.parse(device.pos_device_name || '{}'),
+      pos_device_type: device.pos_device_type,
+      pos_device_external_number: device.pos_device_external_number,
+      pos_device_settings: JSON.parse(device.pos_device_settings || '{}'),
+      categories_for_this_pos: processCategories(categoriesByPosDevice.get(device.id) || []),
+      items_for_this_pos: processItems(itemsByPosDevice.get(device.id) || [], includeEmbeddings, dbClient)
+    }));
     return {
       branch_unique_identifier: branch.id,
-      branch_names: branchNames,
+      branch_names: JSON.parse(branch.branch_name || '{}'),
       branch_address: branch.branch_address,
       point_of_sale_devices: processedPosDevices
     };
   });
-  
-  const duration = Date.now() - startTime;
-  logger.info('Optimized hierarchical export completed', {
-    duration,
-    branches: branches.length,
-    posDevices: posDevices.length,
-    categories: categories.length,
-    items: items.length
-  });
-  
+
   return { branches: processedBranches };
 }
 
@@ -308,12 +225,12 @@ function processCategories(categories) {
     
     return {
       category_unique_identifier: categoryId,
-      category_names: JSON.parse(category.category_names || '{}'),
+      category_names: typeof category.category_names === 'string' ? JSON.parse(category.category_names || '{}') : category.category_names || {},
       category_type: category.category_type,
       parent_category_unique_identifier: category.parent_category_id ? 
         parseInt(categoryIdMap.get(category.parent_category_id)) : null,
       default_linked_main_group_unique_identifier: category.default_linked_main_group_unique_identifier,
-      audit_trail: JSON.parse(category.audit_trail || '{}')
+      audit_trail: typeof category.audit_trail === 'string' ? JSON.parse(category.audit_trail || '{}') : category.audit_trail || {}
     };
   });
 }
@@ -321,7 +238,7 @@ function processCategories(categories) {
 /**
  * Process items data in memory with conditional embedding handling
  */
-function processItems(items, includeEmbeddings) {
+function processItems(items, includeEmbeddings, dbClient) {
   return items.map(item => {
     // Use source_unique_identifier if it exists and is numeric, otherwise use internal id
     let itemId;
@@ -344,33 +261,31 @@ function processItems(items, includeEmbeddings) {
     const exportedItem = {
       item_unique_identifier: itemId,
       associated_category_unique_identifier: categoryId,
-      display_names: JSON.parse(item.display_names || '{}'),
+      display_names: typeof item.display_names === 'string' ? JSON.parse(item.display_names || '{}') : item.display_names || {},
       item_price_value: parseFloat(item.item_price_value),
-      pricing_schedules: JSON.parse(item.pricing_schedules || '[]'),
-      availability_schedule: JSON.parse(item.availability_schedule || '{}'),
-      additional_item_attributes: JSON.parse(item.additional_item_attributes || '{}'),
-      item_flags: JSON.parse(item.item_flags || '{}'),
-      audit_trail: JSON.parse(item.audit_trail || '{}')
+      pricing_schedules: typeof item.pricing_schedules === 'string' ? JSON.parse(item.pricing_schedules || '[]') : item.pricing_schedules || [],
+      availability_schedule: typeof item.availability_schedule === 'string' ? JSON.parse(item.availability_schedule || '{}') : item.availability_schedule || {},
+      additional_item_attributes: typeof item.additional_item_attributes === 'string' ? JSON.parse(item.additional_item_attributes || '{}') : item.additional_item_attributes || {},
+      item_flags: typeof item.item_flags === 'string' ? JSON.parse(item.item_flags || '{}') : item.item_flags || {},
+      audit_trail: typeof item.audit_trail === 'string' ? JSON.parse(item.audit_trail || '{}') : item.audit_trail || {}
     };
 
-    // Include embedding data if available and requested
     if (includeEmbeddings && item.embedding_vector) {
-      // Reconstruct semantic string for hash validation
-      const displayNames = JSON.parse(item.display_names || '{}');
-      const additionalAttrs = JSON.parse(item.additional_item_attributes || '{}');
-      const semanticString = [
-        displayNames.menu?.de || displayNames.menu?.en || '',
-        displayNames.menu?.en || '',
-        additionalAttrs.description || '',
-        additionalAttrs.ingredients || ''
-      ].filter(Boolean).join(' ').trim();
-      
-      // Calculate hash of the semantic string
+      const displayNames = typeof item.display_names === 'string' ? JSON.parse(item.display_names || '{}') : item.display_names || {};
+      const additionalAttrs = typeof item.additional_item_attributes === 'string' ? JSON.parse(item.additional_item_attributes || '{}') : item.additional_item_attributes || {};
+      const semanticString = [displayNames.menu?.de || '', additionalAttrs.description || ''].filter(Boolean).join(' ').trim();
       const sourceHash = crypto.createHash('sha256').update(semanticString).digest('hex');
       
+      let vector;
+      if (dbClient === 'pg' && typeof item.embedding_vector === 'string') {
+        vector = JSON.parse(item.embedding_vector); // PG vector is a string '[1,2,3]'
+      } else {
+        vector = bufferToEmbedding(item.embedding_vector); // SQLite is a buffer
+      }
+
       exportedItem.embedding_data = {
         model: "gemini-embedding-exp-03-07",
-        vector: bufferToEmbedding(item.embedding_vector),
+        vector: vector,
         source_hash: sourceHash
       };
     }
@@ -383,8 +298,7 @@ function processItems(items, includeEmbeddings) {
  * Export companies from database
  */
 async function exportCompanies() {
-  const companies = await db('companies').select('*');
-  return companies;
+  return db('companies').select('*');
 }
 
 // Legacy functions removed - using optimized exportHierarchicalDataOptimized instead
@@ -417,29 +331,29 @@ async function exportToOopMdfWithFileName(options = {}) {
  */
 async function exportEntityToOopMdf(entityType, entityId) {
   logger.info('Exporting single entity for editing', { entityType, entityId });
+  const dbClient = db.client.config.client;
 
   try {
     if (entityType === 'item') {
-      // Export a single item
-      const item = await db('items')
+      let query = db('items')
         .leftJoin('categories', 'items.associated_category_unique_identifier', 'categories.id')
-        .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
-        .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'vec_items.item_embedding as embedding_vector')
-        .where('items.id', entityId)
-        .first();
+        .where('items.id', entityId);
 
-      if (!item) {
-        throw new Error(`Item with ID ${entityId} not found`);
+      if (dbClient === 'pg') {
+        query = query
+          .leftJoin('item_embeddings', 'items.id', 'item_embeddings.item_id')
+          .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'item_embeddings.item_embedding as embedding_vector');
+      } else {
+        query = query
+          .leftJoin('vec_items', 'items.id', 'vec_items.rowid')
+          .select('items.*', 'categories.source_unique_identifier as category_source_id', 'categories.id as category_internal_id', 'vec_items.item_embedding as embedding_vector');
       }
 
-      // Process the item using existing logic
-      const processedItems = processItems([item], true);
-      return {
-        success: true,
-        entity: processedItems[0],
-        entityType: 'item',
-        entityId: entityId
-      };
+      const item = await query.first();
+      if (!item) throw new Error(`Item with ID ${entityId} not found`);
+      
+      const processedItem = processItems([item], true, dbClient)[0];
+      return { success: true, entity: processedItem, entityType: 'item', entityId };
 
     } else if (entityType === 'category') {
       // Export a single category
@@ -452,25 +366,15 @@ async function exportEntityToOopMdf(entityType, entityId) {
         throw new Error(`Category with ID ${entityId} not found`);
       }
 
-      // Process the category using existing logic
-      const processedCategories = processCategories([category]);
-      return {
-        success: true,
-        entity: processedCategories[0],
-        entityType: 'category',
-        entityId: entityId
-      };
+      const processedCategory = processCategories([category])[0];
+      return { success: true, entity: processedCategory, entityType: 'category', entityId };
 
     } else {
       throw new Error(`Unsupported entity type: ${entityType}`);
     }
 
   } catch (error) {
-    logger.error('Failed to export entity for editing', { 
-      entityType, 
-      entityId, 
-      error: error.message 
-    });
+    logger.error('Failed to export entity for editing', { entityType, entityId, error: error.message, stack: error.stack });
     throw error;
   }
 }

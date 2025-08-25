@@ -185,7 +185,13 @@
       "Read(//tmp/**)",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT job_id, created_by, status FROM export_jobs WHERE job_id = ''70e95678-05df-4c76-8324-fee528830ded'';\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT job_id, created_by, status FROM export_jobs WHERE job_id = ''2f91a88e-86f3-4e27-8573-3f630403de28'';\")",
-      "Read(//root/.pm2/logs/**)"
+      "Read(//root/.pm2/logs/**)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\\d item_embeddings\")",
+      "Bash(NODE_ENV=development npx knex raw \"PRAGMA table_info(vec_items);\" --knexfile packages/core/db/knexfile.js)",
+      "Bash(NODE_ENV=development DB_CLIENT=sqlite npx knex raw \"PRAGMA table_info(vec_items);\" --knexfile packages/core/db/knexfile.js)",
+      "Bash(NODE_ENV=development DB_CLIENT=pg npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
+      "Bash(NODE_ENV=development DB_CLIENT=pg node -e \"\nconst db = require(''./packages/core/db/knex'');\n\nasync function createTable() {\n  try {\n    console.log(''Creating item_embeddings table...'');\n    await db.schema.createTable(''item_embeddings'', function (table) {\n      table.integer(''item_id'').primary().references(''id'').inTable(''items'').onDelete(''CASCADE'');\n      table.text(''item_embedding''); // Store as text for now\n      table.timestamps(true, true);\n    });\n    console.log(''✅ item_embeddings table created successfully'');\n  } catch (error) {\n    console.error(''Error:'', error.message);\n  } finally {\n    process.exit(0);\n  }\n}\n\ncreateTable();\n\")",
+      "Bash(NODE_ENV=development DB_CLIENT=pg npx knex seed:run --knexfile packages/core/db/knexfile.js)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
