@@ -1187,8 +1187,13 @@
       // Determine entity type
       const entityType = item.category_names ? 'category' : 'item';
       
+      // Debug logging
+      console.log('🔍 [handleAdvancedEdit] wsStore:', wsStore);
+      console.log('🔍 [handleAdvancedEdit] get(wsStore):', get(wsStore));
+      console.log('🔍 [handleAdvancedEdit] wsStore methods:', Object.keys(get(wsStore) || {}));
+      
       // Send getEntityJson command to load the entity data in the agent console
-      const response = await get(wsStore).send({
+      const response = await wsStore.send({
         command: 'getEntityJson',
         payload: {
           entityType: entityType,
@@ -1216,7 +1221,7 @@
       // // // // // // // // // // // // // addLog('INFO', `Saving product changes for ID: ${productId}`);
       
       // Send updateProduct command via WebSocket
-      const response = await get(wsStore).sendMessage({
+      const response = await wsStore.send({
         command: 'updateProduct',
         payload: {
           productId: productId,
@@ -1257,7 +1262,7 @@
     
     try {
       // Send updateCategory command via WebSocket
-      const response = await get(wsStore).sendMessage({
+      const response = await wsStore.send({
         command: 'updateCategory',
         payload: {
           categoryId: categoryId,
