@@ -289,7 +289,7 @@
         Edit
       </button>
       <button class="advanced-edit-button" on:click={() => handleAdvancedEdit()}>
-        Advanced Edit
+        View
       </button>
       <button class="close-button" on:click={() => dispatch('close')}>
         Close

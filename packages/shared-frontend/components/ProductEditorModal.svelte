@@ -330,13 +330,15 @@
   }
 
   .modal-content {
-    background-color: white;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid #333;
     border-radius: 12px;
     width: 90%;
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
   }
 
   .modal-header {
@@ -344,12 +346,12 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem 2rem 1rem 2rem;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid #333;
   }
 
   .modal-header h2 {
     margin: 0;
-    color: #2c3e50;
+    color: white;
     font-size: 1.5rem;
     font-weight: 600;
   }
@@ -358,7 +360,7 @@
     background: none;
     border: none;
     font-size: 2rem;
-    color: #6c757d;
+    color: #ccc;
     cursor: pointer;
     padding: 0;
     width: 32px;
@@ -371,8 +373,8 @@
   }
 
   .close-button:hover {
-    background-color: #f8f9fa;
-    color: #495057;
+    background-color: #333;
+    color: white;
   }
 
   .product-form {
@@ -387,7 +389,7 @@
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
-    color: #495057;
+    color: #ccc;
     font-size: 0.9rem;
   }
 
@@ -395,7 +397,9 @@
   .form-group textarea {
     width: 100%;
     padding: 0.75rem;
-    border: 2px solid #e9ecef;
+    background-color: #333;
+    color: white;
+    border: 1px solid #555;
     border-radius: 6px;
     font-size: 1rem;
     transition: border-color 0.2s ease;
@@ -405,8 +409,8 @@
   .form-group input:focus,
   .form-group textarea:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    border-color: #666;
+    box-shadow: 0 0 0 0.2rem rgba(102, 102, 102, 0.25);
   }
 
   .form-group input.error,
@@ -422,8 +426,9 @@
 
   .form-group input:disabled,
   .form-group textarea:disabled {
-    background-color: #f8f9fa;
+    background-color: #222;
     cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .form-group textarea {
@@ -444,7 +449,7 @@
     gap: 1rem;
     margin-top: 2rem;
     padding-top: 1.5rem;
-    border-top: 1px solid #e9ecef;
+    border-top: 1px solid #333;
   }
 
   .form-actions button {
@@ -459,26 +464,29 @@
   }
 
   .btn-cancel {
-    background-color: #6c757d;
+    background-color: #444;
     color: white;
+    border: 1px solid #555;
   }
 
   .btn-cancel:hover:not(:disabled) {
-    background-color: #5a6268;
+    background-color: #555;
   }
 
   .btn-save {
-    background-color: #007bff;
+    background-color: #666;
     color: white;
+    border: 1px solid #777;
   }
 
   .btn-save:hover:not(:disabled) {
-    background-color: #0056b3;
+    background-color: #777;
   }
 
   .btn-save:disabled {
-    background-color: #6c757d;
+    background-color: #333;
     cursor: not-allowed;
+    opacity: 0.5;
   }
 
   .form-actions button:disabled {

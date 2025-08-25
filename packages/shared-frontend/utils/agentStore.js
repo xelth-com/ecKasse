@@ -43,7 +43,7 @@ function createAgentStore() {
           messages: [...store.messages, {
             timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
             type: 'system',
-            message: `JSON for advanced editing of ${payload.entityType} ID ${payload.entityId}:\n\`\`\`json\n${formattedJson}\n\`\`\``
+            message: `JSON for viewing ${payload.entityType} ID ${payload.entityId}. For editing, use AI commands like 'update price to 29.99' or 'change name to Super Widget Pro':\n\`\`\`json\n${formattedJson}\n\`\`\``
           }]
         }));
       }
