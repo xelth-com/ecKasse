@@ -18,7 +18,7 @@
 
 const bcrypt = require('bcrypt');
 const db = require('../db/knex');
-const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
+const { generateEmbedding, embeddingToBuffer, embeddingToJson } = require('./embedding.service');
 const logger = require('../config/logger');
 const crypto = require('crypto');
 // FIX: Using the robust JSON parsing utility from db-helper
@@ -232,7 +232,7 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
         if (tableExists) {
           await trx('item_embeddings').insert({
             item_id: itemId,
-            item_embedding: embedding // pgvector handles array-to-vector conversion
+            item_embedding: embeddingToJson(embedding) // Store as JSON string
           }).onConflict('item_id').merge();
         } else {
           logger.warn('PostgreSQL table "item_embeddings" not found. Skipping embedding insertion.');
@@ -343,7 +343,7 @@ async function updateEntityFromOopMdf(entityType, entityId, jsonSnippet) {
               if (tableExists) {
                 await trx('item_embeddings').insert({
                   item_id: entityId,
-                  item_embedding: embedding
+                  item_embedding: embeddingToJson(embedding)
                 }).onConflict('item_id').merge();
               }
             } else {

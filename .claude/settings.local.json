@@ -191,7 +191,13 @@
       "Bash(NODE_ENV=development DB_CLIENT=sqlite npx knex raw \"PRAGMA table_info(vec_items);\" --knexfile packages/core/db/knexfile.js)",
       "Bash(NODE_ENV=development DB_CLIENT=pg npx knex migrate:latest --knexfile packages/core/db/knexfile.js)",
       "Bash(NODE_ENV=development DB_CLIENT=pg node -e \"\nconst db = require(''./packages/core/db/knex'');\n\nasync function createTable() {\n  try {\n    console.log(''Creating item_embeddings table...'');\n    await db.schema.createTable(''item_embeddings'', function (table) {\n      table.integer(''item_id'').primary().references(''id'').inTable(''items'').onDelete(''CASCADE'');\n      table.text(''item_embedding''); // Store as text for now\n      table.timestamps(true, true);\n    });\n    console.log(''✅ item_embeddings table created successfully'');\n  } catch (error) {\n    console.error(''Error:'', error.message);\n  } finally {\n    process.exit(0);\n  }\n}\n\ncreateTable();\n\")",
-      "Bash(NODE_ENV=development DB_CLIENT=pg npx knex seed:run --knexfile packages/core/db/knexfile.js)"
+      "Bash(NODE_ENV=development DB_CLIENT=pg npx knex seed:run --knexfile packages/core/db/knexfile.js)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, LEFT(embedding_vector::text, 50) as embedding_preview FROM items WHERE id = 24;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\\d item_embeddings\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT item_id, item_embedding FROM item_embeddings WHERE item_id = 24 LIMIT 1;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT pg_get_tabledef(''item_embeddings'');\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT column_name, data_type, character_maximum_length FROM information_schema.columns WHERE table_name = ''item_embeddings'';\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT item_id, LEFT(item_embedding, 100) as preview FROM item_embeddings LIMIT 3;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

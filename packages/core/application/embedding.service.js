@@ -177,12 +177,18 @@ function embeddingToJson(embedding) {
 }
 
 /**
- * Convert JSON string back to regular array (deprecated - for compatibility)
- * @param {string} jsonString - JSON string
+ * Convert string back to regular array - handles both JSON array and PostgreSQL array formats
+ * @param {string} stringData - JSON array string or PostgreSQL array string
  * @returns {number[]} - Array of float values
  */
-function jsonToEmbedding(jsonString) {
-  return JSON.parse(jsonString);
+function jsonToEmbedding(stringData) {
+  // Handle PostgreSQL array format like {"0.1","0.2","0.3"}
+  if (stringData.startsWith('{') && stringData.endsWith('}') && !stringData.startsWith('[')) {
+    const vectorStr = stringData.replace(/^\{|\}$/g, ''); // Remove curly braces
+    return vectorStr.split(',').map(v => parseFloat(v.replace(/"/g, ''))); // Split and parse floats
+  }
+  // Handle JSON array format like [0.1,0.2,0.3]
+  return JSON.parse(stringData);
 }
 
 module.exports = {

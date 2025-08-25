@@ -17,7 +17,7 @@
 const db = require('../db/knex');
 const logger = require('../config/logger');
 const crypto = require('crypto');
-const { bufferToEmbedding } = require('./embedding.service');
+const { bufferToEmbedding, jsonToEmbedding } = require('./embedding.service');
 
 /**
  * Export current database state to OOP-POS-MDF JSON format
@@ -277,10 +277,11 @@ function processItems(items, includeEmbeddings, dbClient) {
       const sourceHash = crypto.createHash('sha256').update(semanticString).digest('hex');
       
       let vector;
-      if (dbClient === 'pg' && typeof item.embedding_vector === 'string') {
-        vector = JSON.parse(item.embedding_vector); // PG vector is a string '[1,2,3]'
+      if (typeof item.embedding_vector === 'string') {
+        // Handle both JSON string format and PostgreSQL array format
+        vector = jsonToEmbedding(item.embedding_vector);
       } else {
-        vector = bufferToEmbedding(item.embedding_vector); // SQLite is a buffer
+        vector = bufferToEmbedding(item.embedding_vector); // SQLite buffer
       }
 
       exportedItem.embedding_data = {
