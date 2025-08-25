@@ -5,6 +5,7 @@ const {
   getJobStatus, 
   downloadExport 
 } = require('../controllers/export.controller');
+const { isAuthenticated } = require('../middleware/auth.middleware');
 const router = express.Router();
 
 // Legacy route for WebSocket compatibility
@@ -18,8 +19,8 @@ router.post('/dsfinvk', async (req, res, next) => {
 });
 
 // New HTTP API routes for async export functionality
-router.post('/dsfinvk/start', startExport);
-router.get('/dsfinvk/status/:jobId', getJobStatus);
-router.get('/dsfinvk/download/:token', downloadExport);
+router.post('/dsfinvk/start', isAuthenticated, startExport);
+router.get('/dsfinvk/status/:jobId', isAuthenticated, getJobStatus);
+router.get('/dsfinvk/download/:token', downloadExport); // Downloads can be accessed with tokens
 
 module.exports = router;

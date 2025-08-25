@@ -89,9 +89,12 @@ class DsfinvkService {
      * Generates export synchronously for development use
      */
     async generateSyncExport(options) {
-        const { startDate, endDate } = options;
+        const { startDate, endDate, userId } = options;
         const exportId = `dsfinvk-export-${Date.now()}`;
         const exportPath = path.join(__dirname, `../../../../tmp/${exportId}`);
+        
+        // Create user-friendly filename for ZIP
+        const userFriendlyName = `dsfinvk-export-${startDate}-to-${endDate}`;
         
         await fsp.mkdir(exportPath, { recursive: true });
 
@@ -104,7 +107,7 @@ class DsfinvkService {
             };
 
             await this.generateAllFiles(exportPath, context);
-            const zipPath = await this.createZipWithTar(exportPath, exportId);
+            const zipPath = await this.createZipWithTar(exportPath, exportId, userFriendlyName);
             
             logger.info({ exportId, zipPath }, 'DSFinV-K export package created successfully.');
             return { success: true, path: zipPath, exportId };
@@ -131,6 +134,9 @@ class DsfinvkService {
             const exportId = `dsfinvk-export-${Date.now()}`;
             const exportPath = path.join(__dirname, `../../../../tmp/${exportId}`);
             
+            // Create user-friendly filename for ZIP
+            const userFriendlyName = `dsfinvk-export-${startDate}-to-${endDate}`;
+            
             await fsp.mkdir(exportPath, { recursive: true });
 
             const context = {
@@ -141,7 +147,7 @@ class DsfinvkService {
             };
 
             await this.generateAllFiles(exportPath, context);
-            const zipPath = await this.createZipWithTar(exportPath, exportId);
+            const zipPath = await this.createZipWithTar(exportPath, exportId, userFriendlyName);
             
             // Update job as complete
             await db('export_jobs').where('job_id', jobId).update({
@@ -518,10 +524,14 @@ class DsfinvkService {
 
     /**
      * Creates a ZIP file containing a TAR archive (ZIP-in-TAR format)
+     * @param {string} sourceDir - Directory to archive
+     * @param {string} exportId - Technical export ID (timestamp-based)
+     * @param {string} userFriendlyName - User-friendly name for the ZIP file (optional)
      */
-    async createZipWithTar(sourceDir, exportId) {
+    async createZipWithTar(sourceDir, exportId, userFriendlyName = null) {
         const tarPath = path.join(__dirname, `../../../../tmp/${exportId}.tar`);
-        const zipPath = path.join(__dirname, `../../../../tmp/${exportId}.zip`);
+        const zipFilename = userFriendlyName ? `${userFriendlyName}.zip` : `${exportId}.zip`;
+        const zipPath = path.join(__dirname, `../../../../tmp/${zipFilename}`);
         
         // Use the original exportId as TAR filename (preserves technical naming)
         const tarNameInZip = `${exportId}.tar`;
@@ -530,7 +540,7 @@ class DsfinvkService {
             // First create TAR archive
             await this.createTarArchive(sourceDir, tarPath);
             
-            // Then embed TAR into ZIP with proper technical name
+            // Then embed TAR into ZIP with proper technical name for TAR, user-friendly name for ZIP
             await this.createZipArchive(tarPath, zipPath, tarNameInZip);
             
             // Cleanup intermediate TAR file
@@ -626,7 +636,7 @@ class DsfinvkService {
      */
     async getDownloadInfo(token) {
         const job = await db('export_jobs')
-            .select('file_path', 'expires_at')
+            .select('file_path', 'expires_at', 'parameters')
             .where('download_token', token)
             .where('status', 'COMPLETE')
             .first();

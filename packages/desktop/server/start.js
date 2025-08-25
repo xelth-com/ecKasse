@@ -192,7 +192,28 @@ async function startServer() {
   const httpServer = http.createServer(app);
   
   // Create WebSocket server
-  const wss = new WebSocket.Server({ server: httpServer });
+  const wss = new WebSocket.Server({ 
+    server: httpServer,
+    verifyClient: (info, callback) => {
+      // Parse session from HTTP request for WebSocket
+      const sessionParser = desktopServer.getSessionMiddleware();
+      const fakeRes = {
+        // Minimal response object for session middleware
+        getHeader: () => undefined,
+        setHeader: () => {},
+        clearCookie: () => {},
+        cookie: () => {}
+      };
+      
+      sessionParser(info.req, fakeRes, (err) => {
+        if (err) {
+          callback(false, 500, 'Session parse error');
+        } else {
+          callback(true);
+        }
+      });
+    }
+  });
   
   // Initialize WebSocket service for broadcasting (websocketService already required above)
   websocketService.init(wss);
@@ -200,6 +221,7 @@ async function startServer() {
   // WebSocket connection handler
   wss.on('connection', async (ws, req) => {
     ws.id = Date.now() + '_' + Math.random().toString(36).substring(2,7);
+    ws.request = req; // Associate request with WebSocket for session access
     logger.info({ msg: 'WebSocket client connected', clientId: ws.id, remoteAddress: req.socket.remoteAddress });
 
 

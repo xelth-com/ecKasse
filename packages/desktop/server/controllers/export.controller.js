@@ -12,7 +12,7 @@ async function handleGenerateExport(payload) {
     throw new Error('startDate and endDate are required for DSFinV-K export.');
   }
   
-  const result = await services.dsfinvk.generateExport({ startDate, endDate });
+  const result = await services.dsfinvk.generateExport({ startDate, endDate, userId: 3 });
   
   logger.info({ result }, 'DSFinV-K export generated.');
   return {
@@ -30,7 +30,8 @@ async function handleGenerateExport(payload) {
 async function startExport(req, res) {
   try {
     const { startDate, endDate } = req.body;
-    const userId = req.user?.id || req.session?.userId || 1; // Get user ID from session/auth
+    // Get user ID from session - user must be authenticated
+    const userId = req.session.user.id;
     
     if (!startDate || !endDate) {
       return res.status(400).json({
@@ -130,7 +131,7 @@ async function getJobStatus(req, res) {
     if (job.status === 'FAILED') {
       response.error = job.error_message;
     } else if (job.status === 'COMPLETE') {
-      response.downloadUrl = `/api/dsfinvk/download/${job.download_token}`;
+      response.downloadUrl = `/api/export/dsfinvk/download/${job.download_token}`;
       response.expiresAt = job.expires_at;
     }
 
@@ -169,7 +170,19 @@ async function downloadExport(req, res) {
       });
     }
 
-    const filename = `dsfinvk-export-${new Date().toISOString().split('T')[0]}.zip`;
+    // Get date range from job parameters for user-friendly filename
+    let filename = `dsfinvk-export-${new Date().toISOString().split('T')[0]}.zip`;
+    try {
+      // Handle both string and object parameters
+      const jobParams = typeof downloadInfo.parameters === 'string' 
+        ? JSON.parse(downloadInfo.parameters) 
+        : downloadInfo.parameters || {};
+      if (jobParams.startDate && jobParams.endDate) {
+        filename = `dsfinvk-export-${jobParams.startDate}-to-${jobParams.endDate}.zip`;
+      }
+    } catch (e) {
+      logger.warn('Failed to parse job parameters for filename, using default', e.message);
+    }
     
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/zip');

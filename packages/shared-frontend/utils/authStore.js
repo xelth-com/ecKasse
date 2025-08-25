@@ -95,6 +95,24 @@ function createAuthStore() {
         if (response.status === 'success' && response.payload.success) {
           const { user, session } = response.payload;
           
+          // Also establish HTTP session for API calls
+          try {
+            await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                username,
+                password: pin
+              })
+            });
+          } catch (error) {
+            addLog('WARN', `HTTP session establishment failed: ${error.message}`);
+            // Continue with WebSocket session even if HTTP session fails
+          }
+          
           // Add mock permissions to user for role-based permission system
           const userWithPermissions = {
             ...user,
@@ -156,6 +174,17 @@ function createAuthStore() {
           }
         }
 
+        // Also clear HTTP session
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+          });
+        } catch (error) {
+          addLog('WARN', `HTTP logout failed: ${error.message}`);
+          // Continue with local logout even if HTTP logout fails
+        }
+
         // Always reset to initial state locally
         set(currentState);
         return { success: true };
@@ -208,6 +237,52 @@ function createAuthStore() {
     // Reset to initial state
     reset() {
       set(initialState);
+    },
+
+    // Check for existing session on app load
+    async checkSession() {
+      try {
+        update(state => ({ ...state, isLoading: true }));
+        
+        const response = await fetch('/api/session/status', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.authenticated && data.user) {
+            // Add mock permissions to user for role-based permission system
+            const userWithPermissions = {
+              ...data.user,
+              permissions: ['all', 'order.change_price', 'order.reduce_quantity']
+            };
+            
+            update(state => ({
+              ...state,
+              isAuthenticated: true,
+              currentUser: userWithPermissions,
+              sessionId: null, // HTTP sessions don't use sessionId
+              loginState: 'authenticated',
+              isLoading: false,
+              error: null,
+              selectedUser: null
+            }));
+
+            addLog('SUCCESS', `Session restored for user: ${data.user.username}`);
+            return { success: true, user: data.user };
+          }
+        }
+        
+        // No valid session found
+        update(state => ({ ...state, isLoading: false }));
+        return { success: false, error: 'No valid session' };
+        
+      } catch (error) {
+        addLog('ERROR', `Failed to check session: ${error.message}`);
+        update(state => ({ ...state, isLoading: false, error: error.message }));
+        return { success: false, error: error.message };
+      }
     },
 
     // Establish session from server auto-login (demo mode)

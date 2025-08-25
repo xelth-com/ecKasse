@@ -177,7 +177,15 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT current_database(), current_user;\")",
       "Bash(NODE_ENV=development DB_CLIENT=pg npx knex migrate:status --knexfile packages/core/db/knexfile.js)",
       "Bash(NODE_ENV=development npx knex seed:run --specific=03_dsfinvk_vat_mapping.js --knexfile packages/core/db/knexfile.js)",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\\d export_jobs\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"\\d export_jobs\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM active_transactions WHERE status = ''finished'' AND created_at >= ''2025-08-24'';\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT job_id, parameters, status FROM export_jobs WHERE job_id = ''70e95678-05df-4c76-8324-fee528830ded'';\")",
+      "Read(//tmp/**)",
+      "Read(//tmp/**)",
+      "Read(//tmp/**)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT job_id, created_by, status FROM export_jobs WHERE job_id = ''70e95678-05df-4c76-8324-fee528830ded'';\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT job_id, created_by, status FROM export_jobs WHERE job_id = ''2f91a88e-86f3-4e27-8573-3f630403de28'';\")",
+      "Read(//root/.pm2/logs/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -60,6 +60,7 @@
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ startDate, endDate })
       });
 
@@ -119,6 +120,7 @@
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ startDate, endDate })
     });
 
@@ -149,7 +151,9 @@
 
     pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/export/dsfinvk/status/${currentJobId}`);
+        const response = await fetch(`/api/export/dsfinvk/status/${currentJobId}`, {
+          credentials: 'include'
+        });
         const status = await response.json();
 
         if (!status.success) {

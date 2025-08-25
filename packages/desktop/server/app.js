@@ -6,6 +6,8 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const crypto = require('crypto');
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 
 const logger = require('../../core/config/logger');
 
@@ -13,6 +15,7 @@ const logger = require('../../core/config/logger');
 const llmRoutes = require('./routes/llm.routes');
 const menuRoutes = require('./routes/menu.routes');
 const exportRoutes = require('./routes/export.routes');
+const sessionController = require('./controllers/session.controller');
 
 class DesktopServer {
   constructor(services, authService, reportingService) {
@@ -24,6 +27,20 @@ class DesktopServer {
     this.HTTP_OPERATION_ID_TTL = 60000;
     this.processedOperationIds = new Set();
     this.OPERATION_ID_TTL = 60000;
+    
+    // Configure session middleware
+    this.sessionMiddleware = session({
+      store: new SQLiteStore({ db: 'sessions.db' }),
+      secret: process.env.SESSION_SECRET || 'your-secure-secret-key-change-in-production',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.HTTPS === 'true', // Only secure if explicitly using HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'
+      }
+    });
   }
 
   async initialize() {
@@ -32,15 +49,25 @@ class DesktopServer {
     return this.app;
   }
 
+  getSessionMiddleware() {
+    return this.sessionMiddleware;
+  }
+
   setupMiddleware() {
     this.app.use((req, res, next) => {
       req.correlationId = req.headers['x-correlation-id'] || crypto.randomUUID();
       res.setHeader('X-Correlation-ID', req.correlationId);
       next();
     });
-    this.app.use(cors());
+    this.app.use(cors({
+      credentials: true,
+      origin: true
+    }));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+    
+    // Apply session middleware
+    this.app.use(this.sessionMiddleware);
 
     // Request logging
     this.app.use((req, res, next) => {
@@ -75,6 +102,50 @@ class DesktopServer {
     
     // Mount export routes
     this.app.use('/api/export', exportRoutes);
+
+    // Session status endpoint
+    this.app.get('/api/session/status', sessionController.getSessionStatus);
+
+    // HTTP Login endpoint
+    this.app.post('/api/auth/login', async (req, res) => {
+      try {
+        const { username, password } = req.body;
+        if (!password) {
+          return res.status(400).json({ success: false, error: 'Password is required' });
+        }
+        
+        const result = await this.authService.authenticateUser(
+          username,
+          password,
+          req.ip || 'unknown',
+          req.get('User-Agent') || 'unknown'
+        );
+        
+        if (result.success && result.user) {
+          // Store user in session
+          req.session.user = {
+            id: result.user.id,
+            username: result.user.username,
+            role: result.user.role
+          };
+        }
+        
+        res.json(result);
+      } catch (error) {
+        logger.error({ msg: 'HTTP login error', err: error });
+        res.status(500).json({ success: false, error: 'Login failed' });
+      }
+    });
+
+    // HTTP Logout endpoint
+    this.app.post('/api/auth/logout', (req, res) => {
+      if (req.session.user) {
+        req.session.user = null;
+        res.json({ success: true, message: 'Logged out successfully' });
+      } else {
+        res.json({ success: false, message: 'No active session' });
+      }
+    });
 
     // Simple users API endpoint for login screen
     this.app.get('/api/users', async (req, res) => {
@@ -430,6 +501,15 @@ class DesktopServer {
             ipAddress || 'unknown', 
             userAgent || 'unknown'
           );
+          
+          // Store user in HTTP session if authentication successful
+          if (responsePayload.success && responsePayload.user && ws.request && ws.request.session) {
+            ws.request.session.user = {
+              id: responsePayload.user.id,
+              username: responsePayload.user.username,
+              role: responsePayload.user.role
+            };
+          }
         } else if (command === 'logout') {
           const { sessionId } = payload;
           if (!sessionId) {
@@ -437,6 +517,11 @@ class DesktopServer {
           }
           const result = await this.authService.logout(sessionId);
           responsePayload = { success: result, message: result ? 'Logged out successfully' : 'Logout failed' };
+          
+          // Clear HTTP session if logout successful
+          if (result && ws.request && ws.request.session) {
+            ws.request.session.user = null;
+          }
         } else if (command === 'getCurrentUser') {
           const { sessionId } = payload;
           if (!sessionId) {

@@ -11,8 +11,11 @@
   let consoleViewComponent;
   let isAtBottom = false;
   
-  // Handle demo mode auto-login
-  onMount(() => {
+  // Handle demo mode auto-login and session restoration
+  onMount(async () => {
+    // Check for existing session first
+    await authStore.checkSession();
+    
     const unsubscribe = wsStore.subscribe(wsState => {
       if (wsState.lastMessage?.command === 'sessionEstablished') {
         console.log('Demo mode: Received session established message');
