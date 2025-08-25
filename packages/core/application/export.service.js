@@ -285,8 +285,9 @@ function processItems(items, includeEmbeddings, dbClient) {
       }
 
       exportedItem.embedding_data = {
-        model: "gemini-embedding-exp-03-07",
-        vector: vector,
+        model: "gemini-embedding-001",
+        vector: `[${vector.length} dimensions: ${vector.slice(0,3).join(', ')}...]`,
+        vector_length: vector.length,
         source_hash: sourceHash
       };
     }
