@@ -1205,13 +1205,13 @@
         console.log('Entity data loaded for advanced editing:', response);
         
         // Format the JSON data for display
-        const formattedJson = JSON.stringify(response.data, null, 2);
+        const formattedJson = JSON.stringify(response.payload.entity, null, 2);
         
         // Add message to agent console showing the fetched entity data
         agentStore.addMessage({
-          type: 'system',
-          content: `Advanced Edit - ${entityType === 'category' ? 'Category' : 'Item'} Data:\n\n${formattedJson}`,
-          timestamp: new Date().toISOString()
+          type: 'agent',
+          message: `Advanced Edit - ${entityType === 'category' ? 'Category' : 'Item'} Data:\n\n${formattedJson}`,
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
         });
         
         // Start a new draft message and pre-fill it with the JSON data
@@ -1241,9 +1241,10 @@
       
       // Add error message to agent console
       agentStore.addMessage({
-        type: 'error',
-        content: `Failed to load ${item.category_names ? 'category' : 'item'} data for advanced editing: ${error.message}`,
-        timestamp: new Date().toISOString()
+        type: 'agent',
+        message: `Failed to load ${item.category_names ? 'category' : 'item'} data for advanced editing: ${error.message}`,
+        style: 'error',
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
       });
     }
     
