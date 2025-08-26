@@ -210,7 +210,7 @@ class TransactionManagementService {
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
           message: `Beleg №${transaction.id} erfolgreich gedruckt`,
-          style: 'print-success'
+          style: 'print'
         });
       } else {
         throw new Error(printResult.message || 'Unknown printer error');
@@ -237,7 +237,7 @@ class TransactionManagementService {
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
         message: `Druckfehler: ${error.message}`,
-        style: 'print-error'
+        style: 'error'
       });
     }
   }

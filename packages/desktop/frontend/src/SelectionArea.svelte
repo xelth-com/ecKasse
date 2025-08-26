@@ -55,6 +55,11 @@
   // Notification style for smart navigation button
   let notificationStyle = null;
   notificationStore.subscribe(value => {
+    console.log('🎨 [SelectionArea] NotificationStore changed:', {
+      hasNotification: value.hasNotification,
+      style: value.style,
+      previousStyle: notificationStyle
+    });
     notificationStyle = value.style;
   });
 
@@ -1412,17 +1417,21 @@
       if (notificationStyle) {
         switch(notificationStyle) {
           case 'error':
-            smartNavButtonColor = '#d32f2f';
+            smartNavButtonColor = '#d32f2f'; // Red for errors
             break;
           case 'warning':
-            smartNavButtonColor = '#ffc107';
+            smartNavButtonColor = '#ffc107'; // Yellow for warnings
             break;
           case 'success':
-            smartNavButtonColor = '#28a745';
+            smartNavButtonColor = '#28a745'; // Green for success
+            break;
+          case 'print':
+            smartNavButtonColor = '#2196F3'; // Blue for successful print
             break;
           default:
+            // Handle legacy print styles if any still exist
             if (notificationStyle?.startsWith('print')) {
-              smartNavButtonColor = '#6366f1';
+              smartNavButtonColor = '#2196F3'; // Blue for any print notifications
             }
             break;
         }

@@ -10,11 +10,23 @@ function createNotificationStore() {
 
     return {
         subscribe,
-        setNotification: (style) => update(state => ({
-            hasNotification: true,
-            style: style
-        })),
-        clearNotification: () => set(initialState)
+        setNotification: (style) => {
+            console.log('🟡 [NotificationStore] setNotification called with style:', style);
+            update(state => {
+                console.log('🟡 [NotificationStore] Previous state:', state);
+                const newState = {
+                    hasNotification: true,
+                    style: style
+                };
+                console.log('🟡 [NotificationStore] New state:', newState);
+                return newState;
+            });
+        },
+        clearNotification: () => {
+            console.log('🟠 [NotificationStore] clearNotification called');
+            console.log('🟠 [NotificationStore] Clearing notification, setting to initial state:', initialState);
+            set(initialState);
+        }
     };
 }
 

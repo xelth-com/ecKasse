@@ -53,18 +53,25 @@ function createAgentStore() {
   return {
     subscribe,
     addMessage: (messageObject) => {
+      console.log('🔔 [AgentStore] addMessage called:', {
+        timestamp: messageObject.timestamp,
+        type: messageObject.type,
+        message: messageObject.message?.substring(0, 100) + (messageObject.message?.length > 100 ? '...' : ''),
+        style: messageObject.style,
+        hasStyle: !!messageObject.style
+      });
+      
       update(store => ({
         ...store,
         messages: [...store.messages, messageObject]
       }));
       
       // Trigger notification if message has a style
-      // Print-related notifications should always trigger, regardless of current view
       if (messageObject.style) {
-        const isPrintNotification = messageObject.style.startsWith('print');
-        if (isPrintNotification || get(currentView) !== 'agent') {
-          notificationStore.setNotification(messageObject.style);
-        }
+        console.log('🟢 [AgentStore] Message has style, triggering notification:', messageObject.style);
+        notificationStore.setNotification(messageObject.style);
+      } else {
+        console.log('🔴 [AgentStore] Message has NO style, no notification triggered');
       }
     },
     setHistory: (history) => {

@@ -40,12 +40,25 @@
   let previousTransactionId = $orderStore.transactionId;
   let previousTable = $orderStore.metadata?.table;
   
-  // Clear notification when agent view is active - but with delay to allow UI update
-  $: if ($currentView === 'agent') {
-    // Small delay to allow the UI to update with the notification style first
-    setTimeout(() => {
-      notificationStore.clearNotification();
-    }, 100);
+  // Track previous view to detect when user switches TO agent view
+  let previousView = $currentView;
+  
+  // Clear notification only when user actively switches TO agent view
+  $: {
+    if ($currentView === 'agent' && previousView !== 'agent') {
+      console.log('🔵 [ConsoleView] User switched TO agent view, will clear notification in 100ms');
+      console.log('🔵 [ConsoleView] Previous view:', previousView, 'Current view:', $currentView);
+      // Small delay to allow the UI to update with the notification style first
+      setTimeout(() => {
+        console.log('🔵 [ConsoleView] Clearing notification now');
+        notificationStore.clearNotification();
+      }, 100);
+    } else if ($currentView === 'agent' && previousView === 'agent') {
+      console.log('🔵 [ConsoleView] Already in agent view, NOT clearing notification');
+    } else if ($currentView !== 'agent') {
+      console.log('🔵 [ConsoleView] Not in agent view, NOT clearing notification. Current view:', $currentView);
+    }
+    previousView = $currentView;
   }
   
   // Auto-switch to receipts after transaction is finished and then reset

@@ -227,8 +227,17 @@ function createWebSocketStore() {
           
           // Handle agent message display requests
           if (message.command === 'displayAgentMessage') {
+            console.log('🌐 [WebSocket] Received displayAgentMessage:', {
+              timestamp: message.payload?.timestamp,
+              type: message.payload?.type,
+              message: message.payload?.message?.substring(0, 100) + (message.payload?.message?.length > 100 ? '...' : ''),
+              style: message.payload?.style,
+              hasStyle: !!message.payload?.style,
+              fullPayload: message.payload
+            });
             // Dynamically import agentStore to avoid circular dependencies
             import('@eckasse/shared-frontend/utils/agentStore.js').then(({ agentStore }) => {
+              console.log('🌐 [WebSocket] Calling agentStore.addMessage with payload');
               agentStore.addMessage(message.payload);
             });
             return;
