@@ -147,6 +147,12 @@ async function cleanDatabase() {
   try {
     await db.transaction(async (trx) => {
       // Delete in correct order to avoid foreign key constraints
+      // First delete active transaction items that reference items
+      await trx('active_transaction_items').del();
+      // Then delete the active transactions themselves  
+      await trx('active_transactions').del();
+      
+      // Then delete item embeddings and items
       await trx('item_embeddings').del();
       await trx('items').del();
       await trx('categories').del();

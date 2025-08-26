@@ -197,7 +197,11 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT item_id, item_embedding FROM item_embeddings WHERE item_id = 24 LIMIT 1;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT pg_get_tabledef(''item_embeddings'');\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT column_name, data_type, character_maximum_length FROM information_schema.columns WHERE table_name = ''item_embeddings'';\")",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT item_id, LEFT(item_embedding, 100) as preview FROM item_embeddings LIMIT 3;\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT item_id, LEFT(item_embedding, 100) as preview FROM item_embeddings LIMIT 3;\")",
+      "Read(//root/.pm2/logs/**)",
+      "Read(//root/.pm2/logs/**)",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM active_transaction_items;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT DISTINCT item_id FROM active_transaction_items LIMIT 10;\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
