@@ -1,5 +1,5 @@
 <script>
-  import { onMount, afterUpdate } from 'svelte';
+  import { onMount, afterUpdate, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { addLog } from '@eckasse/shared-frontend/utils/logStore.js';
@@ -54,13 +54,28 @@
   
   // Notification style for smart navigation button
   let notificationStyle = null;
-  notificationStore.subscribe(value => {
+  
+  notificationStore.subscribe(async (value) => {
     console.log('🎨 [SelectionArea] NotificationStore changed:', {
       hasNotification: value.hasNotification,
       style: value.style,
       previousStyle: notificationStyle
     });
     notificationStyle = value.style;
+    
+    // Direct DOM manipulation for Smart Navigation button color
+    updateSmartNavigationButtonColor(value.style);
+  });
+
+  // Also track auth changes for immediate updates
+  authStore.subscribe(async (value) => {
+    console.log('👤 [SelectionArea] AuthStore changed:', {
+      isAuthenticated: value.isAuthenticated,
+      currentUser: value.currentUser?.full_name || 'none'
+    });
+    
+    // Direct DOM manipulation for User button text
+    updateUserButtonText(value);
   });
 
   // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
@@ -411,7 +426,7 @@
   // Update grid content when order state changes (to activate/deactivate payment buttons)
   $: {
     if (gridCells.length > 0 && $orderStore) {
-      gridCells = [...gridCells]; // Force reactivity update
+      gridCells = [...gridCells]; // Force reactivity update for order changes only
     }
   }
   
@@ -1557,6 +1572,81 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
     }
     
     return buttonProps;
+  }
+
+  // Direct DOM manipulation functions for immediate UI updates
+  function updateSmartNavigationButtonColor(style) {
+    console.log('🎨 [SelectionArea] updateSmartNavigationButtonColor called with:', style);
+    
+    // Find Smart Navigation button by its unique characteristics
+    const buttons = document.querySelectorAll('button');
+    for (const button of buttons) {
+      // Look for the Smart Navigation button - it has specific SVG or arrow content
+      const hasOverlappingWindows = button.innerHTML.includes('overlapping windows') || 
+                                   button.innerHTML.includes('rect x="3" y="3"') ||
+                                   button.innerHTML.includes('double-arrow-down');
+      
+      if (hasOverlappingWindows) {
+        console.log('🎨 Found Smart Navigation button, updating color');
+        
+        // Determine color based on notification style
+        let color = '#2c2c2e'; // Default dark gray
+        if (style) {
+          switch(style) {
+            case 'error':
+              color = '#d32f2f'; // Red for errors
+              break;
+            case 'warning':
+              color = '#ffc107'; // Yellow for warnings
+              break;
+            case 'success':
+              color = '#28a745'; // Green for success
+              break;
+            case 'print':
+              color = '#2196F3'; // Blue for successful print
+              break;
+            default:
+              if (style?.startsWith('print')) {
+                color = '#2196F3'; // Blue for any print notifications
+              }
+              break;
+          }
+        }
+        
+        // Apply the color directly to the button
+        button.style.backgroundColor = color;
+        console.log('🎨 Smart Navigation button color updated to:', color);
+        break;
+      }
+    }
+  }
+
+  function updateUserButtonText(authState) {
+    console.log('👤 [SelectionArea] updateUserButtonText called with:', authState);
+    
+    // Find User button by looking for login text or user name
+    const buttons = document.querySelectorAll('button');
+    for (const button of buttons) {
+      const buttonText = button.textContent || '';
+      
+      // Look for Login button or user name
+      if (buttonText.includes('Login') || (authState.currentUser && buttonText.includes(authState.currentUser.full_name))) {
+        console.log('👤 Found User button, updating text');
+        
+        if (authState.isAuthenticated && authState.currentUser) {
+          // Update to show user name (shortened)
+          const userName = authState.currentUser.full_name;
+          const shortName = userName.split(' ').map(name => name.substring(0, 6)).join(' ');
+          button.textContent = shortName;
+          console.log('👤 User button updated to show:', shortName);
+        } else {
+          // Update to show Login
+          button.textContent = 'Login';
+          console.log('👤 User button updated to show: Login');
+        }
+        break;
+      }
+    }
   }
 </script>
 
