@@ -58,9 +58,13 @@ function createAgentStore() {
         messages: [...store.messages, messageObject]
       }));
       
-      // Trigger notification if message has a style and we're not on agent view
-      if (messageObject.style && get(currentView) !== 'agent') {
-        notificationStore.setNotification(messageObject.style);
+      // Trigger notification if message has a style
+      // Print-related notifications should always trigger, regardless of current view
+      if (messageObject.style) {
+        const isPrintNotification = messageObject.style.startsWith('print');
+        if (isPrintNotification || get(currentView) !== 'agent') {
+          notificationStore.setNotification(messageObject.style);
+        }
       }
     },
     setHistory: (history) => {
