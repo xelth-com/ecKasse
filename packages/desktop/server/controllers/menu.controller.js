@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const MenuParserLLM = require('../../../core/lib/menu_parser_llm.js');
 const { importFromOopMdf } = require('../../../core/application/import.service.js');
+const { enrichMdfData } = require('../../../core/application/enrichment.service.js');
 const { services, db } = require('../../../core');
 const logger = require('../../../core/config/logger');
 
@@ -244,17 +245,27 @@ async function uploadAndImportMenu(req, res) {
     sendProgress(`Combined data: ${totalCategories} categories, ${totalItems} items`);
     logger.info('Configuration merge completed', { totalCategories, totalItems });
 
-    // Step 3: Clean database before import
+    // Step 3: Enrich Data for "Smart" Layout
+    sendProgress('Enriching data for AI optimization...');
+    logger.info('Starting data enrichment');
+    const enrichedData = await enrichMdfData(combinedConfiguration, (current, total, message) => {
+      // This is the progress callback that will now receive messages from the enrichment service
+      sendProgress(`Enriching ${current}/${total}: ${message}`);
+    });
+    sendProgress('Data enrichment completed successfully');
+    logger.info('Data enrichment completed');
+
+    // Step 4: Clean database before import
     sendProgress('Cleaning database before import...');
     logger.info('Cleaning database before import');
     await cleanDatabase();
     sendProgress('Database cleaned successfully');
 
-    // Step 4: Perform single database import
-    sendProgress('Importing combined configuration to database...');
-    logger.info('Starting database import of combined configuration');
+    // Step 5: Perform single database import
+    sendProgress('Importing enriched configuration to database...');
+    logger.info('Starting database import of enriched configuration');
     
-    const importResult = await importFromOopMdf(combinedConfiguration, (current, total, itemName) => {
+    const importResult = await importFromOopMdf(enrichedData, (current, total, itemName) => {
       if (current % 10 === 0 || current === total) { // Report every 10th item and the last one
         sendProgress(`Importing items: ${current}/${total} (${itemName})`);
       }

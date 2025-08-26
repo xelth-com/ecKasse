@@ -229,13 +229,17 @@ async function validateAndPrepareData(enrichedData) {
 }
 
 /**
- * Pass 2: Enrich items with web data and generate abbreviations
+ * Pass 2: Enrich items with web data and generate abbreviations in parallel batches
  * @param {Object} enrichedData - The MDF data to enrich
+ * @param {Function} progressCallback - Callback for progress reporting
  */
 async function enrichItemsWithWebData(enrichedData, progressCallback = null) {
+    const BATCH_SIZE = 10; // Number of items to process in parallel
+    const BATCH_DELAY = 1100; // Delay in ms between batches (to stay under 60 RPM)
+
     let processedItems = 0;
     let totalItems = 0;
-    
+
     // Count total items first
     for (const branch of enrichedData.company_details.branches) {
         if (branch.point_of_sale_devices) {
@@ -246,51 +250,78 @@ async function enrichItemsWithWebData(enrichedData, progressCallback = null) {
             }
         }
     }
-    
-    console.log(chalk.cyan(`   Processing ${totalItems} items...`));
-    
-    // Process each item
-    for (const branch of enrichedData.company_details.branches) {
-        if (branch.point_of_sale_devices) {
-            for (const pos of branch.point_of_sale_devices) {
-                if (pos.items_for_this_pos) {
-                    for (const item of pos.items_for_this_pos) {
-                        processedItems++;
-                        
-                        try {
-                            const itemName = item.display_names?.menu?.de || item.display_names?.menu?.en || 'Unknown';
-                            
-                            // Report progress if callback provided
-                            if (progressCallback) {
-                                progressCallback(processedItems, totalItems, `Enriching ${itemName}`);
-                            } else {
-                                console.log(chalk.gray(`   Processing item ${processedItems}/${totalItems}: ${itemName}`));
-                            }
-                            
-                            // Enrich with web data
-                            await enrichItemWithWebData(item);
-                            
-                            // Generate receipt abbreviation
-                            await generateReceiptAbbreviation(item);
-                            
-                            // Generate button abbreviation
-                            await generateButtonAbbreviation(item);
-                            
-                            // Generate UI color suggestion
-                            await generateUIColorSuggestion(item);
-                            
-                            // Small delay to avoid rate limiting
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                            
-                        } catch (error) {
-                            console.log(chalk.yellow(`   ⚠️  Warning: Failed to enrich item ${item.display_names?.menu?.de || 'Unknown'}: ${error.message}`));
-                        }
+
+    if (totalItems === 0) {
+        console.log(chalk.green('   ✅ No items to enrich.'));
+        return;
+    }
+
+    console.log(chalk.cyan(`   Processing ${totalItems} items in batches of ${BATCH_SIZE}...`));
+
+    // Collect all items into a flat array
+    const allItems = [];
+    enrichedData.company_details.branches.forEach(branch => 
+        branch.point_of_sale_devices?.forEach(pos => 
+            pos.items_for_this_pos?.forEach(item => allItems.push(item))
+        )
+    );
+
+    // Process items in batches
+    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
+        const batch = allItems.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(allItems.length / BATCH_SIZE);
+        
+        if (progressCallback) {
+            progressCallback(processedItems, totalItems, `Starting enrichment batch ${batchNumber}/${totalBatches}`);
+        }
+
+        // Process batch items in parallel
+        const promises = batch.map(item => {
+            return (async () => {
+                try {
+                    const itemName = item.display_names?.menu?.de || item.display_names?.menu?.en || 'Unknown';
+                    
+                    // Enrich with web data
+                    await enrichItemWithWebData(item);
+                    
+                    // Generate receipt abbreviation
+                    await generateReceiptAbbreviation(item);
+                    
+                    // Generate button abbreviation
+                    await generateButtonAbbreviation(item);
+                    
+                    // Generate UI color suggestion
+                    await generateUIColorSuggestion(item);
+
+                    processedItems++;
+                    if (progressCallback) {
+                        progressCallback(processedItems, totalItems, `Enriched: ${itemName}`);
+                    }
+                    
+                } catch (error) {
+                    const itemName = item.display_names?.menu?.de || item.display_names?.menu?.en || 'Unknown';
+                    console.log(chalk.yellow(`   ⚠️ Warning: Failed to enrich item ${itemName}: ${error.message}`));
+                    processedItems++;
+                    if (progressCallback) {
+                        progressCallback(processedItems, totalItems, `Error enriching ${itemName}`);
                     }
                 }
+            })();
+        });
+
+        // Wait for all items in the batch to complete
+        await Promise.all(promises);
+
+        // Add delay between batches (except for the last batch)
+        if (i + BATCH_SIZE < allItems.length) {
+            if (progressCallback) {
+                progressCallback(processedItems, totalItems, `Waiting ${BATCH_DELAY}ms before next batch...`);
             }
+            await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
         }
     }
-    
+
     console.log(chalk.green(`   ✅ Processed ${processedItems} items`));
 }
 
@@ -455,16 +486,18 @@ async function generateButtonAbbreviation(item) {
             throw new Error('Invalid or missing lines in response');
         }
         
-        // Create the final button text by joining lines with newlines
-        const finalButtonText = buttonData.lines.join('\n');
+        // Instead of using \n, we'll store lines as an array for HTML rendering
+        // The frontend can use the lines array and hyphenation suggestions for proper display
         
         // Ensure we have display_names structure
         if (!item.display_names) {
             item.display_names = {};
         }
         
-        // Update button name
-        item.display_names.button = { de: finalButtonText };
+        // For backward compatibility, store as simple text for button display
+        // Frontend currently expects a simple string
+        const buttonText = buttonData.lines.join(' '); // Join with spaces instead of newlines for now
+        item.display_names.button = { de: buttonText };
         
         // Store hyphenation data in additional_item_attributes
         if (!item.additional_item_attributes) {
@@ -480,7 +513,14 @@ async function generateButtonAbbreviation(item) {
             item.additional_item_attributes.ui_suggestions.hyphenation_suggestions = buttonData.hyphenation;
         }
         
-        console.log(chalk.gray(`     Generated button text: "${finalButtonText}" with ${buttonData.hyphenation?.length || 0} hyphenation suggestions`));
+        // Store the button text configuration for HTML frontend
+        item.additional_item_attributes.ui_suggestions.button_text_config = {
+            lines: buttonData.lines,
+            hyphenation: buttonData.hyphenation || [],
+            layout_type: buttonData.lines.length <= 3 ? "3x13" : "4-line"
+        };
+        
+        console.log(chalk.gray(`     Generated button text lines: [${buttonData.lines.join(', ')}] with ${buttonData.hyphenation?.length || 0} hyphenation suggestions`));
         
     } catch (error) {
         console.log(chalk.yellow(`     Warning: Button abbreviation failed for ${itemName}: ${error.message}`));
@@ -492,6 +532,22 @@ async function generateButtonAbbreviation(item) {
             item.display_names = {};
         }
         item.display_names.button = { de: fallbackButton };
+        
+        // Initialize additional_item_attributes for consistency
+        if (!item.additional_item_attributes) {
+            item.additional_item_attributes = {};
+        }
+        
+        if (!item.additional_item_attributes.ui_suggestions) {
+            item.additional_item_attributes.ui_suggestions = {};
+        }
+        
+        // Store fallback button text configuration
+        item.additional_item_attributes.ui_suggestions.button_text_config = {
+            lines: [fallbackButton],
+            hyphenation: [],
+            layout_type: "3x13"
+        };
     }
 }
 

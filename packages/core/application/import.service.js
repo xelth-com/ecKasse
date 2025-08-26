@@ -210,6 +210,7 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
         display_names: JSON.stringify(item.display_names || {}),
         item_price_value: item.item_price_value || 0,
         item_flags: JSON.stringify(item.item_flags || { is_sellable: true }),
+        additional_item_attributes: JSON.stringify(item.additional_item_attributes || {}),
         audit_trail: JSON.stringify(item.audit_trail || {})
       }).returning('id');
       const itemId = typeof itemResult === 'object' ? itemResult.id : itemResult;

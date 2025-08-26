@@ -201,7 +201,10 @@
       "Read(//root/.pm2/logs/**)",
       "Read(//root/.pm2/logs/**)",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT COUNT(*) FROM active_transaction_items;\")",
-      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT DISTINCT item_id FROM active_transaction_items LIMIT 10;\")"
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT DISTINCT item_id FROM active_transaction_items LIMIT 10;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names->>''button''->>''de'' as button_text, additional_item_attributes->''ui_suggestions''->>''background_color_hex'' as color FROM items WHERE additional_item_attributes->''ui_suggestions''->>''background_color_hex'' IS NOT NULL LIMIT 5;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names->''button''->>''de'' as button_text, additional_item_attributes->''ui_suggestions''->>''background_color_hex'' as color FROM items WHERE additional_item_attributes->''ui_suggestions''->>''background_color_hex'' IS NOT NULL LIMIT 5;\")",
+      "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
