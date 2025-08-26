@@ -184,35 +184,62 @@ class TransactionManagementService {
       return fiscalLog;
     });
 
-    // --- Step 2: Attempt to Print Receipt (Non-Blocking) ---
-    // This part runs outside the database transaction.
-    // A failure here will be logged but will NOT roll back the fiscal record.
-    try {
-      const receiptData = await this.printerService._prepareReceiptData(finishedTransaction, fiscalLogResult.log);
-      const printResult = await this.printerService.printReceipt(receiptData);
+    // --- Step 2: Schedule Asynchronous Receipt Printing ---
+    // Receipt printing is now handled asynchronously to avoid blocking the transaction completion
+    logger.info(`Receipt printing for transaction ${finishedTransaction.id} will be handled asynchronously.`);
+    this._prepareAndPrintReceiptAsync(finishedTransaction, fiscalLogResult.log, userId, correlationId);
 
+    return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction };
+  }
+
+  /**
+   * Asynchronously prepares and prints receipt data
+   * This method runs in the background without blocking transaction completion
+   */
+  async _prepareAndPrintReceiptAsync(transaction, fiscalLog, userId, correlationId) {
+    try {
+      logger.info(`Asynchronously preparing receipt data for transaction ID: ${transaction.id}`);
+      const receiptData = await this.printerService._prepareReceiptData(transaction, fiscalLog);
+      
+      logger.info(`Receipt data prepared. Sending to printer for transaction ID: ${transaction.id}`);
+      const printResult = await this.printerService.printReceipt(receiptData);
+      
       if (printResult.status === 'success') {
+        logger.info(`Asynchronous print job completed successfully for transaction ID: ${transaction.id}`);
         this.websocketService.broadcast('displayAgentMessage', {
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: `Beleg №${finishedTransaction.id} erfolgreich gedruckt`,
+          message: `Beleg №${transaction.id} erfolgreich gedruckt`,
           style: 'print-success'
         });
       } else {
         throw new Error(printResult.message || 'Unknown printer error');
       }
-    } catch (printError) {
-      logger.error({ msg: 'Receipt printing failed after fiscal commit', error: printError.message, transactionId });
-      await this.loggingService.logOperationalEvent('print_failed', userId, { transaction_uuid: transaction.uuid, print_error: printError.message });
+    } catch (error) {
+      logger.error(`An error occurred during the asynchronous printing process for transaction ID: ${transaction.id}`, {
+        message: error.message,
+        stack: error.stack,
+        correlationId,
+      });
+      
+      // Log operational event for failed printing
+      try {
+        await this.loggingService.logOperationalEvent('print_failed', userId, { 
+          transaction_uuid: transaction.uuid, 
+          print_error: error.message 
+        });
+      } catch (logError) {
+        logger.error('Failed to log print failure event', { error: logError.message });
+      }
+      
+      // Broadcast error message to frontend
       this.websocketService.broadcast('displayAgentMessage', {
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
-        message: `Druckfehler: ${printError.message}`,
+        message: `Druckfehler: ${error.message}`,
         style: 'print-error'
       });
     }
-
-    return { success: true, fiscal_log: fiscalLogResult.log, transaction: finishedTransaction };
   }
 
   async getPendingTransactions() {
