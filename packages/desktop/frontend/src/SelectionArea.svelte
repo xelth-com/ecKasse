@@ -52,31 +52,111 @@
   // Smart action prop from parent
   export let handleSmartAction = () => {};
   
-  // Notification style for smart navigation button
+  // System button state - derived from stores independently of grid updates
+  let userButtonContent = null;
+  let smartNavButtonContent = null;
   let notificationStyle = null;
   
-  notificationStore.subscribe(async (value) => {
+  // Reactive system button content that updates independently
+  $: userButtonContent = (() => {
+    const currentUser = $authStore.currentUser;
+    if (currentUser) {
+      // User is authenticated - show user info
+      return {
+        label: shortenUserName(currentUser.full_name),
+        data: { isUserButton: true, authenticated: true },
+        onClick: handleUserButtonClick,
+        active: true,
+        color: '#28a745',
+        textColor: 'white',
+        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
+      };
+    } else {
+      // User is not authenticated - show login button
+      return {
+        label: 'Login',
+        data: { isUserButton: true, authenticated: false },
+        onClick: () => pinpadStore.activate('agent', null, null, 'numeric'),
+        active: true,
+        color: '#6c757d',
+        textColor: '#666',
+        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
+      };
+    }
+  })();
+
+  $: smartNavButtonContent = (() => {
+    // Determine color based on notification style
+    let smartNavButtonColor = '#2c2c2e'; // Default dark gray
+    if ($notificationStore.style) {
+      switch($notificationStore.style) {
+        case 'error':
+          smartNavButtonColor = '#d32f2f'; // Red for errors
+          break;
+        case 'warning':
+          smartNavButtonColor = '#ffc107'; // Yellow for warnings
+          break;
+        case 'success':
+          smartNavButtonColor = '#28a745'; // Green for success
+          break;
+        case 'print':
+          smartNavButtonColor = '#2196F3'; // Blue for successful print
+          break;
+        default:
+          // Handle legacy print styles if any still exist
+          if ($notificationStore.style?.startsWith('print')) {
+            smartNavButtonColor = '#2196F3'; // Blue for any print notifications
+          }
+          break;
+      }
+    }
+    
+    if (isAtBottom) {
+      // Use overlapping windows icon when at bottom
+      const overlappingWindowsIcon = `<svg width="50" height="50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="3" width="12" height="10" rx="1" stroke="#404040" stroke-width="1.5" fill="none"/>
+        <rect x="9" y="11" width="12" height="10" rx="1" stroke="#404040" stroke-width="1.5" fill="none"/>
+        <line x1="3" y1="7" x2="15" y2="7" stroke="#404040" stroke-width="1.5"/>
+        <line x1="9" y1="15" x2="21" y2="15" stroke="#404040" stroke-width="1.5"/>
+      </svg>`;
+      return { 
+        icon: overlappingWindowsIcon, 
+        onClick: handleSmartAction, 
+        active: true, 
+        showShape: '',
+        color: smartNavButtonColor,
+        notificationStyle: $notificationStore.style
+      };
+    } else {
+      // Use double arrow down when not at bottom
+      return { 
+        icon: '', 
+        onClick: handleSmartAction, 
+        active: true, 
+        showShape: 'double-arrow-down',
+        color: smartNavButtonColor,
+        notificationStyle: $notificationStore.style
+      };
+    }
+  })();
+
+  // Debug logging for store changes
+  notificationStore.subscribe((value) => {
     console.log('🎨 [SelectionArea] NotificationStore changed:', {
       hasNotification: value.hasNotification,
       style: value.style,
       previousStyle: notificationStyle
     });
     notificationStyle = value.style;
-    
-    // Direct DOM manipulation for Smart Navigation button color
-    updateSmartNavigationButtonColor(value.style);
   });
 
-  // Also track auth changes for immediate updates
-  authStore.subscribe(async (value) => {
+  authStore.subscribe((value) => {
     console.log('👤 [SelectionArea] AuthStore changed:', {
       isAuthenticated: value.isAuthenticated,
       currentUser: value.currentUser?.full_name || 'none'
     });
-    
-    // Direct DOM manipulation for User button text
-    updateUserButtonText(value);
   });
+
 
   // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
   $: MIN_BUTTON_SIZE = $uiConstantsStore.MIN_BUTTON_WIDTH; // minimum button size for touch
@@ -427,6 +507,17 @@
   $: {
     if (gridCells.length > 0 && $orderStore) {
       gridCells = [...gridCells]; // Force reactivity update for order changes only
+    }
+  }
+
+  // Update grid when system button content changes (auth or notifications)
+  $: {
+    if (gridCells.length > 0 && (userButtonContent || smartNavButtonContent)) {
+      // Force re-render of grid cells to update system buttons
+      // Use setTimeout to avoid infinite loops
+      setTimeout(() => {
+        gridCells = [...gridCells];
+      }, 0);
     }
   }
   
@@ -1400,86 +1491,13 @@
       active: true, 
       showShape: cell.content.showShape 
     };
+    // System buttons - now updated directly from reactive variables
     if (cell.content.isUserButton) {
-      const currentUser = $authStore.currentUser;
-      if (currentUser) {
-        // User is authenticated - show user info
-        return {
-          label: shortenUserName(currentUser.full_name),
-          data: { isUserButton: true, authenticated: true },
-          onClick: handleUserButtonClick,
-          active: true,
-          color: '#28a745',
-          textColor: 'white',
-          customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
-        };
-      } else {
-        // User is not authenticated - show login button
-        return {
-          label: 'Login',
-          data: { isUserButton: true, authenticated: false },
-          onClick: () => pinpadStore.activate('agent', null, null, 'numeric'),
-          active: true,
-          color: '#6c757d',
-          textColor: '#666',
-          customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
-        };
-      }
+      return userButtonContent;
     }
     if (cell.content.isSmartNavigation) {
-      // Determine color based on notification style
-      let smartNavButtonColor = '#2c2c2e'; // Default dark gray
-      if (notificationStyle) {
-        switch(notificationStyle) {
-          case 'error':
-            smartNavButtonColor = '#d32f2f'; // Red for errors
-            break;
-          case 'warning':
-            smartNavButtonColor = '#ffc107'; // Yellow for warnings
-            break;
-          case 'success':
-            smartNavButtonColor = '#28a745'; // Green for success
-            break;
-          case 'print':
-            smartNavButtonColor = '#2196F3'; // Blue for successful print
-            break;
-          default:
-            // Handle legacy print styles if any still exist
-            if (notificationStyle?.startsWith('print')) {
-              smartNavButtonColor = '#2196F3'; // Blue for any print notifications
-            }
-            break;
-        }
-      }
-      
-      if (isAtBottom) {
-        // Use overlapping windows icon when at bottom
-        const overlappingWindowsIcon = `<svg width="50" height="50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="3" width="12" height="10" rx="1" stroke="#404040" stroke-width="1.5" fill="none"/>
-          <rect x="9" y="11" width="12" height="10" rx="1" stroke="#404040" stroke-width="1.5" fill="none"/>
-          <line x1="3" y1="7" x2="15" y2="7" stroke="#404040" stroke-width="1.5"/>
-          <line x1="9" y1="15" x2="21" y2="15" stroke="#404040" stroke-width="1.5"/>
-        </svg>`;
-        return { 
-          icon: overlappingWindowsIcon, 
-          onClick: handleSmartAction, 
-          active: true, 
-          showShape: '',
-          color: smartNavButtonColor,
-          notificationStyle: notificationStyle
-        };
-      } else {
-        // Use double arrow down when not at bottom
-        return { 
-          icon: '', 
-          onClick: handleSmartAction, 
-          active: true, 
-          showShape: 'double-arrow-down',
-          color: smartNavButtonColor,
-          notificationStyle: notificationStyle
-        };
-      }
-    };
+      return smartNavButtonContent;
+    }
     if (cell.content.isTimeButton) {
       const timeText = formatTime($currentTime);
       const day = $currentTime.getDate().toString().padStart(2, '0');
@@ -1574,80 +1592,7 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
     return buttonProps;
   }
 
-  // Direct DOM manipulation functions for immediate UI updates
-  function updateSmartNavigationButtonColor(style) {
-    console.log('🎨 [SelectionArea] updateSmartNavigationButtonColor called with:', style);
-    
-    // Find Smart Navigation button by its unique characteristics
-    const buttons = document.querySelectorAll('button');
-    for (const button of buttons) {
-      // Look for the Smart Navigation button - it has specific SVG or arrow content
-      const hasOverlappingWindows = button.innerHTML.includes('overlapping windows') || 
-                                   button.innerHTML.includes('rect x="3" y="3"') ||
-                                   button.innerHTML.includes('double-arrow-down');
-      
-      if (hasOverlappingWindows) {
-        console.log('🎨 Found Smart Navigation button, updating color');
-        
-        // Determine color based on notification style
-        let color = '#2c2c2e'; // Default dark gray
-        if (style) {
-          switch(style) {
-            case 'error':
-              color = '#d32f2f'; // Red for errors
-              break;
-            case 'warning':
-              color = '#ffc107'; // Yellow for warnings
-              break;
-            case 'success':
-              color = '#28a745'; // Green for success
-              break;
-            case 'print':
-              color = '#2196F3'; // Blue for successful print
-              break;
-            default:
-              if (style?.startsWith('print')) {
-                color = '#2196F3'; // Blue for any print notifications
-              }
-              break;
-          }
-        }
-        
-        // Apply the color directly to the button
-        button.style.backgroundColor = color;
-        console.log('🎨 Smart Navigation button color updated to:', color);
-        break;
-      }
-    }
-  }
 
-  function updateUserButtonText(authState) {
-    console.log('👤 [SelectionArea] updateUserButtonText called with:', authState);
-    
-    // Find User button by looking for login text or user name
-    const buttons = document.querySelectorAll('button');
-    for (const button of buttons) {
-      const buttonText = button.textContent || '';
-      
-      // Look for Login button or user name
-      if (buttonText.includes('Login') || (authState.currentUser && buttonText.includes(authState.currentUser.full_name))) {
-        console.log('👤 Found User button, updating text');
-        
-        if (authState.isAuthenticated && authState.currentUser) {
-          // Update to show user name (shortened)
-          const userName = authState.currentUser.full_name;
-          const shortName = userName.split(' ').map(name => name.substring(0, 6)).join(' ');
-          button.textContent = shortName;
-          console.log('👤 User button updated to show:', shortName);
-        } else {
-          // Update to show Login
-          button.textContent = 'Login';
-          console.log('👤 User button updated to show: Login');
-        }
-        break;
-      }
-    }
-  }
 </script>
 
 <div class="selection-area" bind:this={containerElement}>
@@ -1697,6 +1642,8 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
              --optimal-hex-height: {optimalHexHeight}px; 
              --hex-vertical-padding: {HEX_VERTICAL_PADDING}px;
              --rect-vertical-padding: {RECT_VERTICAL_PADDING}px;
+             --optimal-hex-width: {optimalHexWidth}px;
+             --rect-button-height: {rectButtonHeight}px;
            ">
         
         <!-- Empty category info overlay -->
@@ -1783,6 +1730,7 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
   .grid-container-unified.rect {
     padding: var(--rect-vertical-padding, 6px) 0px;
   }
+
   
   .button-row {
     display: flex;
