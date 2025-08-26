@@ -84,3 +84,28 @@ export const currentTime = derived(
   },
   new Date()
 );
+
+// Derived store for minute-based time updates (optimized for UI components)
+export const currentMinuteTime = derived(
+  currentTime,
+  ($currentTime, set) => {
+    let lastMinute = null;
+    
+    return currentTime.subscribe((time) => {
+      const currentMinute = time.getMinutes();
+      
+      // Only update if the minute has changed
+      if (lastMinute !== currentMinute) {
+        lastMinute = currentMinute;
+        set({
+          time: time,
+          minute: currentMinute
+        });
+      }
+    });
+  },
+  {
+    time: new Date(),
+    minute: new Date().getMinutes()
+  }
+);

@@ -6,7 +6,7 @@
   import { orderStore } from '@eckasse/shared-frontend/utils/orderStore.js';
   import { parkedOrdersStore } from '@eckasse/shared-frontend/utils/parkedOrdersStore.js';
   import { currentView as consoleView } from '@eckasse/shared-frontend/utils/viewStore.js';
-  import { currentTime, timeStore } from '@eckasse/shared-frontend/utils/timeStore.js';
+  import { currentTime, currentMinuteTime, timeStore } from '@eckasse/shared-frontend/utils/timeStore.js';
   import { toggleControlCenter } from '@eckasse/shared-frontend/utils/controlCenterStore.js';
   import UniversalButton from '@eckasse/shared-frontend/components/UniversalButton.svelte';
   import Pinpad from '@eckasse/shared-frontend/components/Pinpad.svelte';
@@ -171,7 +171,7 @@
 
   function updateTimeButton() {
     if (gridCells.length > 0) {
-      console.log('🕒 [SelectionArea] Updating time button with corrected time:', $currentTime);
+      console.log('🕒 [SelectionArea] Updating time button with corrected time (once per minute):', $currentMinuteTime.time);
       // Force grid re-render to update time button
       setTimeout(() => {
         gridCells = [...gridCells];
@@ -1528,9 +1528,9 @@
       return smartNavButtonContent;
     }
     if (cell.content.isTimeButton) {
-      const timeText = formatTime($currentTime);
-      const day = $currentTime.getDate().toString().padStart(2, '0');
-      const month = ($currentTime.getMonth() + 1).toString().padStart(2, '0');
+      const timeText = formatTime($currentMinuteTime.time);
+      const day = $currentMinuteTime.time.getDate().toString().padStart(2, '0');
+      const month = ($currentMinuteTime.time.getMonth() + 1).toString().padStart(2, '0');
       const dateText = `${day}.${month}`;
       
       return { 
@@ -1592,10 +1592,8 @@
     let buttonColor = undefined;
     if (!isCategory && cell.content?.additional_item_attributes?.ui_suggestions?.background_color_hex) {
       buttonColor = cell.content.additional_item_attributes.ui_suggestions.background_color_hex;
-      console.log('🎨 [Frontend] Using AI color for product:', label, 'color:', buttonColor);
     } else if (!isCategory) {
       buttonColor = '#666666'; // Default gray for products without color suggestion
-      console.log('🎨 [Frontend] Using default color for product:', label, 'additional_item_attributes:', cell.content?.additional_item_attributes);
     }
     
     // Build return object with appropriate styling
@@ -1612,7 +1610,6 @@
       buttonProps.color = '#3A2F20';
 buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5A4B35 30%, #4A3B28 70%, #3A2F20 100%)';
       buttonProps.textColor = '#DDDDD0';
-      console.log('🎨 [Category] Setting gradient for:', label, 'backgroundStyle:', buttonProps.backgroundStyle);
     } else if (buttonColor) {
       // Products with AI-suggested colors
       buttonProps.color = buttonColor;
