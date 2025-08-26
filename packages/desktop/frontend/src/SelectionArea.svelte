@@ -1,5 +1,5 @@
 <script>
-  import { onMount, afterUpdate, tick } from 'svelte';
+  import { onMount, afterUpdate, tick, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { addLog } from '@eckasse/shared-frontend/utils/logStore.js';
@@ -155,6 +155,35 @@
       isAuthenticated: value.isAuthenticated,
       currentUser: value.currentUser?.full_name || 'none'
     });
+  });
+
+  // Update time button every minute with corrected time
+  let timeUpdateInterval;
+  onMount(() => {
+    // Update immediately
+    updateTimeButton();
+    
+    // Set up interval to update every minute
+    timeUpdateInterval = setInterval(() => {
+      updateTimeButton();
+    }, 60000); // 60 seconds
+  });
+
+  function updateTimeButton() {
+    if (gridCells.length > 0) {
+      console.log('🕒 [SelectionArea] Updating time button with corrected time:', $currentTime);
+      // Force grid re-render to update time button
+      setTimeout(() => {
+        gridCells = [...gridCells];
+      }, 0);
+    }
+  }
+
+  // Cleanup interval on destroy
+  onDestroy(() => {
+    if (timeUpdateInterval) {
+      clearInterval(timeUpdateInterval);
+    }
   });
 
 
