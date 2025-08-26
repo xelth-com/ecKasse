@@ -253,8 +253,8 @@
   .user-button:hover { border-color: #007bff; background: #f8f9fa; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2); }
   .user-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #007bff, #0056b3); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; margin-right: 1rem; }
   .user-info { text-align: left; }
-  .user-name { font-weight: 600; font-size: 1.1rem; color: #2c3e50; }
-  .user-role { font-size: 0.9rem; color: #6c757d; }
+  .user-name { font-weight: 600; font-size: 1.1rem; color: #666; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); }
+  .user-role { font-size: 0.9rem; color: #666; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); }
   .pin-entry { text-align: center; }
   .pin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
   .back-button { background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }

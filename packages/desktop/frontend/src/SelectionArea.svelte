@@ -68,8 +68,8 @@
         onClick: handleUserButtonClick,
         active: true,
         color: '#28a745',
-        textColor: 'white',
-        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
+        textColor: '#666',
+        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);'
       };
     } else {
       // User is not authenticated - show login button
@@ -80,7 +80,7 @@
         active: true,
         color: '#6c757d',
         textColor: '#666',
-        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center;'
+        customStyle: 'font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 1.1; white-space: pre-line; text-align: center; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);'
       };
     }
   })();
@@ -453,7 +453,7 @@
     }
 
     if (layoutType === '6-6-6') {
-      // // // // // // // // // // // // // // addLog('DEBUG', `6-6-6 CALC: Container=${containerWidth}x${containerHeight}px`);
+      // // // // // // // // // // // // // // // addLog('DEBUG', `6-6-6 CALC: Container=${containerWidth}x${containerHeight}px`);
       
       const hexGrid = calculateOptimalGrid(
         containerWidth, 
@@ -471,14 +471,14 @@
       optimalHexHeight = hexGrid.buttonHeight;
       chosenLayout = hexGrid.layout;
       
-      // // // // // // // // // // // // // // addLog('INFO', `6-6-6 RESULT (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)}px)`);
+      // // // // // // // // // // // // // // // addLog('INFO', `6-6-6 RESULT (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)}px)`);
       
       if (itemsPerRow > 0 && totalRows > 0) {
-        // // // // // // // // // // // // // // addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
+        // // // // // // // // // // // // // // // addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
         gridCells = buildGridStructure();
       }
     } else if (layoutType === '4-4-4') {
-      // // // // // // // // // // // // // // addLog('DEBUG', `4-4-4 CALC: Container=${containerWidth}x${containerHeight}px`);
+      // // // // // // // // // // // // // // // addLog('DEBUG', `4-4-4 CALC: Container=${containerWidth}x${containerHeight}px`);
       
       const rectGrid = calculateOptimalGrid(
         containerWidth, 
@@ -496,7 +496,7 @@
       rectButtonHeight = rectGrid.buttonHeight;
       chosenLayout = rectGrid.layout;
 
-      // // // // // // // // // // // // // // addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
+      // // // // // // // // // // // // // // // addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
       
       if (rectItemsPerRow > 0 && rectTotalRows > 0) {
         gridCells = buildGridStructure();
@@ -717,9 +717,9 @@
   }
   
   function updateGridContent() {
-    // // // // // // // // // // // // // // addLog('DEBUG', `updateGridContent called with ${gridCells.length} grid cells`);
+    // // // // // // // // // // // // // // // addLog('DEBUG', `updateGridContent called with ${gridCells.length} grid cells`);
     if (gridCells.length === 0) {
-      // // // // // // // // // // // // // // addLog('DEBUG', 'No grid cells, skipping updateGridContent');
+      // // // // // // // // // // // // // // // addLog('DEBUG', 'No grid cells, skipping updateGridContent');
       return;
     }
     clearGridContent();
@@ -739,7 +739,7 @@
   }
   
   function initializeSystemButtons(grid) {
-    // // // // // // // // // // // // // // addLog('DEBUG', `initializeSystemButtons called with ${grid.length} cells`);
+    // // // // // // // // // // // // // // // addLog('DEBUG', `initializeSystemButtons called with ${grid.length} cells`);
     
     // --- Left Half-Buttons --- //
     const leftHalfCells = grid.filter(cell => 
@@ -886,7 +886,7 @@
       !cell.content // Don't overwrite already assigned buttons
     );
     
-    // // // // // // // // // // // // // // addLog('DEBUG', `Found ${bottomRowFullButtons.length} bottom row buttons for payment assignment`);
+    // // // // // // // // // // // // // // // addLog('DEBUG', `Found ${bottomRowFullButtons.length} bottom row buttons for payment assignment`);
     
     // Sort by column index from right to left (descending)
     bottomRowFullButtons.sort((a, b) => b.columnIndex - a.columnIndex);
@@ -913,7 +913,7 @@
         backgroundStyle: button.backgroundStyle
       };
       
-      // // // // // // // // // // // // // // addLog('DEBUG', `Assigned payment button: ${button.label} at row ${cell.rowIndex}, col ${cell.columnIndex}`);
+      // // // // // // // // // // // // // // // addLog('DEBUG', `Assigned payment button: ${button.label} at row ${cell.rowIndex}, col ${cell.columnIndex}`);
     }
   }
 
@@ -1070,7 +1070,7 @@
 
   async function handleTimeClick() {
     await handleProtectedAction(async () => {
-      // // // // // // // // // // // // // // addLog('INFO', 'Control Center accessed');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Control Center accessed');
       toggleControlCenter();
     });
   }
@@ -1090,13 +1090,13 @@
         message: message
       });
       
-      // // // // // // // // // // // // // // addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
+      // // // // // // // // // // // // // // // addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
     }
   }
   
   async function handleUserButtonLongPress() {
     if ($authStore.isAuthenticated) {
-      // // // // // // // // // // // // // // addLog('INFO', 'User logout requested');
+      // // // // // // // // // // // // // // // addLog('INFO', 'User logout requested');
       await authStore.logout();
       
       // After logout, show welcome message and activate pinpad
@@ -1115,7 +1115,7 @@
       // Activate pinpad for PIN entry
       pinpadStore.activate('agent', null, null, 'numeric');
       
-      // // // // // // // // // // // // // // addLog('INFO', 'User logged out successfully - returning to login');
+      // // // // // // // // // // // // // // // addLog('INFO', 'User logged out successfully - returning to login');
     }
   }
 
@@ -1127,14 +1127,14 @@
   }
 
   function handlePaymentClick(paymentType) {
-    // // // // // // // // // // // // // // addLog('INFO', `Payment method selected: ${paymentType}`);
+    // // // // // // // // // // // // // // // addLog('INFO', `Payment method selected: ${paymentType}`);
     
     // Get current order state
     let currentOrderState;
     orderStore.subscribe(state => currentOrderState = state)();
     
     if (currentOrderState.total <= 0) {
-      // // // // // // // // // // // // // // addLog('WARNING', 'Cannot process payment: Order total is zero');
+      // // // // // // // // // // // // // // // addLog('WARNING', 'Cannot process payment: Order total is zero');
       return;
     }
     
@@ -1145,10 +1145,10 @@
         amount: currentOrderState.total 
       };
       orderStore.finishOrder(paymentData);
-      // // // // // // // // // // // // // // addLog('SUCCESS', `Payment processed: ${paymentData.type} - ${paymentData.amount.toFixed(2)}€`);
+      // // // // // // // // // // // // // // // addLog('SUCCESS', `Payment processed: ${paymentData.type} - ${paymentData.amount.toFixed(2)}€`);
     } else if (paymentType === 'zwischenrechnung') {
       // Interim receipt - just log for now
-      // // // // // // // // // // // // // // addLog('INFO', 'Interim receipt requested');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Interim receipt requested');
     }
   }
 
@@ -1164,22 +1164,22 @@
     
     if (isActive && hasActiveTransaction && hasItems && hasTable) {
       // Есть активный заказ с товарами и столом - паркуем БЕЗ обновления времени
-      // // // // // // // // // // // // // // addLog('INFO', `Collapsing order with table ${hasTable} without time update`);
+      // // // // // // // // // // // // // // // addLog('INFO', `Collapsing order with table ${hasTable} without time update`);
       try {
         await orderStore.parkCurrentOrder(hasTable, false); // updateTimestamp = false
-        // // // // // // // // // // // // // // addLog('SUCCESS', 'Order collapsed successfully');
+        // // // // // // // // // // // // // // // addLog('SUCCESS', 'Order collapsed successfully');
         await parkedOrdersStore.refresh();
       } catch (error) {
-        // // // // // // // // // // // // // // addLog('ERROR', `Failed to collapse order: ${error.message}`);
+        // // // // // // // // // // // // // // // addLog('ERROR', `Failed to collapse order: ${error.message}`);
         throw error;
       }
     } else if (isActive && hasActiveTransaction && hasItems && !hasTable) {
       // Есть заказ с товарами но БЕЗ стола - ПРИНУДИТЕЛЬНО требуем присвоение стола
-      // // // // // // // // // // // // // // addLog('WARNING', 'Order has items but no table - forcing table assignment');
+      // // // // // // // // // // // // // // // addLog('WARNING', 'Order has items but no table - forcing table assignment');
       throw new Error('FORCE_TABLE_ASSIGNMENT');
     } else if (hasActiveTransaction) {
       // Есть активный заказ без товаров - просто сбрасываем
-      // // // // // // // // // // // // // // addLog('INFO', 'Resetting empty order');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Resetting empty order');
       orderStore.resetOrder();
     }
   }
@@ -1200,7 +1200,7 @@
     
     if (isActive && hasActiveTransaction && (hasItems || hasTable)) {
       // Есть активный заказ - сворачиваем и возвращаемся к стартовому состоянию
-      // // // // // // // // // // // // // // addLog('INFO', 'Collapsing current order and returning to start position');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Collapsing current order and returning to start position');
       try {
         await collapseCurrentOrder();
         
@@ -1208,30 +1208,30 @@
         orderStore.resetOrder();
         currentView = 'categories';
         selectedCategory = null;
-        // // // // // // // // // // // // // // addLog('INFO', 'Returned to start position');
+        // // // // // // // // // // // // // // // addLog('INFO', 'Returned to start position');
       } catch (error) {
         if (error.message === 'FORCE_TABLE_ASSIGNMENT') {
           // Заказ с товарами но без стола - принудительно открываем пинпад с автосворачиванием
-          // // // // // // // // // // // // // // addLog('INFO', 'Forcing table assignment for order with items (will auto-collapse)');
+          // // // // // // // // // // // // // // // addLog('INFO', 'Forcing table assignment for order with items (will auto-collapse)');
           pinpadStore.activateTableEntryWithAutoCollapse();
           return; // Не возвращаемся к стартовому состоянию, ждем присвоения стола
         } else {
-          // // // // // // // // // // // // // // addLog('ERROR', `Failed to handle table click: ${error.message}`);
+          // // // // // // // // // // // // // // // addLog('ERROR', `Failed to handle table click: ${error.message}`);
         }
       }
     } else if (!hasActiveTransaction) {
       // Нет активного заказа - инициализируем новый неинициализированный заказ для ввода стола
-      // // // // // // // // // // // // // // addLog('INFO', 'No active order - initializing new order for table entry');
+      // // // // // // // // // // // // // // // addLog('INFO', 'No active order - initializing new order for table entry');
       try {
         await orderStore.initializeOrder({});
-        // // // // // // // // // // // // // // addLog('INFO', 'Order initialized, activating pinpad for table number entry');
+        // // // // // // // // // // // // // // // addLog('INFO', 'Order initialized, activating pinpad for table number entry');
         pinpadStore.activateTableEntry();
       } catch (error) {
-        // // // // // // // // // // // // // // addLog('ERROR', `Failed to initialize order: ${error.message}`);
+        // // // // // // // // // // // // // // // addLog('ERROR', `Failed to initialize order: ${error.message}`);
       }
     } else {
       // Активный заказ без товаров и стола - открываем пинпад для ввода стола
-      // // // // // // // // // // // // // // addLog('INFO', 'Activating pinpad for table number entry');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Activating pinpad for table number entry');
       pinpadStore.activateTableEntry();
     }
     });
@@ -1243,7 +1243,7 @@
     pinpadStore.activateAlphaInput(
       (inputValue) => agentStore.sendMessage(inputValue),
       () => {
-        // // // // // // // // // // // // // // addLog('INFO', 'Gemini input cancelled.');
+        // // // // // // // // // // // // // // // addLog('INFO', 'Gemini input cancelled.');
       },
       agentStore
     );
@@ -1252,18 +1252,18 @@
   function handleKeyboardToggle() {
     if ($pinpadStore.isActive) {
       pinpadStore.deactivate();
-      // // // // // // // // // // // // // // addLog('INFO', 'Keyboard closed');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard closed');
     } else {
       pinpadStore.activateAlphaInput(
         (inputValue) => {
-          // // // // // // // // // // // // // // addLog('INFO', `Keyboard input: ${inputValue}`);
+          // // // // // // // // // // // // // // // addLog('INFO', `Keyboard input: ${inputValue}`);
         },
         () => {
-          // // // // // // // // // // // // // // addLog('INFO', 'Keyboard input cancelled.');
+          // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard input cancelled.');
         },
         agentStore
       );
-      // // // // // // // // // // // // // // addLog('INFO', 'Keyboard opened');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard opened');
     }
   }
 
@@ -1397,7 +1397,7 @@
     const { productId, updates } = event.detail;
     
     try {
-      // // // // // // // // // // // // // // addLog('INFO', `Saving product changes for ID: ${productId}`);
+      // // // // // // // // // // // // // // // addLog('INFO', `Saving product changes for ID: ${productId}`);
       
       // Send updateProduct command via WebSocket
       const response = await wsStore.send({
@@ -1410,19 +1410,19 @@
       });
       
       if (response && response.success) {
-        // // // // // // // // // // // // // // addLog('SUCCESS', `Product updated successfully: ${JSON.stringify(response)}`);
+        // // // // // // // // // // // // // // // addLog('SUCCESS', `Product updated successfully: ${JSON.stringify(response)}`);
         
         // Refresh the current view to show updated data
         if (currentView === 'products' && selectedCategory) {
           await loadProductsForCategory(selectedCategory.id);
         }
       } else {
-        // // // // // // // // // // // // // // addLog('ERROR', `Failed to update product: ${response?.message || 'Unknown error'}`);
+        // // // // // // // // // // // // // // // addLog('ERROR', `Failed to update product: ${response?.message || 'Unknown error'}`);
       }
       
     } catch (error) {
       console.error('Error saving product:', error);
-      // // // // // // // // // // // // // // addLog('ERROR', `Error saving product: ${error.message}`);
+      // // // // // // // // // // // // // // // addLog('ERROR', `Error saving product: ${error.message}`);
     }
     
     // Close the modal

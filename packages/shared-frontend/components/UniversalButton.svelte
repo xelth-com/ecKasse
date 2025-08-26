@@ -127,7 +127,7 @@
 </button>
 
 <style>
-  .universal-button {
+  .universal-button:not(.user-button) {
     background: none;
     border: none;
     padding: 0;
