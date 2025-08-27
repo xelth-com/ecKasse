@@ -23,6 +23,25 @@
       }
     });
     
+    // Handle UI refresh requests from Electron main process
+    if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.onUiRefreshRequest) {
+      window.electronAPI.onUiRefreshRequest(() => {
+        console.log('UI refresh requested - switching to selection view and refreshing data');
+        addLog('INFO', 'UI refresh requested after menu import');
+        
+        // Switch back to selection area
+        currentView.set('selection');
+        
+        // Refresh categories and other data
+        wsStore.send({ command: 'getCategories' });
+        
+        // Force page reload to ensure all UI components are updated
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      });
+    }
+    
     // Cleanup function
     return () => {
       unsubscribe();

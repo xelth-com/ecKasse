@@ -1,6 +1,5 @@
 // packages/client-desktop/electron/main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const { fork } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
@@ -299,67 +298,170 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
     console.log(`Starting menu import for ${validFiles.length} file(s) (${totalSize.toFixed(2)}MB total):`);
     validFiles.forEach(file => console.log(`  - ${path.basename(file.path)} (${file.size}MB)`));
     
-    // Path to the parse_and_init.js script
-    const scriptPath = path.resolve(__dirname, '../../../packages/backend/src/scripts/parse_and_init.js');
+    // Use internal services instead of external script
+    const MenuParserLLM = require('../../core/lib/menu_parser_llm.js');
+    const { importFromOopMdf } = require('../../core/application/import.service.js');
+    const { enrichMdfData } = require('../../core/application/enrichment.service.js');
+    const { db } = require('../../core');
     
-    // For now, process files sequentially (script accepts one file at a time)
-    // TODO: Update script to handle multiple files in one run for better performance
-    let processedCount = 0;
-    const totalFiles = validFiles.length;
-    
-    // For now, process only the first file (script accepts one file at a time)
-    // TODO: Update to handle multiple files properly with sequential processing
-    const firstFile = validFiles[0];
-    
-    if (mainWindow) {
-      mainWindow.webContents.send('menu-import-progress', 
-        `Processing file: ${path.basename(firstFile.path)}`);
+    // Helper to send progress updates to the frontend
+    function sendProgress(message, isComplete = false) {
+      const prefix = isComplete ? '✅' : '⏳';
+      const fullMessage = `${prefix} ${message}`;
+      console.log(fullMessage);
+      if (mainWindow) {
+        mainWindow.webContents.send('menu-import-progress', fullMessage);
+      }
     }
     
-    // Fork the Node.js process for the first file
-    const childProcess = fork(scriptPath, [firstFile.path], {
-      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-      cwd: path.resolve(__dirname, '../../../packages/backend')
-    });
-    
-    // Listen to stdout for progress messages
-    childProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      const lines = output.split('\n').filter(line => line.trim());
+    // Helper to merge multiple OOP-POS-MDF configurations (simplified version)
+    function mergeMdfData(configs) {
+      if (!configs || configs.length === 0) {
+        throw new Error('No configurations to merge');
+      }
+      if (configs.length === 1) {
+        return configs[0];
+      }
       
-      lines.forEach(line => {
-        if (line.trim() && mainWindow) {
-          // Send all non-empty output lines as progress updates
-          // This provides detailed, real-time feedback during import
-          mainWindow.webContents.send('menu-import-progress', line.trim());
+      // Use the first config as base and merge others
+      const masterConfig = JSON.parse(JSON.stringify(configs[0]));
+      const firstPoS = masterConfig.company_details.branches[0].point_of_sale_devices[0];
+      
+      let nextCategoryId = Math.max(...firstPoS.categories_for_this_pos.map(c => c.category_unique_identifier)) + 1;
+      let nextItemId = Math.max(...firstPoS.items_for_this_pos.map(i => i.item_unique_identifier)) + 1;
+      
+      for (let i = 1; i < configs.length; i++) {
+        const config = configs[i];
+        const posDevice = config.company_details.branches[0].point_of_sale_devices[0];
+        
+        // Merge categories
+        if (posDevice.categories_for_this_pos) {
+          posDevice.categories_for_this_pos.forEach(category => {
+            const existingCat = firstPoS.categories_for_this_pos.find(c => 
+              c.category_names.de === category.category_names.de
+            );
+            if (!existingCat) {
+              firstPoS.categories_for_this_pos.push({
+                ...category,
+                category_unique_identifier: nextCategoryId++
+              });
+            }
+          });
         }
+        
+        // Merge items
+        if (posDevice.items_for_this_pos) {
+          posDevice.items_for_this_pos.forEach(item => {
+            const existingItem = firstPoS.items_for_this_pos.find(i => 
+              i.display_names.menu.de === item.display_names.menu.de
+            );
+            if (!existingItem) {
+              firstPoS.items_for_this_pos.push({
+                ...item,
+                item_unique_identifier: nextItemId++
+              });
+            }
+          });
+        }
+      }
+      
+      return masterConfig;
+    }
+    
+    // Clean database before import
+    async function cleanDatabase() {
+      console.log('Cleaning database before import...');
+      await db.transaction(async (trx) => {
+        await trx('active_transaction_items').del();
+        await trx('active_transactions').del();
+        await trx('item_embeddings').del();
+        await trx('items').del();
+        await trx('categories').del();
+        await trx('pos_devices').del();
+        await trx('branches').del();
+        await trx('companies').del();
       });
-    });
+    }
     
-    // Listen to stderr for errors
-    childProcess.stderr.on('data', (data) => {
-      console.error(`Import script error: ${data}`);
-    });
-    
-    // Handle process completion
-    childProcess.on('close', (code) => {
-      console.log(`Import script finished with code: ${code}`);
-      if (mainWindow) {
-        if (code === 0) {
+    // Start the import process using internal services
+    (async () => {
+      try {
+        sendProgress('Starting AI-powered multi-file menu import...');
+        
+        // Step 1: Parse all files
+        const parsedConfigurations = [];
+        
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
+          sendProgress(`Parsing file ${i + 1}/${validFiles.length}: ${path.basename(file.path)}`);
+          
+          const parser = new MenuParserLLM({
+            businessType: 'restaurant',
+            defaultLanguage: 'de',
+            enableValidation: true
+          });
+          
+          const parseResult = await parser.parseMenu(file.path);
+          
+          if (parseResult.success && parseResult.configuration) {
+            parsedConfigurations.push(parseResult.configuration);
+            sendProgress(`Successfully parsed: ${path.basename(file.path)} (${parseResult.metadata.itemsFound} items, ${parseResult.metadata.categoriesFound} categories)`);
+          } else {
+            throw new Error(`Failed to parse ${path.basename(file.path)}`);
+          }
+        }
+        
+        // Step 2: Merge configurations
+        sendProgress('Combining parsed menu data...');
+        const combinedConfiguration = mergeMdfData(parsedConfigurations);
+        
+        const totalCategories = combinedConfiguration.company_details.branches[0].point_of_sale_devices[0].categories_for_this_pos?.length || 0;
+        const totalItems = combinedConfiguration.company_details.branches[0].point_of_sale_devices[0].items_for_this_pos?.length || 0;
+        sendProgress(`Combined data: ${totalCategories} categories, ${totalItems} items`);
+        
+        // Step 3: Enrich data
+        sendProgress('Enriching data for AI optimization...');
+        const enrichedData = await enrichMdfData(combinedConfiguration, (current, total, message) => {
+          sendProgress(`Enriching ${current}/${total}: ${message}`);
+        });
+        
+        // Step 4: Clean database
+        sendProgress('Cleaning database before import...');
+        await cleanDatabase();
+        
+        // Step 5: Import to database
+        sendProgress('Importing to database...');
+        const importResult = await importFromOopMdf(enrichedData, (current, total, itemName) => {
+          if (current % 10 === 0 || current === total) {
+            sendProgress(`Importing items: ${current}/${total} (${itemName})`);
+          }
+        });
+        
+        if (!importResult.success) {
+          throw new Error(`Database import failed: ${importResult.message || 'Unknown error'}`);
+        }
+        
+        sendProgress('Menu import completed successfully!', true);
+        
+        if (mainWindow) {
           mainWindow.webContents.send('menu-import-complete', true, 'Menu import completed successfully!');
-        } else {
-          mainWindow.webContents.send('menu-import-complete', false, `Import failed with code ${code}`);
+          
+          // Request UI refresh to reload the page/data
+          setTimeout(() => {
+            mainWindow.webContents.send('request-ui-refresh');
+          }, 2000); // Wait 2 seconds for user to see the success message
+        }
+        
+      } catch (error) {
+        const errorMessage = `Import failed: ${error.message}`;
+        console.error(errorMessage);
+        sendProgress(errorMessage, true);
+        
+        if (mainWindow) {
+          mainWindow.webContents.send('menu-import-complete', false, errorMessage);
         }
       }
-    });
-    
-    // Handle process errors
-    childProcess.on('error', (error) => {
-      console.error('Failed to start import script:', error);
-      if (mainWindow) {
-        mainWindow.webContents.send('menu-import-complete', false, `Failed to start import: ${error.message}`);
-      }
-    });
+    })();
     
     return { success: true, message: 'Import process started' };
     

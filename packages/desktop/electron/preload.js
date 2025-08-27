@@ -38,6 +38,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('menu-import-complete', (event, success, message) => {
       callback(success, message);
     });
+  },
+  
+  /**
+   * Listen for UI refresh requests from the main process
+   * @param {function} callback - Function to call when UI refresh is requested
+   */
+  onUiRefreshRequest: (callback) => {
+    ipcRenderer.on('request-ui-refresh', (event) => {
+      callback();
+    });
   }
 });
 
