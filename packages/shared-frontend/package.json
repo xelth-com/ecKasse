@@ -4,7 +4,7 @@
   "private": true, 
   "license": "MIT",
   "description": "Shared frontend components for ecKasse",
-  "main": "index.js",
+  "main": "utils/grid/gridManager.js",
   "engines": {
     "node": ">=20.0.0"
   }

@@ -20,8 +20,6 @@
   import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/icons/BetrugerCapIconOutline.svelte';
   import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
-  // GridManager - Core of the 'Quantum UI' architecture
-  import { GridManager } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
 
   let categories = [];
   let products = [];
@@ -49,10 +47,7 @@
   export let isAtBottom = false;
   export let consoleViewComponent = null;
   let containerHeight = 0;
-  
-  // GridManager instance - replaces all legacy grid calculation
-  let gridManager = null;
-  let renderableCells = [];
+  let gridCells = []; // Persistent grid structure
   
   // Smart action prop from parent
   export let handleSmartAction = () => {};
@@ -175,10 +170,12 @@
   });
 
   function updateTimeButton() {
-    if (gridManager) {
+    if (gridCells.length > 0) {
       console.log('🕒 [SelectionArea] Updating time button with corrected time (once per minute):', $currentMinuteTime.time);
-      // Force grid update to refresh time button
-      updateGridContent();
+      // Force grid re-render to update time button
+      setTimeout(() => {
+        gridCells = [...gridCells];
+      }, 0);
     }
   }
 
@@ -297,73 +294,225 @@
     return field;
   }
 
-  // Initialize GridManager with current layout configuration
-  function initializeGridManager() {
-    if (containerWidth <= 0 || containerHeight <= 0) return;
-
-    const dimensions = calculateOptimalDimensions();
-    
-    gridManager = new GridManager({
-      dimensions: {
-        rows: dimensions.rows,
-        cols: dimensions.cols * 2 // Double columns for hex staggered layout
-      },
-      rendering: {
-        shape: layoutType === '6-6-6' ? 'hex' : 'rect',
-        cellWidth: dimensions.cellWidth,
-        cellHeight: dimensions.cellHeight,
-        buttonGap: layoutType === '6-6-6' ? HEX_BUTTON_GAP : RECT_GAP
-      }
-    });
-    
-    currentGridConfig = {
-      cellWidth: dimensions.cellWidth,
-      cellHeight: dimensions.cellHeight,
-      shape: layoutType === '6-6-6' ? 'hex' : 'rect',
-      buttonGap: layoutType === '6-6-6' ? HEX_BUTTON_GAP : RECT_GAP
-    };
-    
-    updateGridContent();
-  }
-  
-  // Calculate optimal grid dimensions (simplified from old algorithm)
-  function calculateOptimalDimensions() {
+  function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
     const availableWidth = containerWidth;
-    const padding = layoutType === '6-6-6' ? HEX_VERTICAL_PADDING : RECT_VERTICAL_PADDING;
-    const availableHeight = containerHeight - 2 * padding;
-    const gap = layoutType === '6-6-6' ? HEX_BUTTON_GAP : RECT_GAP;
+    const availableHeight = containerHeight - 2 * verticalPadding;
     
-    // Simple grid calculation - can be enhanced later
-    const targetCols = Math.floor((availableWidth - gap) / (MIN_BUTTON_SIZE + gap));
-    const cols = Math.max(1, Math.min(6, targetCols));
-    
-    const cellWidth = (availableWidth - (cols + 1) * gap) / cols;
-    const targetRows = Math.floor((availableHeight - gap) / (MIN_BUTTON_SIZE + gap));
-    const rows = Math.max(1, Math.min(4, targetRows));
-    
-    const cellHeight = layoutType === '6-6-6' ? 
-      (availableHeight - (rows - 1) * gap) / (1 + (rows - 1) * 0.75) :
-      (availableHeight - (rows - 1) * gap) / rows;
-    
-    return { cols, rows, cellWidth, cellHeight };
+    // Universal layout testing functions for both hex and rect
+    function testSymmetricalLayout(cols) {
+        const buttonWidth = (availableWidth - (cols + 1) * buttonGap) / cols;
+        if (buttonWidth < minButtonSize) return null;
+
+        const targetButtonHeight = buttonWidth * targetAspectRatio;
+        let effectiveRowHeight = targetButtonHeight * 0.75 + buttonGap;
+        let maxPossibleRows = Math.floor(availableHeight / effectiveRowHeight);
+        
+        let hexCalculatedHeight = (availableHeight - (maxPossibleRows - 1) * buttonGap) / (1 + (maxPossibleRows - 1) * 0.75);
+        const minButtonHeight = buttonWidth * (targetAspectRatio * 0.7);
+        
+        let optimalRows;
+        if (hexCalculatedHeight >= minButtonHeight && maxPossibleRows > 0) {
+          optimalRows = maxPossibleRows;
+        } else {
+          optimalRows = Math.max(1, maxPossibleRows - 1);
+        }
+        
+        // Button height calculation depends on hasOverlap (rendering type)
+        let calculatedButtonHeight;
+        if (hasOverlap) {
+            // Hex-style overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        } else {
+            // Rect-style non-overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        }
+
+        return {
+            columns: cols,
+            rows: optimalRows,
+            buttonWidth,
+            buttonHeight: calculatedButtonHeight,
+            layout: 'symmetrical'
+        };
+    }
+
+    function testAsymmetricalLayout(cols) {
+        const buttonWidth = (availableWidth - (cols + 1) * buttonGap) / (cols + 0.5);
+        if (buttonWidth < minButtonSize) return null;
+
+        const targetButtonHeight = buttonWidth * targetAspectRatio;
+        let effectiveRowHeight = targetButtonHeight * 0.75 + buttonGap;
+        let maxPossibleRows = Math.floor(availableHeight / effectiveRowHeight);
+        
+        let hexCalculatedHeight = (availableHeight - (maxPossibleRows - 1) * buttonGap) / (1 + (maxPossibleRows - 1) * 0.75);
+        const minButtonHeight = buttonWidth * (targetAspectRatio * 0.7);
+        
+        let optimalRows;
+        if (hexCalculatedHeight >= minButtonHeight && maxPossibleRows > 0) {
+          optimalRows = maxPossibleRows;
+        } else {
+          optimalRows = Math.max(1, maxPossibleRows - 1);
+        }
+        
+        // Button height calculation depends on hasOverlap (rendering type)
+        let calculatedButtonHeight;
+        if (hasOverlap) {
+            // Hex-style overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        } else {
+            // Rect-style non-overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        }
+
+        return {
+            columns: cols,
+            rows: optimalRows,
+            buttonWidth,
+            buttonHeight: calculatedButtonHeight,
+            layout: 'asymmetrical'
+        };
+    }
+
+    // Universal algorithm: test different column counts and find the best layout
+    let bestLayout = null;
+    let maxCols = Math.floor((availableWidth - buttonGap) / minButtonSize);
+
+    for (let cols = 1; cols <= maxCols; cols++) {
+        const symm = testSymmetricalLayout(cols);
+        const asymm = testAsymmetricalLayout(cols);
+
+        // Choose the best layout for both hex and rect using same logic
+        const candidates = [symm, asymm].filter(l => l !== null);
+        for (const candidate of candidates) {
+            if (!bestLayout) {
+                bestLayout = candidate;
+            } else {
+                // Prioritize the layout that fits more columns
+                if (candidate.columns > bestLayout.columns) {
+                    bestLayout = candidate;
+                } else if (candidate.columns === bestLayout.columns) {
+                    // If column count is equal, prefer asymmetrical for density,
+                    // or the one with slightly larger buttons if the layout is the same
+                    if (candidate.layout === 'asymmetrical' && bestLayout.layout === 'symmetrical') {
+                        bestLayout = candidate;
+                    } else if (candidate.buttonWidth > bestLayout.buttonWidth) {
+                        bestLayout = candidate;
+                    }
+                }
+            }
+        }
+    }
+
+    return bestLayout || {
+        columns: 1,
+        rows: 1,
+        buttonWidth: Math.max(minButtonSize, availableWidth - 2 * buttonGap),
+        buttonHeight: Math.max(minButtonSize, availableHeight),
+        layout: 'symmetrical'
+    };
   }
 
-  // Grid rendering configuration
-  let currentGridConfig = {
-    cellWidth: MIN_BUTTON_SIZE,
-    cellHeight: 7.5625 * 16,
-    shape: 'hex',
-    buttonGap: 6
-  };
+  // Dynamic width and height calculated based on container size
+  let optimalHexWidth = MIN_BUTTON_SIZE;
+  let optimalHexHeight = 7.5625 * 16; // Default height
+  let itemsPerRow = 1;
+  let totalRows = 1;
+  
+  // Variables for 4-4-4 rectangular grid layout
+  let rectButtonWidth = MIN_BUTTON_SIZE; // calculated rectangular button width
+  let rectButtonHeight = MIN_BUTTON_SIZE; // calculated rectangular button height
+  let rectItemsPerRow = 1; // Dynamic: calculated columns
+  let rectTotalRows = 1; // Dynamic: calculated rows
+
+  let chosenLayout = 'symmetrical';
 
   // --- EXPLICIT GRID REBUILD FUNCTION (replaces reactive blocks) ---
   /**
    * Explicitly rebuilds the grid layout and content.
    * Called only when layout type changes or on mount, breaking the infinite reactive loop.
    */
-  // Quantum UI rebuild function
   function rebuildGridAndContent() {
-    initializeGridManager();
+    if (containerWidth <= 0 || containerHeight <= 0) {
+      return;
+    }
+
+    if (layoutType === '6-6-6') {
+      // // // // // // // // // // // // // // // addLog('DEBUG', `6-6-6 CALC: Container=${containerWidth}x${containerHeight}px`);
+      
+      const hexGrid = calculateOptimalGrid(
+        containerWidth, 
+        containerHeight, 
+        MIN_BUTTON_SIZE, 
+        3/4, // hex aspect ratio
+        HEX_EDGE_GAP, 
+        HEX_VERTICAL_PADDING, 
+        true // has overlap
+      );
+      
+      itemsPerRow = hexGrid.columns;
+      totalRows = hexGrid.rows;
+      optimalHexWidth = hexGrid.buttonWidth;
+      optimalHexHeight = hexGrid.buttonHeight;
+      chosenLayout = hexGrid.layout;
+      
+      // // // // // // // // // // // // // // // addLog('INFO', `6-6-6 RESULT (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)}px)`);
+      
+      if (itemsPerRow > 0 && totalRows > 0) {
+        // // // // // // // // // // // // // // // addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
+        gridCells = buildGridStructure();
+      }
+    } else if (layoutType === '4-4-4') {
+      // // // // // // // // // // // // // // // addLog('DEBUG', `4-4-4 CALC: Container=${containerWidth}x${containerHeight}px`);
+      
+      const rectGrid = calculateOptimalGrid(
+        containerWidth, 
+        containerHeight, 
+        MIN_BUTTON_SIZE, 
+        3/4, // start with same target ratio as hex
+        RECT_GAP, 
+        RECT_VERTICAL_PADDING, 
+        false // no overlap for rectangles
+      );
+      
+      rectItemsPerRow = rectGrid.columns;
+      rectTotalRows = rectGrid.rows;
+      rectButtonWidth = rectGrid.buttonWidth;
+      rectButtonHeight = rectGrid.buttonHeight;
+      chosenLayout = rectGrid.layout;
+
+      // // // // // // // // // // // // // // // addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
+      
+      if (rectItemsPerRow > 0 && rectTotalRows > 0) {
+        gridCells = buildGridStructure();
+      }
+    } else {
+      itemsPerRow = 1;
+      optimalHexWidth = MIN_BUTTON_SIZE;
+      rectItemsPerRow = 1;
+      rectButtonWidth = MIN_BUTTON_SIZE;
+      rectButtonHeight = MIN_BUTTON_SIZE;
+    }
+
+    // Update content after grid is built
+    if (gridCells.length > 0) {
+      updateGridContent();
+    }
   }
   
   // Only rebuild when layout type changes (not when container size changes)
@@ -373,9 +522,9 @@
     }
   }
   
-  // Update grid content when data/view changes
+  // Update grid content when data/view changes (but not grid structure)
   $: {
-    if (gridManager && (
+    if (gridCells.length > 0 && (
       (currentView === 'categories' && categories.length >= 0) ||
       (currentView === 'products' && products.length >= 0)
     )) {
@@ -385,15 +534,19 @@
   
   // Update grid content when order state changes (to activate/deactivate payment buttons)
   $: {
-    if (gridManager && $orderStore) {
-      updateGridContent(); // Update grid to reflect order changes
+    if (gridCells.length > 0 && $orderStore) {
+      gridCells = [...gridCells]; // Force reactivity update for order changes only
     }
   }
 
   // Update grid when system button content changes (auth or notifications)
   $: {
-    if (gridManager && (userButtonContent || smartNavButtonContent)) {
-      updateGridContent();
+    if (gridCells.length > 0 && (userButtonContent || smartNavButtonContent)) {
+      // Force re-render of grid cells to update system buttons
+      // Use setTimeout to avoid infinite loops
+      setTimeout(() => {
+        gridCells = [...gridCells];
+      }, 0);
     }
   }
   
@@ -402,7 +555,20 @@
   // The grid content will still update correctly on render without these
   
   
-  // Grid structure now handled by GridManager
+  function buildGridStructure() {
+    const cells = [];
+    
+    if (layoutType === '6-6-6') {
+      for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
+        buildHoneycombRow(cells, rowIndex, chosenLayout);
+      }
+    } else if (layoutType === '4-4-4') {
+      buildRectGridLayout(cells, chosenLayout);
+    }
+    
+
+    return cells;
+  }
   
   function buildHoneycombRow(cells, rowIndex, layoutType) {
     const isOddRow = rowIndex % 2 === 1;
@@ -544,94 +710,32 @@
     }
   }
   
-  // Grid content clearing now handled by GridManager
-  
-  // New updateGridContent using GridManager
-  function updateGridContent() {
-    if (!gridManager) return;
-    
-    // Clear existing content
-    gridManager.clearAndReset();
-    
-    // Get priority constants
-    const priorities = gridManager.getPriorities();
-    
-    // Place system elements first (they get higher priority)
-    const systemElements = getSystemElements();
-    gridManager.placeSystemElements(systemElements);
-    
-    // Then place content based on current view
-    if (currentView === 'categories' && categories.length > 0) {
-      gridManager.placeItems(categories, priorities.CATEGORY_NAVIGATION);
-    } else if (currentView === 'products' && products.length > 0) {
-      gridManager.placeItems(products, priorities.MAX_CONTENT);
-    }
-    
-    // Update renderable cells
-    renderableCells = gridManager.getSvelteCompatibleCells(currentGridConfig);
-  }
-  
-  // Get system elements with their preferred positions
-  function getSystemElements() {
-    const systemElements = [];
-    
-    // Add payment buttons in last row
-    const paymentButtons = getPaymentButtons();
-    paymentButtons.forEach((button, index) => {
-      systemElements.push({
-        row: 3, // Bottom row
-        col: index * 2, // Even columns for staggered layout
-        content: button,
-        priority: gridManager.getPriorities().PAYMENT_BUTTON
-      });
+  function clearGridContent() {
+    gridCells.forEach(cell => {
+      cell.content = null;
     });
-    
-    // Add other system buttons (time, user, nav)
-    if (userButtonContent) {
-      systemElements.push({
-        row: 0, col: 0,
-        content: userButtonContent,
-        priority: gridManager.getPriorities().TABLE_BUTTON
-      });
-    }
-    
-    if (smartNavButtonContent) {
-      systemElements.push({
-        row: 0, col: 2,
-        content: smartNavButtonContent,
-        priority: gridManager.getPriorities().PINPAD_BUTTON
-      });
-    }
-    
-    return systemElements;
   }
   
-  // Get payment buttons based on order state
-  function getPaymentButtons() {
-    const buttons = [];
-    
-    if ($orderStore.items.length > 0) {
-      buttons.push(
-        { label: 'Bar', data: { paymentType: 'cash' }, onClick: () => handlePaymentClick('cash') },
-        { label: 'Karte', data: { paymentType: 'card' }, onClick: () => handlePaymentClick('card') }
-      );
+  function updateGridContent() {
+    // // // // // // // // // // // // // // // addLog('DEBUG', `updateGridContent called with ${gridCells.length} grid cells`);
+    if (gridCells.length === 0) {
+      // // // // // // // // // // // // // // // addLog('DEBUG', 'No grid cells, skipping updateGridContent');
+      return;
     }
+    clearGridContent();
     
-    return buttons;
-  }
-  
-  // Handle clicks on GridManager cells
-  function handleCellClick(cell) {
-    if (cell.content?.onClick) {
-      cell.content.onClick();
-    } else if (cell.data) {
-      // Handle category/product clicks
-      if (currentView === 'categories' && cell.data.id) {
-        handleCategoryClick({ detail: { data: cell.data } });
-      } else if (currentView === 'products' && cell.data.id) {
-        handleProductClick({ detail: { data: cell.data } });
-      }
+    // First assign payment buttons to ensure they get priority
+    assignPaymentButtons(gridCells);
+    
+    // Then initialize system buttons in remaining slots
+    initializeSystemButtons(gridCells);
+    
+    if (currentView === 'categories') {
+      populateWithCategories(gridCells, categories);
+    } else {
+      populateWithProducts(gridCells, products);
     }
+    gridCells = [...gridCells];
   }
   
   function initializeSystemButtons(grid) {
@@ -895,11 +999,19 @@
     }
   });
 
-  // renderableCells replaces gridRows - now managed by GridManager
+  let gridRows = [];
   $: {
-    if (renderableCells.length > 0) {
-      // Force reactivity when renderableCells updates
+    const rows = [];
+    const rowMap = new Map();
+    gridCells.forEach(cell => {
+      if (!rowMap.has(cell.rowIndex)) rowMap.set(cell.rowIndex, []);
+      rowMap.get(cell.rowIndex).push(cell);
+    });
+    const maxRows = layoutType === '4-4-4' ? rectTotalRows : totalRows;
+    for (let i = 0; i < maxRows; i++) {
+      if (rowMap.has(i)) rows.push(rowMap.get(i).sort((a, b) => a.columnIndex - b.columnIndex));
     }
+    gridRows = rows;
   }
 
   // Universal authentication check for protected actions
@@ -1553,10 +1665,11 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
            class:hex={layoutType === '6-6-6'} 
            class:rect={layoutType === '4-4-4'} 
            style="
-             --cell-width: {currentGridConfig.cellWidth}px; 
-             --cell-height: {currentGridConfig.cellHeight}px;
+             --optimal-hex-height: {optimalHexHeight}px; 
              --hex-vertical-padding: {HEX_VERTICAL_PADDING}px;
              --rect-vertical-padding: {RECT_VERTICAL_PADDING}px;
+             --optimal-hex-width: {optimalHexWidth}px;
+             --rect-button-height: {rectButtonHeight}px;
            ">
         
         <!-- Empty category info overlay -->
@@ -1566,22 +1679,38 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
             <p class="empty-hint">Verwenden Sie das Menü-Import Tool oder fügen Sie Produkte manuell hinzu.</p>
           </div>
         {/if}
-        <!-- Quantum UI Grid: Direct rendering from GridManager -->
-        {#each renderableCells as cell (cell.id)}
-          <div 
-            class="quantum-button" 
-            style="{cell.cssTransform}; position: absolute;"
-          >
-            <UniversalButton 
-              shape={currentGridConfig.shape}
-              width={currentGridConfig.cellWidth}
-              height={currentGridConfig.cellHeight}
-              label={cell.label}
-              data={cell.data}
-              active={true}
-              on:click={() => handleCellClick(cell)}
-              on:secondaryaction={handleSecondaryAction}
-            />
+        {#each gridRows as row, rowIndex}
+          <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
+            {#each row as cell (`${currentView}-${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
+                {@const content = getButtonContent(cell)}
+                {#if content.paymentButton}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                {:else if content.isBetrugerCap}
+                  <UniversalButton 
+                      {...getButtonProps(cell)} 
+                      label={content.label} 
+                      color={content.color} 
+                      active={content.active} 
+                      on:click={content.onClick}
+                  >
+                      <BetrugerCapIconOutline />
+                  </UniversalButton>
+                {:else if content.isKeyboardToggle}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
+                {:else if content.component}
+                  <UniversalButton {...getButtonProps(cell)} active={content.active} on:click={content.onClick}>
+                    <svelte:component this={content.component} />
+                  </UniversalButton>
+                {:else if content.label && !content.data}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                {:else if content.disabled}
+                  <UniversalButton {...getButtonProps(cell)} disabled={true} />
+                {:else if content.icon !== undefined || content.showShape}
+                  <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
+                {:else if content.label}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                {/if}
+            {/each}
           </div>
         {/each}
       </div>
@@ -1618,12 +1747,6 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
   .grid-container-unified {
     height: 100%;
     overflow: hidden;
-    position: relative; /* Required for absolute positioning of quantum buttons */
-  }
-  
-  .quantum-button {
-    position: absolute;
-    /* Transform and positioning handled by GridManager */
   }
   
   .grid-container-unified.hex {
@@ -1635,7 +1758,24 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
   }
 
   
-  /* Old button-row styles removed - now using quantum-button positioning */
+  .button-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 0;
+  }
+  
+  .button-row.hex-row {
+    margin-bottom: calc(-1 * var(--optimal-hex-height, 121px) * 0.25 + 6px);
+  }
+  
+  .button-row.rect-row {
+    margin-bottom: 6px;
+  }
+  
+  .button-row.rect-row:last-child {
+    margin-bottom: 0;
+  }
   
   .empty-category-info {
     position: absolute;
