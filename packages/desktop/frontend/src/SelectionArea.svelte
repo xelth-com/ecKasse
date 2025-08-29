@@ -20,7 +20,7 @@
   import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/icons/BetrugerCapIconOutline.svelte';
   import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
-  // GridManager - Core of the 'Quantum UI' architecture
+  // GridManager - Only for center content area (full buttons)
   import { GridManager } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
 
   let categories = [];
@@ -50,9 +50,12 @@
   export let consoleViewComponent = null;
   let containerHeight = 0;
   
-  // GridManager instance - replaces all legacy grid calculation
-  let gridManager = null;
-  let renderableCells = [];
+  // HYBRID ARCHITECTURE:
+  // 1. gridCells - for half-buttons (original system)
+  // 2. GridManager + renderableCells - for center content only
+  let gridCells = []; // Half-buttons rendered directly by SelectionArea
+  let gridManager = null; // Only manages center content area
+  let renderableCells = []; // Only center content from GridManager
   
   // Smart action prop from parent
   export let handleSmartAction = () => {};
@@ -124,6 +127,7 @@
   // Dynamic layout constants
   $: MIN_BUTTON_SIZE = $uiConstantsStore.MIN_BUTTON_WIDTH;
   const HEX_BUTTON_GAP = 6;
+  const HEX_EDGE_GAP = 6; // gap at edges for hex calculations
   const RECT_GAP = 6;
   const HEX_VERTICAL_PADDING = 6;
   const RECT_VERTICAL_PADDING = 6;
@@ -212,6 +216,157 @@
     }
   });
 
+  // --- SHARED GRID CALCULATION FUNCTION ---
+  /**
+   * Calculates optimal grid layout (columns, rows, button dimensions) for both hexagonal and rectangular button grids.
+   * 
+   * IMPORTANT: This function ensures that both 6-6-6 (hexagonal) and 4-4-4 (rectangular) layouts have the SAME 
+   * number of columns and rows when given identical container dimensions. The `hasOverlap` parameter affects 
+   * ONLY the final button height calculation, NOT the grid dimensions.
+   * 
+   * @param {number} containerWidth - Available width in pixels
+   * @param {number} containerHeight - Available height in pixels  
+   * @param {number} minButtonSize - Minimum button width/height for touch usability
+   * @param {number} targetAspectRatio - Desired height/width ratio (e.g., 3/4 for 4:3 aspect)
+   * @param {number} buttonGap - Gap between buttons in pixels
+   * @param {number} verticalPadding - Top/bottom padding in pixels
+   * @param {boolean} hasOverlap - Whether buttons overlap (true for hex, false for rect)
+   * @returns {Object} {columns, rows, buttonWidth, buttonHeight}
+   */
+  function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
+    const availableWidth = containerWidth;
+    const availableHeight = containerHeight - 2 * verticalPadding;
+    
+    // Universal layout testing functions for both hex and rect
+    function testSymmetricalLayout(cols) {
+        const buttonWidth = (availableWidth - (cols + 1) * buttonGap) / cols;
+        if (buttonWidth < minButtonSize) return null;
+
+        const targetButtonHeight = buttonWidth * targetAspectRatio;
+        let effectiveRowHeight = targetButtonHeight * 0.75 + buttonGap;
+        let maxPossibleRows = Math.floor(availableHeight / effectiveRowHeight);
+        
+        let hexCalculatedHeight = (availableHeight - (maxPossibleRows - 1) * buttonGap) / (1 + (maxPossibleRows - 1) * 0.75);
+        const minButtonHeight = buttonWidth * (targetAspectRatio * 0.7);
+        
+        let optimalRows;
+        if (hexCalculatedHeight >= minButtonHeight && maxPossibleRows > 0) {
+          optimalRows = maxPossibleRows;
+        } else {
+          optimalRows = Math.max(1, maxPossibleRows - 1);
+        }
+        
+        // Button height calculation depends on hasOverlap (rendering type)
+        let calculatedButtonHeight;
+        if (hasOverlap) {
+            // Hex-style overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        } else {
+            // Rect-style non-overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        }
+
+        return {
+            columns: cols,
+            rows: optimalRows,
+            buttonWidth,
+            buttonHeight: calculatedButtonHeight,
+            layout: 'symmetrical'
+        };
+    }
+
+    function testAsymmetricalLayout(cols) {
+        const buttonWidth = (availableWidth - (cols + 1) * buttonGap) / (cols + 0.5);
+        if (buttonWidth < minButtonSize) return null;
+
+        const targetButtonHeight = buttonWidth * targetAspectRatio;
+        let effectiveRowHeight = targetButtonHeight * 0.75 + buttonGap;
+        let maxPossibleRows = Math.floor(availableHeight / effectiveRowHeight);
+        
+        let hexCalculatedHeight = (availableHeight - (maxPossibleRows - 1) * buttonGap) / (1 + (maxPossibleRows - 1) * 0.75);
+        const minButtonHeight = buttonWidth * (targetAspectRatio * 0.7);
+        
+        let optimalRows;
+        if (hexCalculatedHeight >= minButtonHeight && maxPossibleRows > 0) {
+          optimalRows = maxPossibleRows;
+        } else {
+          optimalRows = Math.max(1, maxPossibleRows - 1);
+        }
+        
+        // Button height calculation depends on hasOverlap (rendering type)
+        let calculatedButtonHeight;
+        if (hasOverlap) {
+            // Hex-style overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / (1 + (optimalRows - 1) * 0.75);
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        } else {
+            // Rect-style non-overlapping calculation
+            if (optimalRows > 0) {
+                calculatedButtonHeight = (availableHeight - (optimalRows - 1) * buttonGap) / optimalRows;
+            } else {
+                calculatedButtonHeight = Math.max(availableHeight, minButtonHeight);
+            }
+        }
+
+        return {
+            columns: cols,
+            rows: optimalRows,
+            buttonWidth,
+            buttonHeight: calculatedButtonHeight,
+            layout: 'asymmetrical'
+        };
+    }
+
+    // Universal algorithm: test different column counts and find the best layout
+    let bestLayout = null;
+    let maxCols = Math.floor((availableWidth - buttonGap) / minButtonSize);
+
+    for (let cols = 1; cols <= maxCols; cols++) {
+        const symm = testSymmetricalLayout(cols);
+        const asymm = testAsymmetricalLayout(cols);
+
+        // Choose the best layout for both hex and rect using same logic
+        const candidates = [symm, asymm].filter(l => l !== null);
+        for (const candidate of candidates) {
+            if (!bestLayout) {
+                bestLayout = candidate;
+            } else {
+                // Prioritize the layout that fits more columns
+                if (candidate.columns > bestLayout.columns) {
+                    bestLayout = candidate;
+                } else if (candidate.columns === bestLayout.columns) {
+                    // If column count is equal, prefer asymmetrical for density,
+                    // or the one with slightly larger buttons if the layout is the same
+                    if (candidate.layout === 'asymmetrical' && bestLayout.layout === 'symmetrical') {
+                        bestLayout = candidate;
+                    } else if (candidate.buttonWidth > bestLayout.buttonWidth) {
+                        bestLayout = candidate;
+                    }
+                }
+            }
+        }
+    }
+
+    return bestLayout || {
+        columns: 1,
+        rows: 1,
+        buttonWidth: Math.max(minButtonSize, availableWidth - 2 * buttonGap),
+        buttonHeight: Math.max(minButtonSize, availableHeight),
+        layout: 'symmetrical'
+    };
+  }
+
   // Calculate optimal grid dimensions (simplified from old algorithm)
   function calculateOptimalDimensions() {
     const availableWidth = containerWidth;
@@ -245,35 +400,82 @@
     };
   }
 
-  function initializeGridManager() {
-    const dimensions = calculateOptimalDimensions();
-    
-    itemsPerRow = dimensions.columns;
-    totalRows = dimensions.rows;
-    
-    if (layoutType === '6-6-6') {
-      optimalHexWidth = dimensions.buttonWidth;
-      optimalHexHeight = dimensions.buttonHeight;
-    } else {
-      rectButtonWidth = dimensions.buttonWidth;
-      rectButtonHeight = dimensions.buttonHeight;
+  function rebuildGridAndContent() {
+    if (containerWidth <= 0 || containerHeight <= 0) {
+      return;
     }
+
+    if (layoutType === '6-6-6') {
+      const hexGrid = calculateOptimalGrid(
+        containerWidth, 
+        containerHeight, 
+        MIN_BUTTON_SIZE, 
+        3/4, 
+        HEX_EDGE_GAP, 
+        HEX_VERTICAL_PADDING, 
+        true
+      );
+      
+      itemsPerRow = hexGrid.columns;
+      totalRows = hexGrid.rows;
+      optimalHexWidth = hexGrid.buttonWidth;
+      optimalHexHeight = hexGrid.buttonHeight;
+      chosenLayout = hexGrid.layout;
+      
+      // Build both systems
+      if (itemsPerRow > 0 && totalRows > 0) {
+        gridCells = buildGridStructure(); // Half-buttons
+        initializeCenterGridManager(); // Center content
+      }
+    } else if (layoutType === '4-4-4') {
+      const rectGrid = calculateOptimalGrid(
+        containerWidth, 
+        containerHeight, 
+        MIN_BUTTON_SIZE, 
+        3/4, 
+        RECT_GAP, 
+        RECT_VERTICAL_PADDING, 
+        false
+      );
+      
+      rectItemsPerRow = rectGrid.columns;
+      rectTotalRows = rectGrid.rows;
+      rectButtonWidth = rectGrid.buttonWidth;
+      rectButtonHeight = rectGrid.buttonHeight;
+      chosenLayout = rectGrid.layout;
+
+      if (rectItemsPerRow > 0 && rectTotalRows > 0) {
+        gridCells = buildGridStructure(); // Half-buttons
+        initializeCenterGridManager(); // Center content
+      }
+    }
+
+    // Update content for both systems
+    if (gridCells.length > 0) {
+      updateGridContent();
+    }
+  }
+  
+  function initializeCenterGridManager() {
+    // Calculate center area dimensions (exclude half-buttons)
+    const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
+    const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
+    const currentButtonWidth = layoutType === '6-6-6' ? optimalHexWidth : rectButtonWidth;
+    const currentButtonHeight = layoutType === '6-6-6' ? optimalHexHeight : rectButtonHeight;
     
-    // Initialize GridManager with calculated dimensions
+    // GridManager only handles center content (full buttons only)
+    const centerCols = currentItemsPerRow - 1; // Exclude space for half-buttons
+    
     gridManager = new GridManager({
-      dimensions: { rows: totalRows, cols: itemsPerRow * 2 }, // cols * 2 for hex grid logic
+      dimensions: { rows: currentTotalRows, cols: centerCols },
       rendering: { 
         shape: layoutType === '6-6-6' ? 'hex' : 'rect',
-        cellWidth: layoutType === '6-6-6' ? optimalHexWidth : rectButtonWidth,
-        cellHeight: layoutType === '6-6-6' ? optimalHexHeight : rectButtonHeight
+        cellWidth: currentButtonWidth,
+        cellHeight: currentButtonHeight
       }
     });
     
-    updateGridContent();
-  }
-  
-  function rebuildGridAndContent() {
-    initializeGridManager();
+    updateCenterContent();
   }
   
   // Only rebuild when layout type changes (not when container size changes)
@@ -314,80 +516,66 @@
   
   // Grid structure now handled by GridManager
   
-  function getSystemButtons() {
-    const buttons = [];
+
+
+  // HYBRID UPDATE SYSTEM
+  function updateGridContent() {
+    // Update half-buttons (original system)
+    updateHalfButtons();
     
-    // Pinpad button (always visible)
-    buttons.push({
-      type: 'pinpad',
-      label: 'Pinpad',
-      component: PinpadIcon,
-      onClick: () => console.log('Pinpad clicked'),
-      position: { row: totalRows - 1, col: 0 }
+    // Update center content (GridManager)
+    updateCenterContent();
+  }
+  
+  function updateHalfButtons() {
+    if (gridCells.length === 0) return;
+    
+    // Clear half-button content
+    gridCells.forEach(cell => {
+      if (cell.type.includes('half')) {
+        cell.content = null;
+      }
     });
     
-    // Payment buttons (only when order is active)
-    if ($orderStore && $orderStore.items && $orderStore.items.length > 0) {
-      buttons.push(
-        { label: 'Bar', data: { paymentType: 'cash' }, onClick: () => handlePaymentClick('cash') },
-        { label: 'Karte', data: { paymentType: 'card' }, onClick: () => handlePaymentClick('card') }
+    // Initialize system half-buttons (original logic from backup)
+    initializeSystemButtons(gridCells);
+    
+    // Add back button for products view
+    if (currentView === 'products') {
+      const leftHalfCells = gridCells.filter(cell => 
+        (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
       );
+      if (leftHalfCells.length > 0) {
+        leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+        const leftHalfCell = leftHalfCells[0];
+        leftHalfCell.content = { isBackButton: true, icon: '←' };
+      }
     }
     
-    return buttons;
+    // Force reactivity
+    gridCells = [...gridCells];
   }
-
-  function getSystemElements() {
-    const systemElements = [];
-    
-    // Add user button if available
-    if (userButtonContent) {
-      systemElements.push({
-        row: 0, col: 0,
-        content: userButtonContent,
-        priority: gridManager.getPriorities().TABLE_BUTTON
-      });
-    }
-    
-    if (smartNavButtonContent) {
-      systemElements.push({
-        row: 0, col: 2,
-        content: smartNavButtonContent,
-        priority: gridManager.getPriorities().PINPAD_BUTTON
-      });
-    }
-    
-    return systemElements;
-  }
-
-  // Main content update function using GridManager
-  function updateGridContent() {
+  
+  function updateCenterContent() {
     if (!gridManager) return;
     
-    // Clear existing content
+    // Clear and reset GridManager
     gridManager.clearAndReset();
     
-    // Get priority constants
     const priorities = gridManager.getPriorities();
-    
-    // Place system elements first (they get higher priority)
-    const systemElements = getSystemElements();
-    if (systemElements.length > 0) {
-      gridManager.placeSystemElements(systemElements);
-    }
     
     // Place payment buttons if order is active
     if ($orderStore && $orderStore.items && $orderStore.items.length > 0) {
       const paymentButtons = [
-        { row: totalRows - 1, col: itemsPerRow * 2 - 2, content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, priority: priorities.PAYMENT_BUTTON },
-        { row: totalRows - 1, col: itemsPerRow * 2 - 4, content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, priority: priorities.PAYMENT_BUTTON }
+        { row: totalRows - 1, col: 0, content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, priority: priorities.PAYMENT_BUTTON },
+        { row: totalRows - 1, col: 1, content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, priority: priorities.PAYMENT_BUTTON }
       ];
       gridManager.placeSystemElements(paymentButtons);
     }
     
     // Place pinpad button
     const pinpadButton = [
-      { row: totalRows - 1, col: 0, content: { type: 'pinpad', label: 'Pinpad' }, priority: priorities.PINPAD_BUTTON }
+      { row: totalRows - 1, col: Math.floor((layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow) / 2), content: { type: 'pinpad', label: 'Pinpad' }, priority: priorities.PINPAD_BUTTON }
     ];
     gridManager.placeSystemElements(pinpadButton);
     
@@ -398,21 +586,332 @@
       gridManager.placeItems(products, priorities.MAX_CONTENT);
     }
     
-    // Get final renderable cells for Svelte
+    // Get final renderable cells for center area
     renderableCells = gridManager.getSvelteCompatibleCells(gridManager.config.rendering);
+  }
+
+  // Original initializeSystemButtons from backup - handles half-buttons
+  function initializeSystemButtons(grid) {
+    // --- Left Half-Buttons --- //
+    const leftHalfCells = grid.filter(cell => 
+      cell.type === 'left-half' || cell.type === 'left-half-rect'
+    );
+    if (leftHalfCells.length > 0) {
+      leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort ascending to get top first
+      
+      // Second from top: User Button
+      if (leftHalfCells.length > 1) {
+        const userButtonCell = leftHalfCells[1];
+        userButtonCell.content = { isUserButton: true };
+      }
+      
+      // Bottom: Smart Navigation Button
+      leftHalfCells.sort((a, b) => b.rowIndex - a.rowIndex); // Sort descending to get bottom first
+      const bottomLeftHalfCell = leftHalfCells[0];
+      bottomLeftHalfCell.content = { isSmartNavigation: true };
+    }
+
+    // --- Right Half-Buttons --- //
+    const rightHalfCells = grid.filter(cell => 
+      cell.type === 'right-half' || cell.type === 'right-half-rect'
+    );
+    if (rightHalfCells.length > 0) {
+      rightHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort top-to-bottom
+
+      // Slot 1 (Topmost): Layout Toggle
+      if (rightHalfCells[0]) {
+        const currentLang = $pinpadStore.currentLanguage;
+        const shapeType = layoutType === '6-6-6' ? 'rect' : 'hex';
+        
+        const languageIcon = shapeType === 'rect' ? 
+          `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="5" width="46" height="40" rx="2" stroke="#666" stroke-width="1.5" fill="none"/>
+            <text x="25" y="25" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#666">${currentLang}</text>
+          </svg>` :
+          `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="25,2 47.99,12.5 47.99,37.5 25,48 2.01,37.5 2.01,12.5" stroke="#666" stroke-width="1.5" fill="none"/>
+            <text x="25" y="25" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#666">${currentLang}</text>
+          </svg>`;
+        
+        rightHalfCells[0].content = { 
+          isLayoutToggle: true, 
+          icon: languageIcon,
+          showShape: ''
+        };
+      }
+      
+      // Slot 2: AI Button (Betruger Cap)
+      if (rightHalfCells[1]) {
+        rightHalfCells[1].content = { isBetrugerCap: true };
+      }
+
+      // Slot 3: Keyboard Toggle
+      if (rightHalfCells[2]) {
+        rightHalfCells[2].content = { 
+          isKeyboardToggle: true, 
+          icon: `<svg width="72" height="72" viewBox="0 0 24 24" fill="#404040">
+            <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+          </svg>`, 
+          color: '#404040', 
+          textColor: '#666' 
+        };
+      }
+
+      // Last Slot (Bottommost): Time Button
+      if (rightHalfCells.length > 1) {
+        rightHalfCells[rightHalfCells.length - 1].content = { isTimeButton: true };
+      }
+    }
+  }
+
+  // Original grid building functions from backup
+  function buildGridStructure() {
+    const cells = [];
+    
+    if (layoutType === '6-6-6') {
+      for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
+        buildHoneycombRow(cells, rowIndex, chosenLayout);
+      }
+    } else if (layoutType === '4-4-4') {
+      buildRectGridLayout(cells, chosenLayout);
+    }
+    
+    return cells;
+  }
+  
+  function buildHoneycombRow(cells, rowIndex, layoutType) {
+    const isOddRow = rowIndex % 2 === 1;
+
+    if (layoutType === 'symmetrical') {
+        const fullButtonsInRow = isOddRow ? itemsPerRow : itemsPerRow - 1;
+        if (fullButtonsInRow < 0) return;
+
+        if (!isOddRow) {
+            cells.push({ id: `half-start-${rowIndex}`, type: 'left-half', content: null, rowIndex, columnIndex: 0 });
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i + 1 });
+            }
+            cells.push({ id: `half-end-${rowIndex}`, type: 'right-half', content: null, rowIndex, columnIndex: fullButtonsInRow + 1 });
+        } else {
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i });
+            }
+        }
+    } else { // Asymmetrical
+        const fullButtonsInRow = itemsPerRow;
+        if (!isOddRow) {
+            cells.push({ id: `half-start-${rowIndex}`, type: 'left-half', content: null, rowIndex, columnIndex: 0 });
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i + 1 });
+            }
+        } else {
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i });
+            }
+            cells.push({ id: `half-end-${rowIndex}`, type: 'right-half', content: null, rowIndex, columnIndex: fullButtonsInRow });
+        }
+    }
+  }
+  
+  function buildRectGridLayout(cells, layoutType) {
+    for (let rowIndex = 0; rowIndex < rectTotalRows; rowIndex++) {
+      buildRectRow(cells, rowIndex, layoutType);
+    }
+  }
+  
+  function buildRectRow(cells, rowIndex, layoutType) {
+    const isOddRow = rowIndex % 2 === 1;
+
+    if (layoutType === 'symmetrical') {
+        const fullButtonsInRow = isOddRow ? rectItemsPerRow : rectItemsPerRow - 1;
+        if (fullButtonsInRow < 0) return;
+
+        if (!isOddRow) {
+            cells.push({ 
+                id: `rect-half-start-${rowIndex}`, 
+                type: 'left-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: 0,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i + 1,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+            cells.push({ 
+                id: `rect-half-end-${rowIndex}`, 
+                type: 'right-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: fullButtonsInRow + 1,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+        } else {
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+        }
+    } else { // Asymmetrical
+        const fullButtonsInRow = rectItemsPerRow;
+        if (!isOddRow) {
+            cells.push({ 
+                id: `rect-half-start-${rowIndex}`, 
+                type: 'left-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: 0,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i + 1,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+        } else {
+            for (let i = 0; i < fullButtonsInRow; i++) {
+                cells.push({ 
+                    id: `rect-full-${rowIndex}-${i}`, 
+                    type: 'rect-grid', 
+                    content: null, 
+                    rowIndex, 
+                    columnIndex: i,
+                    width: rectButtonWidth,
+                    height: rectButtonHeight
+                });
+            }
+            cells.push({ 
+                id: `rect-half-end-${rowIndex}`, 
+                type: 'right-half-rect', 
+                content: null, 
+                rowIndex, 
+                columnIndex: fullButtonsInRow,
+                width: rectButtonWidth / 2 - RECT_GAP / 2,
+                height: rectButtonHeight
+            });
+        }
+    }
   }
 
   function handleCellClick(cell) {
     if (cell.content?.onClick) {
       cell.content.onClick();
     } else if (cell.data) {
-      // Handle category/product clicks
+      // Handle category/product clicks from center content
       if (currentView === 'categories' && cell.data.id) {
         handleCategoryClick({ detail: { data: cell.data } });
       } else if (currentView === 'products' && cell.data.id) {
         handleProductClick({ detail: { data: cell.data } });
       }
     }
+  }
+
+  function handleGridCellClick(gridCell) {
+    // Handle clicks from original grid cells (half-buttons)
+    const content = getButtonContent(gridCell);
+    if (content.onClick) {
+      content.onClick();
+    } else if (content.data) {
+      if (currentView === 'categories' && content.data.id) {
+        handleCategoryClick({ detail: { data: content.data } });
+      } else if (currentView === 'products' && content.data.id) {
+        handleProductClick({ detail: { data: content.data } });
+      }
+    }
+  }
+
+  // Center button content for GridManager cells
+  function getCenterButtonContent(cell) {
+    // Handle system buttons (pinpad, payment buttons) 
+    if (cell.content?.type === 'pinpad') {
+      return {
+        label: cell.content.label,
+        component: PinpadIcon,
+        onClick: handleKeyboardToggle,
+        active: true
+      };
+    }
+    if (cell.content?.type === 'bar' || cell.content?.type === 'karte') {
+      const hasOrder = $orderStore && $orderStore.total > 0 && $orderStore.status === 'active';
+      return {
+        label: cell.content.label,
+        onClick: cell.content.onClick,
+        active: hasOrder,
+        disabled: !hasOrder,
+        paymentButton: true,
+        color: hasOrder ? (cell.content.type === 'bar' ? '#28a745' : '#007bff') : '#666'
+      };
+    }
+    
+    // Regular category/product buttons
+    const isCategory = currentView === 'categories';
+    const label = isCategory 
+      ? parseJsonField(cell.content.category_names).de || 'Unnamed'
+      : parseJsonField(cell.content.display_names).button.de || 'Unnamed Product';
+    
+    // For product buttons, check for AI-suggested color
+    let buttonColor = undefined;
+    if (!isCategory && cell.content?.additional_item_attributes?.ui_suggestions?.background_color_hex) {
+      buttonColor = cell.content.additional_item_attributes.ui_suggestions.background_color_hex;
+    } else if (!isCategory) {
+      buttonColor = '#666666';
+    }
+    
+    const buttonProps = { 
+      label, 
+      data: cell.content, 
+      active: true
+    };
+    
+    if (isCategory) {
+      buttonProps.color = '#3A2F20';
+      buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5A4B35 30%, #4A3B28 70%, #3A2F20 100%)';
+      buttonProps.textColor = '#DDDDD0';
+    } else if (buttonColor) {
+      buttonProps.color = buttonColor;
+    }
+    
+    return buttonProps;
+  }
+
+  // Generate gridRows for half-button rendering
+  let gridRows = [];
+  $: {
+    const rows = [];
+    const rowMap = new Map();
+    gridCells.forEach(cell => {
+      if (!rowMap.has(cell.rowIndex)) rowMap.set(cell.rowIndex, []);
+      rowMap.get(cell.rowIndex).push(cell);
+    });
+    const maxRows = layoutType === '4-4-4' ? rectTotalRows : totalRows;
+    for (let i = 0; i < maxRows; i++) {
+      if (rowMap.has(i)) rows.push(rowMap.get(i).sort((a, b) => a.columnIndex - b.columnIndex));
+    }
+    gridRows = rows;
   }
 
   // Event handlers
@@ -760,13 +1259,13 @@
         color: hasOrder ? (cell.content.type === 'bar' ? '#28a745' : '#007bff') : '#666'
       };
     }
-    if (cell.content.isUserButton) {
+    if (cell.content?.isUserButton) {
       return userButtonContent;
     }
-    if (cell.content.isSmartNavigation) {
+    if (cell.content?.isSmartNavigation) {
       return smartNavButtonContent;
     }
-    if (cell.content.isTimeButton) {
+    if (cell.content?.isTimeButton) {
       const timeText = formatTime($currentMinuteTime.time);
       const day = $currentMinuteTime.time.getDate().toString().padStart(2, '0');
       const month = ($currentMinuteTime.time.getMonth() + 1).toString().padStart(2, '0');
@@ -777,7 +1276,7 @@
         customStyle: 'font-family: monospace; font-size: 14px; font-weight: bold; line-height: 1.2; text-align: center; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);'
       };
     }
-    if (cell.content.isLayoutToggle) {
+    if (cell.content?.isLayoutToggle) {
       return {
         label: layoutType === '6-6-6' ? '6⬡6⬡6' : '4▢4▢4',
         onClick: toggleLayoutType,
@@ -785,7 +1284,7 @@
         customStyle: 'font-family: monospace; font-size: 16px; font-weight: bold; text-align: center;'
       };
     }
-    if (cell.content.isBackButton) {
+    if (cell.content?.isBackButton) {
       return {
         label: '⬅ Categories',
         onClick: goBackToCategories,
@@ -794,7 +1293,7 @@
         color: '#6c757d'
       };
     }
-    if (cell.content.isKeyboardToggle) {
+    if (cell.content?.isKeyboardToggle) {
       return { 
         label: cell.content.label || '⌨', 
         icon: cell.content.icon, 
@@ -804,7 +1303,7 @@
         active: true
       };
     }
-    if (cell.content.isPaymentButton) {
+    if (cell.content?.isPaymentButton) {
       const hasOrder = $orderStore.total > 0 && $orderStore.status === 'active';
       const buttonProps = { 
         label: cell.content.label, 
@@ -898,20 +1397,73 @@
     {#if status}
       <p class="status-message">{status}</p>
     {:else}
-      <div class="grid-container-unified" class:hex={layoutType === '6-6-6'} style="padding: {HEX_VERTICAL_PADDING}px 0;">
+      <!-- HYBRID RENDERING: Half-buttons + Center content -->
+      <div class="grid-container-unified" 
+           class:hex={layoutType === '6-6-6'} 
+           class:rect={layoutType === '4-4-4'} 
+           style="
+             --optimal-hex-height: {optimalHexHeight}px; 
+             --hex-vertical-padding: {HEX_VERTICAL_PADDING}px;
+             --rect-vertical-padding: {RECT_VERTICAL_PADDING}px;
+             --optimal-hex-width: {optimalHexWidth}px;
+             --rect-button-height: {rectButtonHeight}px;
+           ">
+        
+        <!-- Empty category info overlay -->
         {#if currentView === 'products' && products.length === 0}
           <div class="empty-category-info">
-            <p class="empty-message">No products in this category.</p>
-            <p class="empty-hint">Try a different category or check the product catalog.</p>
+            <p class="empty-message">Diese Kategorie enthält noch keine Produkte.</p>
+            <p class="empty-hint">Verwenden Sie das Menü-Import Tool oder fügen Sie Produkte manuell hinzu.</p>
           </div>
         {/if}
+
+        <!-- HALF-BUTTONS: Original grid system -->
+        {#each gridRows as row, rowIndex}
+          <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
+            {#each row as cell (`${currentView}-${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
+              {@const content = getButtonContent(cell)}
+              <!-- Only render half-buttons here, skip full buttons -->
+              {#if cell.type.includes('half')}
+                {#if content.paymentButton}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                {:else if content.isBetrugerCap}
+                  <UniversalButton 
+                      {...getButtonProps(cell)} 
+                      label={content.label} 
+                      color={content.color} 
+                      active={content.active} 
+                      on:click={content.onClick}
+                  >
+                      <BetrugerCapIconOutline />
+                  </UniversalButton>
+                {:else if content.isKeyboardToggle}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
+                {:else if content.component}
+                  <UniversalButton {...getButtonProps(cell)} active={content.active} on:click={content.onClick}>
+                    <svelte:component this={content.component} />
+                  </UniversalButton>
+                {:else if content.label && !content.data}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                {:else if content.disabled}
+                  <UniversalButton {...getButtonProps(cell)} disabled={true} />
+                {:else if content.icon !== undefined || content.showShape}
+                  <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
+                {:else if content.label}
+                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                {/if}
+              {/if}
+            {/each}
+          </div>
+        {/each}
+
+        <!-- CENTER CONTENT: GridManager quantum buttons -->
         {#each renderableCells as cell (cell.id)}
           <div class="quantum-button" style="{cell.cssTransform}; position: absolute;">
             <UniversalButton
               shape={layoutType === '6-6-6' ? 'hex' : 'rect'}
               width={layoutType === '6-6-6' ? optimalHexWidth : rectButtonWidth}
               height={layoutType === '6-6-6' ? optimalHexHeight : rectButtonHeight}
-              {...getButtonContent(cell)}
+              {...getCenterButtonContent(cell)}
               on:click={() => handleCellClick(cell)}
               on:secondaryaction={handleSecondaryAction}
             />
