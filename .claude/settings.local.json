@@ -205,7 +205,8 @@
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names->>''button''->>''de'' as button_text, additional_item_attributes->''ui_suggestions''->>''background_color_hex'' as color FROM items WHERE additional_item_attributes->''ui_suggestions''->>''background_color_hex'' IS NOT NULL LIMIT 5;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c \"SELECT id, display_names->''button''->>''de'' as button_text, additional_item_attributes->''ui_suggestions''->>''background_color_hex'' as color FROM items WHERE additional_item_attributes->''ui_suggestions''->>''background_color_hex'' IS NOT NULL LIMIT 5;\")",
       "Bash(PGPASSWORD=gK76543n2PqX5bV9zR4m psql:*)",
-      "Bash(git clean:*)"
+      "Bash(git clean:*)",
+      "Bash(git revert:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

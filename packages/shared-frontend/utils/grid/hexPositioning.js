@@ -5,36 +5,53 @@ export function virtualToPhysical(row, col, config) {
   const {
     cellWidth = 120,
     cellHeight = 80,
+    buttonGap = 6,
     hexOffset = 0.5,
     shape = 'hex' // 'hex' or 'rect'
   } = config;
 
   if (shape === 'hex') {
-    return virtualToPhysicalHex(row, col, cellWidth, cellHeight, hexOffset);
+    return virtualToPhysicalHex(row, col, cellWidth, cellHeight, buttonGap, hexOffset);
   } else {
-    return virtualToPhysicalRect(row, col, cellWidth, cellHeight);
+    return virtualToPhysicalRect(row, col, cellWidth, cellHeight, buttonGap);
   }
 }
 
 /**
  * Convert virtual coordinates to hexagonal grid physical coordinates
+ * Now properly accounts for buttonGap in positioning calculations
  */
-function virtualToPhysicalHex(row, col, cellWidth, cellHeight, hexOffset) {
-  // For simplicity, we use the logical (doubled) column index for X calculation
-  const x = col * (cellWidth / 2);
-  // Y offset is based on 75% height overlap of hexes
-  const y = row * (cellHeight * 0.75);
+function virtualToPhysicalHex(row, col, cellWidth, cellHeight, buttonGap, hexOffset) {
+  // For hexagonal grid: doubled column indexes for staggered layout
+  // Even columns are left-aligned, odd columns are offset
+  const isOddCol = col % 2 === 1;
+  const visualCol = Math.floor(col / 2);
+  
+  // X position: visual column * (full width + gap) + half-offset for odd columns
+  // The gap is added between each button to create proper spacing
+  const x = visualCol * (cellWidth + buttonGap) + (isOddCol ? (cellWidth + buttonGap) / 2 : 0);
+  
+  // Y offset is based on 75% height overlap of hexes, with gap consideration
+  // For hexagonal layout, we need to account for vertical spacing too
+  const verticalSpacing = cellHeight * 0.75;
+  const y = row * (verticalSpacing + buttonGap);
+  
+  // Debug positioning for all buttons
+  console.log(`🔮 [hexPositioning] row=${row}, col=${col}, isOddCol=${isOddCol}, visualCol=${visualCol}, x=${x}, y=${y}, gap=${buttonGap}`);
   
   return { x, y };
 }
 
 /**
  * Convert virtual coordinates to rectangular grid physical coordinates  
+ * Now properly accounts for buttonGap in positioning calculations
  */
-function virtualToPhysicalRect(row, col, cellWidth, cellHeight) {
-  // Simple rectangular grid positioning, adding gap logic on the frontend
-  const x = col * cellWidth;
-  const y = row * cellHeight;
+function virtualToPhysicalRect(row, col, cellWidth, cellHeight, buttonGap) {
+  // Rectangular grid positioning with proper gap spacing
+  const x = col * (cellWidth + buttonGap);
+  const y = row * (cellHeight + buttonGap);
+  
+  console.log(`🔮 [rectPositioning] row=${row}, col=${col}, x=${x}, y=${y}, gap=${buttonGap}`);
   
   return { x, y };
 }
@@ -44,8 +61,12 @@ function virtualToPhysicalRect(row, col, cellWidth, cellHeight) {
  */
 export function getCellCenter(row, col, config) {
   const { x, y } = virtualToPhysical(row, col, config);
+  const { cellWidth = 120, cellHeight = 80 } = config;
   
-  return { x, y };
+  return { 
+    x: x + cellWidth / 2, 
+    y: y + cellHeight / 2 
+  };
 }
 
 /**
