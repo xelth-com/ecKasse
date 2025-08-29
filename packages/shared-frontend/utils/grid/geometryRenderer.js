@@ -60,21 +60,27 @@ export class GeometryRenderer {
   renderContentGrid(contentGrid) {
     const renderCells = [];
     
-    // Only render slots that are actually filled with content
-    const filledSlots = contentGrid.getUsableFilledSlots();
+    // Render ALL usable slots (both filled and empty for visual grid)
+    const allUsableSlots = contentGrid.getUsableSlots();
     
-    for (const slot of filledSlots) {
+    for (const slot of allUsableSlots) {
       
-      // Type determination is now simplified since all filled slots are 'full' buttons
+      // Create render cells for both filled and empty slots
       const renderCell = new RenderCell(
-        `full-slot-${slot.row}-${slot.col}`,
-        'full',
+        slot.isEmpty ? `empty-slot-${slot.row}-${slot.col}` : `full-slot-${slot.row}-${slot.col}`,
+        slot.isEmpty ? 'empty' : 'full',
         { row: slot.row, col: slot.col }
       );
       
-      // Copy content and priority
-      renderCell.setContent(slot.content);
-      renderCell.geometryMetadata.priority = slot.priority;
+      // Copy content and priority (empty slots will have null content)
+      if (!slot.isEmpty) {
+        renderCell.setContent(slot.content);
+        renderCell.geometryMetadata.priority = slot.priority;
+      } else {
+        // Empty slot gets default empty styling
+        renderCell.setContent({ type: 'empty', disabled: true });
+        renderCell.geometryMetadata.priority = 0;
+      }
       
       // Calculate physical position using the frontend's geometric config
       renderCell.calculatePhysicalPosition(this.options);
