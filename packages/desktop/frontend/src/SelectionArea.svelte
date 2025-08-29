@@ -849,34 +849,7 @@
 
     // --- Main Grid System Buttons --- //
     // Pinpad and Table buttons are now handled by GridManager in updateCenterContent
-    // Keep designations for backward compatibility but don't assign content
-    const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
-
-    // Designate the Pinpad trigger - bottom-left full button (only if not already filled)
-    let potentialTriggers = grid.filter(c => 
-        (c.type === 'full' || c.type === 'rect-grid') && 
-        !c.content
-    );
-    if (potentialTriggers.length > 0) {
-        potentialTriggers.sort((a,b) => (b.rowIndex - a.rowIndex) || (a.columnIndex - b.columnIndex));
-        potentialTriggers[0].isPinpadTrigger = true;
-    }
-
-    // Designate the Table button - leftmost full button in second-to-last row (only if not already filled)
-    if (maxRowIndex > 0) {
-        const secondToLastRowIndex = maxRowIndex - 1;
-        let potentialTableButtons = grid.filter(c => 
-            (c.type === 'full' || c.type === 'rect-grid') && 
-            c.rowIndex === secondToLastRowIndex &&
-            !c.content &&
-            !c.isPinpadTrigger
-        );
-        
-        if (potentialTableButtons.length > 0) {
-            potentialTableButtons.sort((a,b) => a.columnIndex - b.columnIndex);
-            potentialTableButtons[0].isTableButton = true;
-        }
-    }
+    // No need to designate isPinpadTrigger or isTableButton as this causes duplicate logic
   }
   
   // Initialize GridManager for center content area
