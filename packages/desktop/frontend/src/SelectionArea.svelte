@@ -301,8 +301,24 @@
   }
 
   function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
+    addLog('DEBUG', 'calculateOptimalGrid called', {
+      containerWidth, 
+      containerHeight, 
+      minButtonSize, 
+      targetAspectRatio, 
+      buttonGap, 
+      verticalPadding, 
+      hasOverlap
+    });
+    
     const availableWidth = containerWidth;
     const availableHeight = containerHeight - 2 * verticalPadding;
+    
+    addLog('DEBUG', 'calculateOptimalGrid: calculated available space', {
+      availableWidth,
+      availableHeight,
+      paddingReduction: 2 * verticalPadding
+    });
     
     // Universal layout testing functions for both hex and rect
     function testSymmetricalLayout(cols) {
@@ -425,13 +441,21 @@
         }
     }
 
-    return bestLayout || {
+    const finalLayout = bestLayout || {
         columns: 1,
         rows: 1,
         buttonWidth: Math.max(minButtonSize, availableWidth - 2 * buttonGap),
         buttonHeight: Math.max(minButtonSize, availableHeight),
         layout: 'symmetrical'
     };
+    
+    addLog('DEBUG', 'calculateOptimalGrid returning final layout', {
+      finalLayout,
+      wasFallback: !bestLayout,
+      totalColumnsTestedUpTo: Math.floor((availableWidth - buttonGap) / minButtonSize)
+    });
+    
+    return finalLayout;
   }
 
   // Dynamic width and height calculated based on container size
@@ -458,66 +482,35 @@
       return;
     }
 
+    let grid;
     if (layoutType === '6-6-6') {
-      // // // // // // // // // // // // // // // addLog('DEBUG', `6-6-6 CALC: Container=${containerWidth}x${containerHeight}px`);
-      
-      const hexGrid = calculateOptimalGrid(
-        containerWidth, 
-        containerHeight, 
-        MIN_BUTTON_SIZE, 
-        3/4, // hex aspect ratio
-        HEX_EDGE_GAP, 
-        HEX_VERTICAL_PADDING, 
-        true // has overlap
-      );
-      
-      itemsPerRow = hexGrid.columns;
-      totalRows = hexGrid.rows;
-      optimalHexWidth = hexGrid.buttonWidth;
-      optimalHexHeight = hexGrid.buttonHeight;
-      chosenLayout = hexGrid.layout;
-      
-      // // // // // // // // // // // // // // // addLog('INFO', `6-6-6 RESULT (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)}px)`);
-      
-      if (itemsPerRow > 0 && totalRows > 0) {
-        // // // // // // // // // // // // // // // addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
-        gridCells = buildGridStructure();
-      }
+      grid = calculateOptimalGrid(containerWidth, containerHeight, MIN_BUTTON_SIZE, 3/4, HEX_EDGE_GAP, HEX_VERTICAL_PADDING, true);
+      itemsPerRow = grid.columns;
+      totalRows = grid.rows;
+      optimalHexWidth = grid.buttonWidth;
+      optimalHexHeight = grid.buttonHeight;
+      chosenLayout = grid.layout;
     } else if (layoutType === '4-4-4') {
-      // // // // // // // // // // // // // // // addLog('DEBUG', `4-4-4 CALC: Container=${containerWidth}x${containerHeight}px`);
-      
-      const rectGrid = calculateOptimalGrid(
-        containerWidth, 
-        containerHeight, 
-        MIN_BUTTON_SIZE, 
-        3/4, // start with same target ratio as hex
-        RECT_GAP, 
-        RECT_VERTICAL_PADDING, 
-        false // no overlap for rectangles
-      );
-      
-      rectItemsPerRow = rectGrid.columns;
-      rectTotalRows = rectGrid.rows;
-      rectButtonWidth = rectGrid.buttonWidth;
-      rectButtonHeight = rectGrid.buttonHeight;
-      chosenLayout = rectGrid.layout;
-
-      // // // // // // // // // // // // // // // addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
-      
-      if (rectItemsPerRow > 0 && rectTotalRows > 0) {
-        gridCells = buildGridStructure();
-      }
+      grid = calculateOptimalGrid(containerWidth, containerHeight, MIN_BUTTON_SIZE, 3/4, RECT_GAP, RECT_VERTICAL_PADDING, false);
+      rectItemsPerRow = grid.columns;
+      rectTotalRows = grid.rows;
+      rectButtonWidth = grid.buttonWidth;
+      rectButtonHeight = grid.buttonHeight;
+      chosenLayout = grid.layout;
     } else {
-      itemsPerRow = 1;
-      optimalHexWidth = MIN_BUTTON_SIZE;
-      rectItemsPerRow = 1;
-      rectButtonWidth = MIN_BUTTON_SIZE;
-      rectButtonHeight = MIN_BUTTON_SIZE;
+      return;
     }
 
-    // Update content after grid is built
-    if (gridCells.length > 0) {
-      initializeCenterGridManager(); // Initialize GridManager for center area
+    if (grid.columns > 0 && grid.rows > 0) {
+      gridManager = new GridManager({
+        dimensions: { rows: grid.rows, cols: grid.columns },
+        rendering: { 
+          shape: layoutType === '6-6-6' ? 'hex' : 'rect',
+          cellWidth: grid.buttonWidth,
+          cellHeight: grid.buttonHeight
+        }
+      });
+      gridCells = buildGridStructure();
       updateGridContent();
     }
   }
@@ -563,16 +556,35 @@
   
   
   function buildGridStructure() {
+    addLog('DEBUG', 'buildGridStructure called', { layoutType, chosenLayout });
     const cells = [];
     
     if (layoutType === '6-6-6') {
+      addLog('DEBUG', 'Building hexagonal grid structure', { 
+        totalRows, 
+        itemsPerRow,
+        buttonSize: `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}`
+      });
       for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
+        const cellCountBefore = cells.length;
         buildHoneycombRow(cells, rowIndex, chosenLayout);
+        const cellsAddedInRow = cells.length - cellCountBefore;
+        addLog('DEBUG', `Built hex row ${rowIndex}`, { cellsAdded: cellsAddedInRow, totalCells: cells.length });
       }
     } else if (layoutType === '4-4-4') {
+      addLog('DEBUG', 'Building rectangular grid structure', { 
+        rectTotalRows, 
+        rectItemsPerRow,
+        buttonSize: `${rectButtonWidth.toFixed(1)}x${rectButtonHeight.toFixed(1)}`
+      });
       buildRectGridLayout(cells, chosenLayout);
     }
     
+    addLog('DEBUG', 'buildGridStructure completed', { 
+      totalCellsGenerated: cells.length,
+      layoutType,
+      chosenLayout
+    });
 
     return cells;
   }
@@ -865,27 +877,6 @@
   }
   
   // Initialize GridManager for center content area
-  function initializeCenterGridManager() {
-    // Calculate center area dimensions (exclude half-buttons)
-    const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
-    const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
-    const currentButtonWidth = layoutType === '6-6-6' ? optimalHexWidth : rectButtonWidth;
-    const currentButtonHeight = layoutType === '6-6-6' ? optimalHexHeight : rectButtonHeight;
-    
-    // GridManager only handles center content (full buttons only)
-    const centerCols = currentItemsPerRow - 1; // Exclude space for half-buttons
-    
-    gridManager = new GridManager({
-      dimensions: { rows: currentTotalRows, cols: centerCols },
-      rendering: { 
-        shape: layoutType === '6-6-6' ? 'hex' : 'rect',
-        cellWidth: currentButtonWidth,
-        cellHeight: currentButtonHeight
-      }
-    });
-    
-    updateCenterContent();
-  }
   
   function updateCenterContent() {
     if (!gridManager) return;
@@ -986,15 +977,28 @@
   onMount(() => {
     if (containerElement) {
       resizeObserver = new ResizeObserver(entries => {
+        addLog('DEBUG', 'ResizeObserver triggered', { entriesCount: entries.length });
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           for (let entry of entries) {
             const newWidth = entry.contentRect.width;
             const newHeight = entry.contentRect.height;
+            addLog('DEBUG', 'ResizeObserver: container dimensions detected', { 
+              newWidth, 
+              newHeight,
+              previousWidth: containerWidth,
+              previousHeight: containerHeight
+            });
             if (containerWidth !== newWidth || containerHeight !== newHeight) {
+              addLog('INFO', 'Container size changed, triggering rebuild', {
+                from: `${containerWidth}x${containerHeight}`,
+                to: `${newWidth}x${newHeight}`
+              });
               containerWidth = newWidth;
               containerHeight = newHeight;
               rebuildGridAndContent();
+            } else {
+              addLog('DEBUG', 'Container size unchanged, no rebuild needed');
             }
           }
         }, 150);
@@ -1872,6 +1876,9 @@
     height: 100%;
     overflow: hidden;
     position: relative; /* Required for absolute positioning of quantum buttons */
+    display: flex;
+    flex-direction: column;
+    align-content: flex-start;
   }
   
   .quantum-button {
