@@ -23,8 +23,12 @@
   // GridManager - for center content area (full buttons)
   import { GridManager } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
 
+  let categories = [];
+  let products = [];
   let status = 'Connecting to backend...';
   let isConnected = false;
+  let currentView = 'categories'; // 'categories' or 'products'
+  let selectedCategory = null;
   let layoutType = '6-6-6'; // '6-6-6' or '4-4-4'
   
   // Context menu state
@@ -525,7 +529,15 @@
     }
   }
   
-  // Grid content will be handled by GridManager when it's integrated
+  // Update grid content when data/view changes
+  $: {
+    if (gridManager && (
+      (currentView === 'categories' && categories.length >= 0) ||
+      (currentView === 'products' && products.length >= 0)
+    )) {
+      updateGridContent();
+    }
+  }
   
   // Update grid content when order state changes (to activate/deactivate payment buttons)
   $: {
@@ -731,6 +743,18 @@
     // Then initialize system buttons in remaining slots
     initializeSystemButtons(gridCells);
     
+    // Add back button for products view
+    if (currentView === 'products') {
+      const leftHalfCells = gridCells.filter(cell => 
+        (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
+      );
+      if (leftHalfCells.length > 0) {
+        leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+        const leftHalfCell = leftHalfCells[0];
+        leftHalfCell.content = { isBackButton: true, icon: '←' };
+      }
+    }
+    
     // Force reactivity
     gridCells = [...gridCells];
   }
@@ -871,23 +895,30 @@
     
     const priorities = gridManager.getPriorities();
     
+    // Place content based on current view
+    if (currentView === 'categories') {
+      gridManager.placeItems(categories, priorities.CATEGORY_NAVIGATION);
+    } else if (currentView === 'products') {
+      gridManager.placeItems(products, priorities.MAX_CONTENT);
+    }
+    
     // Place payment buttons if order is active
     if ($orderStore && $orderStore.items && $orderStore.items.length > 0) {
+      const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
       const paymentButtons = [
-        { row: totalRows - 1, col: 0, content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, priority: priorities.PAYMENT_BUTTON },
-        { row: totalRows - 1, col: 1, content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, priority: priorities.PAYMENT_BUTTON }
+        { row: currentTotalRows - 1, col: 0, content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, priority: priorities.PAYMENT_BUTTON },
+        { row: currentTotalRows - 1, col: 1, content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, priority: priorities.PAYMENT_BUTTON }
       ];
       gridManager.placeSystemElements(paymentButtons);
     }
     
     // Place pinpad button
+    const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
+    const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
     const pinpadButton = [
-      { row: totalRows - 1, col: Math.floor((layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow) / 2), content: { type: 'pinpad', label: 'Pinpad' }, priority: priorities.PINPAD_BUTTON }
+      { row: currentTotalRows - 1, col: Math.floor(currentItemsPerRow / 2), content: { type: 'pinpad', label: 'Pinpad' }, priority: priorities.PINPAD_BUTTON }
     ];
     gridManager.placeSystemElements(pinpadButton);
-    
-    // GridManager handles its own data loading and placement
-    // No need to pass categories/products - GridManager loads them internally
     
     // Get final renderable cells for center area
     renderableCells = gridManager.getSvelteCompatibleCells(gridManager.config.rendering);
@@ -983,8 +1014,37 @@
     isConnected = state.isConnected;
     if (isConnected && !initialLoadDone) {
       initialLoadDone = true;
-      status = ''; // GridManager will handle loading
-      updateGridContent(); // Initialize grid with system buttons only
+      status = 'Loading categories...';
+      
+      // Load categories
+      setTimeout(() => {
+        const resultPromise = wsStore.send({ command: 'getCategories' });
+        resultPromise.then(result => {
+          if (result.status === 'success' && Array.isArray(result.payload)) {
+            categories = result.payload;
+            status = '';
+            updateGridContent(); // Update with loaded categories
+          } else {
+            status = 'Error: Could not load categories from backend.';
+            console.error('Failed to load categories:', result);
+          }
+        }).catch(error => {
+          status = 'Error: Failed to get response for categories.';
+          console.error('Error in getCategories promise:', error);
+        });
+      }, 500);
+    }
+    
+    // Handle product loading response
+    if (state.lastMessage?.command === 'getItemsByCategoryResponse') {
+      if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
+        products = state.lastMessage.payload;
+        currentView = 'products';
+        status = '';
+        updateGridContent(); // Update with loaded products
+      } else {
+        status = 'Error: Could not load products from backend.';
+      }
     }
   });
 
@@ -1024,7 +1084,34 @@
     }
   }
 
-  // Category and product click handlers will be handled by GridManager
+  function handleCategoryClick(event) {
+    const categoryData = event.detail?.data || event;
+    if (categoryData && categoryData.id) {
+      selectedCategory = categoryData;
+      status = 'Loading products...';
+      wsStore.send({ 
+        command: 'getItemsByCategory', 
+        payload: { categoryId: categoryData.id } 
+      });
+    }
+  }
+
+  async function handleProductClick(event) {
+    const productData = event.detail?.data || event;
+    if (productData && productData.id) {
+      await handleProtectedAction(async () => {
+        await orderStore.addItem(productData.id, 1);
+      });
+    }
+  }
+
+  function goBackToCategories() {
+    currentView = 'categories';
+    selectedCategory = null;
+    products = [];
+    status = '';
+    updateGridContent();
+  }
   
   function toggleLayoutType() {
     layoutType = layoutType === '6-6-6' ? '4-4-4' : '6-6-6';
@@ -1468,7 +1555,7 @@
       };
     }
     if (!cell.content) return { disabled: true };
-    // Back button will be handled by GridManager
+    if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
     if (cell.content.isLayoutToggle) return { 
       icon: cell.content.icon || '', 
       onClick: toggleLayoutType, 
@@ -1576,6 +1663,36 @@
       };
     }
     
+    // Handle category/product content
+    if (cell.content && (cell.content.category_names || cell.content.display_names)) {
+      const isCategory = currentView === 'categories';
+      const label = isCategory 
+        ? parseJsonField(cell.content.category_names).de || 'Unnamed'
+        : parseJsonField(cell.content.display_names).button.de || 'Unnamed Product';
+      
+      const buttonProps = { 
+        label, 
+        data: cell.content, 
+        active: true
+      };
+      
+      if (isCategory) {
+        // Categories get brown gradient
+        buttonProps.color = '#3A2F20';
+        buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5A4B35 30%, #4A3B28 70%, #3A2F20 100%)';
+        buttonProps.textColor = '#DDDDD0';
+      } else {
+        // Products - check for AI-suggested color
+        let buttonColor = '#666666'; // Default gray
+        if (cell.content?.additional_item_attributes?.ui_suggestions?.background_color_hex) {
+          buttonColor = cell.content.additional_item_attributes.ui_suggestions.background_color_hex;
+        }
+        buttonProps.color = buttonColor;
+      }
+      
+      return buttonProps;
+    }
+    
     // Empty or default content
     return { 
       disabled: true,
@@ -1587,8 +1704,14 @@
   function handleCellClick(cell) {
     if (cell.content?.onClick) {
       cell.content.onClick();
+    } else if (cell.content && (cell.content.category_names || cell.content.display_names)) {
+      // Handle category/product clicks
+      if (currentView === 'categories' && cell.content.id) {
+        handleCategoryClick(cell.content);
+      } else if (currentView === 'products' && cell.content.id) {
+        handleProductClick(cell.content);
+      }
     }
-    // GridManager will handle category/product clicks when integrated
   }
 
 
@@ -1644,6 +1767,14 @@
              --optimal-hex-width: {optimalHexWidth}px;
              --rect-button-height: {rectButtonHeight}px;
            ">
+        
+        <!-- Empty category info overlay -->
+        {#if currentView === 'products' && products.length === 0}
+          <div class="empty-category-info">
+            <p class="empty-message">Diese Kategorie enthält noch keine Produkte.</p>
+            <p class="empty-hint">Verwenden Sie das Menü-Import Tool oder fügen Sie Produkte manuell hinzu.</p>
+          </div>
+        {/if}
         
         <!-- HALF-BUTTONS: Original grid system -->
         {#each gridRows as row, rowIndex}
@@ -1742,6 +1873,34 @@
   
   .grid-container-unified.rect {
     padding: var(--rect-vertical-padding, 6px) 0px;
+  }
+  
+  .empty-category-info {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 20px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 350px;
+  }
+  
+  .empty-message {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+  }
+  
+  .empty-hint {
+    margin: 0;
+    font-size: 14px;
+    color: #999;
+    font-style: italic;
   }
 
   
