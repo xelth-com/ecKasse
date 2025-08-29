@@ -532,10 +532,14 @@
     }
   }
   
-  // Update grid content when order state changes (to activate/deactivate payment buttons)
+
+  // Update center content when order state changes (for payment buttons)
   $: {
-    if (gridCells.length > 0 && $orderStore) {
-      updateGridContent(); // Force reactivity update for order changes only
+    if (gridManager && $orderStore) {
+      // Use setTimeout to avoid infinite loops and batch updates
+      setTimeout(() => {
+        updateCenterContent();
+      }, 0);
     }
   }
 
@@ -749,9 +753,6 @@
     }
     clearGridContent();
     
-    // First assign payment buttons to ensure they get priority
-    assignPaymentButtons(gridCells);
-    
     // Then initialize system buttons in remaining slots
     initializeSystemButtons(gridCells);
     
@@ -915,16 +916,35 @@
       });
     }
     
-    // Place payment buttons if order is active
+    // Place payment buttons if order is active - independently, starting from right
     if ($orderStore && $orderStore.total > 0) {
-      // Place payment buttons in bottom row, from right to left
-      const paymentStartCol = centerCols - 3; // Start 3 columns from the right
+      // 'Karte' button - rightmost position (highest priority)
+      systemElements.push({
+        row: currentTotalRows - 1, 
+        col: centerCols - 1, 
+        content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, 
+        priority: priorities.PAYMENT_BUTTON 
+      });
       
-      systemElements.push(
-        { row: currentTotalRows - 1, col: paymentStartCol, content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, priority: priorities.PAYMENT_BUTTON },
-        { row: currentTotalRows - 1, col: paymentStartCol + 1, content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, priority: priorities.PAYMENT_BUTTON },
-        { row: currentTotalRows - 1, col: paymentStartCol + 2, content: { type: 'zwischenrechnung', label: 'Zwischenrechnung', onClick: () => handleIntermediateReceipt() }, priority: priorities.PAYMENT_BUTTON }
-      );
+      // 'Bar' button - second from right (if space available)  
+      if (centerCols > 1) {
+        systemElements.push({
+          row: currentTotalRows - 1, 
+          col: centerCols - 2, 
+          content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, 
+          priority: priorities.PAYMENT_BUTTON 
+        });
+      }
+      
+      // 'Zwischenrechnung' button - third from right (lowest priority, can be sacrificed)
+      if (centerCols > 2) {
+        systemElements.push({
+          row: currentTotalRows - 1, 
+          col: centerCols - 3, 
+          content: { type: 'zwischenrechnung', label: 'Zwischenrechnung', onClick: () => handleIntermediateReceipt() }, 
+          priority: priorities.PAYMENT_BUTTON 
+        });
+      }
     }
     
     // Place system elements first
@@ -943,9 +963,6 @@
     renderableCells = gridManager.getSvelteCompatibleCells(gridManager.config.rendering);
   }
 
-  function assignPaymentButtons(grid) {
-    // This function is now empty - payment buttons are handled by GridManager in updateCenterContent
-  }
 
   let resizeObserver;
   let containerElement;
@@ -1618,21 +1635,6 @@
       onClick: handleKeyboardToggle,
       active: true
     };
-    if (cell.content.isPaymentButton) {
-      const hasOrder = $orderStore.total > 0 && $orderStore.status === 'active';
-      const buttonProps = { 
-        label: cell.content.label, 
-        onClick: hasOrder ? () => handlePaymentClick(cell.content.paymentType) : undefined, 
-        active: hasOrder, 
-        disabled: !hasOrder,
-        paymentButton: true,
-        color: hasOrder ? cell.content.color : '#666',
-        icon: cell.content.icon,
-        textColor: hasOrder ? cell.content.textColor : undefined,
-        backgroundStyle: hasOrder ? cell.content.backgroundStyle : undefined
-      };
-      return buttonProps;
-    }
     
     // Regular category/product buttons are always enabled (auto-reset handles finished state)
     // Content styling will be handled by GridManager
@@ -1820,9 +1822,7 @@
           <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
             {#each row as cell (`${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
                 {@const content = getButtonContent(cell)}
-                {#if content.paymentButton}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
-                {:else if content.isBetrugerCap}
+                {#if content.isBetrugerCap}
                   <UniversalButton 
                       {...getButtonProps(cell)} 
                       label={content.label} 
