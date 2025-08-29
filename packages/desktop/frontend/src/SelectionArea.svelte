@@ -535,7 +535,7 @@
   // Update grid content when order state changes (to activate/deactivate payment buttons)
   $: {
     if (gridCells.length > 0 && $orderStore) {
-      gridCells = [...gridCells]; // Force reactivity update for order changes only
+      updateGridContent(); // Force reactivity update for order changes only
     }
   }
 
