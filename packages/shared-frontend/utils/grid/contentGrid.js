@@ -78,7 +78,15 @@ export class ContentGrid {
   }
 
   getUsableEmptySlots() {
-    return this.contentSlots.filter(slot => slot.isUsable && slot.isEmpty);
+    return this.contentSlots
+      .filter(slot => slot.isUsable && slot.isEmpty)
+      .sort((a, b) => {
+        // Sort by row first, then by column
+        if (a.row !== b.row) {
+          return a.row - b.row;
+        }
+        return a.col - b.col;
+      });
   }
 
   getUsableFilledSlots() {
@@ -86,7 +94,15 @@ export class ContentGrid {
   }
 
   getUsableSlots() {
-    return this.contentSlots.filter(slot => slot.isUsable);
+    return this.contentSlots
+      .filter(slot => slot.isUsable)
+      .sort((a, b) => {
+        // Sort by row first, then by column
+        if (a.row !== b.row) {
+          return a.row - b.row;
+        }
+        return a.col - b.col;
+      });
   }
 
   /**

@@ -61,11 +61,26 @@ export class GridManager {
 
     // 1. Identify all usable empty slots
     const emptySlots = this.contentGrid.getUsableEmptySlots();
+    
+    // Explicitly sort empty slots to ensure top-to-bottom, left-to-right placement
+    emptySlots.sort((a, b) => {
+      if (a.row !== b.row) {
+        return a.row - b.row; // Top to bottom
+      }
+      return a.col - b.col; // Left to right
+    });
+    
     let itemsPlaced = 0;
     const placementResults = [];
 
     // 2. Sort items by natural order (e.g., database order) before placing
     contentItems.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    
+    console.log('🎯 [GridManager] Placing items:', {
+      itemCount: contentItems.length,
+      availableSlots: emptySlots.length,
+      firstSlot: emptySlots[0] ? `${emptySlots[0].row},${emptySlots[0].col}` : 'none'
+    });
 
     for (const item of contentItems) {
       if (itemsPlaced >= maxItems) break;

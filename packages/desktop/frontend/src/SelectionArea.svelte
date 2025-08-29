@@ -894,31 +894,43 @@
     gridManager.clearAndReset();
     
     const priorities = gridManager.getPriorities();
+    const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
+    const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
+    const centerCols = currentItemsPerRow - 1; // GridManager columns (excluding half-buttons)
     
-    // Place content based on current view
-    if (currentView === 'categories') {
-      gridManager.placeItems(categories, priorities.CATEGORY_NAVIGATION);
-    } else if (currentView === 'products') {
-      gridManager.placeItems(products, priorities.MAX_CONTENT);
-    }
+    // First place system buttons in specific positions
+    const systemElements = [];
     
     // Place payment buttons if order is active
     if ($orderStore && $orderStore.items && $orderStore.items.length > 0) {
-      const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
-      const paymentButtons = [
+      systemElements.push(
         { row: currentTotalRows - 1, col: 0, content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, priority: priorities.PAYMENT_BUTTON },
         { row: currentTotalRows - 1, col: 1, content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, priority: priorities.PAYMENT_BUTTON }
-      ];
-      gridManager.placeSystemElements(paymentButtons);
+      );
     }
     
-    // Place pinpad button
-    const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
-    const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
-    const pinpadButton = [
-      { row: currentTotalRows - 1, col: Math.floor(currentItemsPerRow / 2), content: { type: 'pinpad', label: 'Pinpad' }, priority: priorities.PINPAD_BUTTON }
-    ];
-    gridManager.placeSystemElements(pinpadButton);
+    // Place pinpad button in center of bottom row
+    if (centerCols > 0) {
+      const pinpadCol = Math.floor(centerCols / 2);
+      systemElements.push({
+        row: currentTotalRows - 1, 
+        col: pinpadCol, 
+        content: { type: 'pinpad', label: 'Pinpad' }, 
+        priority: priorities.PINPAD_BUTTON 
+      });
+    }
+    
+    // Place system elements first
+    if (systemElements.length > 0) {
+      gridManager.placeSystemElements(systemElements);
+    }
+    
+    // Then place content based on current view - this will fill remaining slots
+    if (currentView === 'categories') {
+      gridManager.placeItems(categories, priorities.MAX_CONTENT); // Use MAX_CONTENT for higher priority
+    } else if (currentView === 'products') {
+      gridManager.placeItems(products, priorities.MAX_CONTENT);
+    }
     
     // Get final renderable cells for center area
     renderableCells = gridManager.getSvelteCompatibleCells(gridManager.config.rendering);
