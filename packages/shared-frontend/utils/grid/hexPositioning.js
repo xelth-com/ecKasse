@@ -73,6 +73,6 @@ export function getCellCenter(row, col, config) {
  * Generate CSS transform string for positioning an element
  */
 export function getCSSTransform(position) {
-  if (!position) return 'translate(0px, 0px)';
-  return `translate(${position.x}px, ${position.y}px)`;
+  if (!position) return 'transform: translate(0px, 0px)';
+  return `transform: translate(${position.x}px, ${position.y}px)`;
 }
