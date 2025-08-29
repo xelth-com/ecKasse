@@ -278,7 +278,7 @@
   
   // Only rebuild when layout type changes (not when container size changes)
   $: {
-    if (layoutType) {
+    if (containerWidth > 0 && containerHeight > 0 && layoutType) {
       rebuildGridAndContent();
     }
   }
@@ -321,7 +321,7 @@
     buttons.push({
       type: 'pinpad',
       label: 'Pinpad',
-      icon: PinpadIcon,
+      component: PinpadIcon,
       onClick: () => console.log('Pinpad clicked'),
       position: { row: totalRows - 1, col: 0 }
     });
@@ -744,7 +744,7 @@
     if (cell.content?.type === 'pinpad') {
       return {
         label: cell.content.label,
-        icon: PinpadIcon,
+        component: PinpadIcon,
         onClick: handleKeyboardToggle,
         active: true
       };
@@ -825,7 +825,6 @@
     const label = isCategory 
       ? parseJsonField(cell.content.category_names).de || 'Unnamed'
       : parseJsonField(cell.content.display_names).button.de || 'Unnamed Product';
-    const onClick = isCategory ? handleCategoryClick : handleProductClick;
     
     // For product buttons, check for AI-suggested color
     let buttonColor = undefined;
@@ -835,11 +834,10 @@
       buttonColor = '#666666'; // Default gray for products without color suggestion
     }
     
-    // Build return object with appropriate styling
+    // Build return object with appropriate styling - no onClick here, handled by handleCellClick
     const buttonProps = { 
       label, 
       data: cell.content, 
-      onClick,
       active: true
     };
     

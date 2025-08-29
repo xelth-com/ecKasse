@@ -3,6 +3,7 @@
   
   export let label = '';
   export let icon = '';
+  export let component = null; // for Svelte component icons
   export let color = '#666666';
   export let textColor = '';
   export let backgroundStyle = '';
@@ -111,8 +112,14 @@
       <div class="slot-container">
         <slot />
       </div>
-    {:else if icon || showShape}
-      {#if icon}
+    {:else if component || icon || showShape}
+      {#if component}
+        <div class="button-icon-wrapper">
+          <div class="button-icon">
+            <svelte:component this={component} />
+          </div>
+        </div>
+      {:else if icon}
         <div class="button-icon-wrapper">
           <span class="button-icon">{@html icon}</span>
         </div>
