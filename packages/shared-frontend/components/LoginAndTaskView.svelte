@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { authStore } from '../utils/authStore.js';
   import { recoveryStore } from '../utils/recoveryStore.js';
-  import { currentTime } from '../utils/timeStore.js';
+  import { currentMinuteTime } from '../utils/timeStore.js';
   import { addLog } from '../utils/logStore.js';
   import { wsStore } from '../utils/wsStore.js';
 
@@ -90,8 +90,8 @@
       <div class="time-confirmation-section">
         <h2>🕐 Подтверждение времени системы</h2>
         <div class="time-display-large">
-          <div class="current-time">{formatTime($currentTime)}</div>
-          <div class="current-date">{formatDate($currentTime)}</div>
+          <div class="current-time">{formatTime($currentMinuteTime.time)}</div>
+          <div class="current-date">{formatDate($currentMinuteTime.time)}</div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 <script>
   import { controlCenterVisible, hideControlCenter } from '../utils/controlCenterStore.js';
-  import { currentTime } from '../utils/timeStore.js';
+  import { currentMinuteTime } from '../utils/timeStore.js';
   import { localeStore, setLocale } from '../utils/localeStore.js';
   import MenuImporter from './MenuImporter.svelte';
   import DsfinvkExporter from './DsfinvkExporter.svelte';
@@ -50,7 +50,7 @@
         <div class="section">
           <h3>System Time</h3>
           <div class="time-display">
-            {formatTime($currentTime)}
+            {formatTime($currentMinuteTime.time)}
           </div>
           <p class="time-description">
             Current system time. Time synchronization is managed automatically.

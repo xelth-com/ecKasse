@@ -6,7 +6,7 @@
   import { orderStore } from '@eckasse/shared-frontend/utils/orderStore.js';
   import { parkedOrdersStore } from '@eckasse/shared-frontend/utils/parkedOrdersStore.js';
   import { currentView as consoleView } from '@eckasse/shared-frontend/utils/viewStore.js';
-  import { currentTime, currentMinuteTime, timeStore } from '@eckasse/shared-frontend/utils/timeStore.js';
+  import { currentMinuteTime, timeStore } from '@eckasse/shared-frontend/utils/timeStore.js';
   import { toggleControlCenter } from '@eckasse/shared-frontend/utils/controlCenterStore.js';
   import UniversalButton from '@eckasse/shared-frontend/components/UniversalButton.svelte';
   import Pinpad from '@eckasse/shared-frontend/components/Pinpad.svelte';
@@ -163,34 +163,21 @@
     });
   });
 
-  // Update time button every minute with corrected time
-  let timeUpdateInterval;
-  onMount(() => {
-    // Update immediately
-    updateTimeButton();
-    
-    // Set up interval to update every minute
-    timeUpdateInterval = setInterval(() => {
-      updateTimeButton();
-    }, 60000); // 60 seconds
-  });
-
-  function updateTimeButton() {
-    if (gridCells.length > 0) {
-      console.log('🕒 [SelectionArea] Updating time button with corrected time (once per minute):', $currentMinuteTime.time);
+  // Track previous minute to detect actual changes
+  let previousMinute = null;
+  
+  // Update time button only when minute actually changes
+  $: if ($currentMinuteTime) {
+    const currentMinute = $currentMinuteTime.minute;
+    if (previousMinute !== null && previousMinute !== currentMinute && gridCells.length > 0) {
       // Force grid re-render to update time button
       setTimeout(() => {
         gridCells = [...gridCells];
       }, 0);
     }
+    previousMinute = currentMinute;
   }
 
-  // Cleanup interval on destroy
-  onDestroy(() => {
-    if (timeUpdateInterval) {
-      clearInterval(timeUpdateInterval);
-    }
-  });
 
 
   // --- DYNAMIC LAYOUT CONSTANTS (in px units) ---
@@ -1058,7 +1045,7 @@
               addLog('DEBUG', 'Container size unchanged, no rebuild needed');
             }
           }
-        }, 150);
+        }, 300);
       });
       resizeObserver.observe(containerElement);
       
