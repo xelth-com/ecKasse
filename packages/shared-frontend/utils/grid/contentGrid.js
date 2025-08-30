@@ -41,9 +41,10 @@ export class ContentSlot {
  * pattern. Some slots are permanently unusable (dead zones).
  */
 export class ContentGrid {
-  constructor(rows, cols) {
+  constructor(rows, cols, layoutType = 'symmetrical') {
     this.rows = rows;
     this.cols = cols; // This should be twice the visual columns due to staggered hex layout
+    this.layoutType = layoutType;
     this.slots = [];
     this.contentSlots = [];
     
@@ -57,7 +58,12 @@ export class ContentGrid {
       for (let col = 0; col < this.cols; col++) {
         // Checkerboard pattern: alternating usable/unusable slots
         // Usable slots are where (row % 2) !== (col % 2)
-        const isUsable = (row % 2) !== (col % 2);
+        let isUsable = (row % 2) !== (col % 2);
+        
+        // In symmetrical hex layout: last right slot in even rows is half-button (unusable for full content)
+        if (this.layoutType === 'symmetrical' && row % 2 === 0 && col === this.cols - 1) {
+          isUsable = false; // Last slot in even rows is half-button
+        }
         const slot = new ContentSlot(row, col, isUsable);
         rowSlots.push(slot);
         this.contentSlots.push(slot);

@@ -503,7 +503,8 @@
 
     if (grid.columns > 0 && grid.rows > 0) {
       gridManager = new GridManager({
-        dimensions: { rows: grid.rows, cols: grid.columns },
+        dimensions: { rows: grid.rows, cols: grid.columns * 2 },
+        layoutType: chosenLayout,
         rendering: { 
           shape: layoutType === '6-6-6' ? 'hex' : 'rect',
           cellWidth: grid.buttonWidth,
@@ -934,6 +935,93 @@
     
     // Get final renderable cells for center area
     renderableCells = gridManager.getSvelteCompatibleCells(gridManager.config.rendering);
+    
+    // Console output for virtual table state debugging
+    console.log('🔄 [Virtual Table Update] Full virtual table state:', {
+      totalSlots: gridManager.getUsableSlotCount(),
+      filledSlots: gridManager.contentGrid.getUsableFilledSlots().length,
+      emptySlots: gridManager.contentGrid.getUsableEmptySlots().length,
+      renderableCells: renderableCells.length,
+      gridDimensions: { 
+        rows: gridManager.contentGrid.rows, 
+        cols: gridManager.contentGrid.cols 
+      },
+      currentView: currentView
+    });
+    
+    // Log all elements with their types and positions
+    const filledSlots = gridManager.contentGrid.getUsableFilledSlots();
+    console.table(renderableCells.map((cell, index) => {
+      // Find the corresponding slot in the virtual grid
+      const correspondingSlot = filledSlots[index];
+      
+      return {
+        index,
+        type: cell.content?.type || 'content',
+        label: cell.label || cell.content?.label || 'N/A',
+        virtualRow: correspondingSlot?.row ?? 'N/A',
+        virtualCol: correspondingSlot?.col ?? 'N/A',
+        isSystem: ['tisch', 'pinpad', 'karte', 'bar', 'zwischenrechnung'].includes(cell.content?.type),
+        isContent: !['tisch', 'pinpad', 'karte', 'bar', 'zwischenrechnung'].includes(cell.content?.type),
+        priority: correspondingSlot?.priority || cell.priority || 'unknown'
+      };
+    }));
+    
+    // Log unusful (empty/dead) slots info
+    const allSlots = gridManager.contentGrid.slots;
+    const unusfulSlots = [];
+    for (let row = 0; row < allSlots.length; row++) {
+      for (let col = 0; col < allSlots[row].length; col++) {
+        const slot = allSlots[row][col];
+        if (!slot.isUsable || slot.isEmpty) {
+          unusfulSlots.push({
+            row,
+            col,
+            isUsable: slot.isUsable,
+            hasContent: !slot.isEmpty,
+            reason: !slot.isUsable ? 'dead-zone' : 'empty'
+          });
+        }
+      }
+    }
+    
+    if (unusfulSlots.length > 0) {
+      console.log('🚫 [Virtual Table] Unusful slots (empty/dead zones):', unusfulSlots);
+    }
+    
+    // Show the actual 2D array structure exactly as requested
+    console.log('📊 [Virtual Table] 2D Array - exactly as stored:');
+    console.log(`Dimensions: ${gridManager.contentGrid.rows} rows × ${gridManager.contentGrid.cols} columns`);
+    
+    // Show the raw 2D array structure
+    const rawArray = [];
+    for (let row = 0; row < gridManager.contentGrid.rows; row++) {
+      const rowData = [];
+      for (let col = 0; col < gridManager.contentGrid.cols; col++) {
+        const slot = gridManager.contentGrid.slots[row][col];
+        if (!slot.isUsable) {
+          rowData.push('xxx'); // unusful
+        } else if (slot.isEmpty) {
+          rowData.push('___'); // empty usable slot
+        } else {
+          // First 5 chars of product/category name
+          const label = slot.content?.category_names?.de || 
+                       slot.content?.display_names?.button?.de ||
+                       slot.content?.label || 
+                       slot.content?.type || 'item';
+          rowData.push(label.substring(0, 5).padEnd(5, '_'));
+        }
+      }
+      rawArray.push(rowData);
+    }
+    
+    console.table(rawArray);
+    
+    // Also show it as a simple text grid
+    console.log('📊 Text representation:');
+    rawArray.forEach((row, rowIndex) => {
+      console.log(`Row ${rowIndex}: [${row.join('][')}]`);
+    });
   }
 
 
@@ -1548,7 +1636,7 @@
         backgroundStyle: 'radial-gradient(ellipse at center, #4A2F2A 0%, #3E2723 30%, #2E1A16 70%, #1A0F0D 100%)'
       };
     }
-    if (!cell.content) return { disabled: true };
+    if (!cell.content) return { disabled: true, style: 'opacity: 0; pointer-events: none;' };
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
     if (cell.content.isLayoutToggle) return { 
       icon: cell.content.icon || '', 
@@ -1814,7 +1902,7 @@
                 {:else if content.label && !content.data}
                   <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.disabled}
-                  <UniversalButton {...getButtonProps(cell)} disabled={true} />
+                  <UniversalButton {...getButtonProps(cell)} disabled={true} style={content.style || ''} />
                 {:else if content.icon !== undefined || content.showShape}
                   <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
                 {:else if content.label}

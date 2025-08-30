@@ -31,7 +31,7 @@ export class GridManager {
       ...config
     };
 
-    this.contentGrid = new ContentGrid(this.config.dimensions.rows, this.config.dimensions.cols);
+    this.contentGrid = new ContentGrid(this.config.dimensions.rows, this.config.dimensions.cols, this.config.layoutType);
     this.geometryRenderer = createGeometryRenderer(this.config.rendering);
     this.renderCache = null;
     this.isDirty = true;
