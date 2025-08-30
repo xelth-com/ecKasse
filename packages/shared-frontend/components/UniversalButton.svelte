@@ -100,6 +100,7 @@
     {textColor ? `--button-text-color: ${textColor};` : ''}
     {backgroundStyle ? `--button-background-style: ${backgroundStyle};` : ''}
     --clip-path: {clipPath};
+    {customStyle}
   " 
   on:click={handleClick}
   on:contextmenu={handleContextMenu}

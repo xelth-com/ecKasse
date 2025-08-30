@@ -936,6 +936,7 @@
     // Get final renderable cells for center area
     renderableCells = gridManager.getSvelteCompatibleCells(gridManager.config.rendering);
     
+    
     // Console output for virtual table state debugging
     console.log('🔄 [Virtual Table Update] Full virtual table state:', {
       totalSlots: gridManager.getUsableSlotCount(),
@@ -1602,7 +1603,7 @@
   }
 
   // Universal button rendering function
-  function getButtonProps(cell) {
+  function getButtonProps(cell, content = null) {
     const shape = layoutType === '6-6-6' ? 'hex' : 'rect';
     const isHalf = cell.type.includes('half');
     const side = cell.type.includes('left') ? 'left' : (cell.type.includes('right') ? 'right' : '');
@@ -1616,7 +1617,13 @@
       height = cell.height || rectButtonHeight;
     }
     
-    return { shape, side, width, height };
+    return { 
+      shape, 
+      side, 
+      width, 
+      height,
+      customStyle: content?.style || ''
+    };
   }
 
   function getButtonContent(cell) {
@@ -1885,7 +1892,7 @@
                 {@const content = getButtonContent(cell)}
                 {#if content.isBetrugerCap}
                   <UniversalButton 
-                      {...getButtonProps(cell)} 
+                      {...getButtonProps(cell, content)} 
                       label={content.label} 
                       color={content.color} 
                       active={content.active} 
@@ -1894,19 +1901,19 @@
                       <BetrugerCapIconOutline />
                   </UniversalButton>
                 {:else if content.isKeyboardToggle}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
+                  <UniversalButton {...getButtonProps(cell, content)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
                 {:else if content.component}
-                  <UniversalButton {...getButtonProps(cell)} active={content.active} on:click={content.onClick}>
+                  <UniversalButton {...getButtonProps(cell, content)} active={content.active} on:click={content.onClick}>
                     <svelte:component this={content.component} />
                   </UniversalButton>
                 {:else if content.label && !content.data}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                  <UniversalButton {...getButtonProps(cell, content)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
                 {:else if content.disabled}
-                  <UniversalButton {...getButtonProps(cell)} disabled={true} style={content.style || ''} />
+                  <UniversalButton {...getButtonProps(cell, content)} disabled={true} />
                 {:else if content.icon !== undefined || content.showShape}
-                  <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
+                  <UniversalButton {...getButtonProps(cell, content)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
                 {:else if content.label}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                  <UniversalButton {...getButtonProps(cell, content)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
                 {/if}
             {/each}
           </div>
@@ -1914,7 +1921,7 @@
 
         <!-- CENTER CONTENT: GridManager quantum buttons -->
         {#each renderableCells as cell (cell.id)}
-          <div class="quantum-button" style="{cell.cssTransform}; position: absolute;">
+          <div class="quantum-button" style="{cell.cssTransform}; position: absolute; left: 6px;">
             <UniversalButton
               shape={layoutType === '6-6-6' ? 'hex' : 'rect'}
               width={layoutType === '6-6-6' ? optimalHexWidth : rectButtonWidth}

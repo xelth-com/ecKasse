@@ -28,7 +28,6 @@ function virtualToPhysicalHex(row, col, cellWidth, cellHeight, buttonGap, hexOff
   const visualCol = Math.floor(col / 2);
   
   // X position: visual column * (full width + gap) + half-offset for odd columns
-  // The gap is added between each button to create proper spacing
   const x = visualCol * (cellWidth + buttonGap) + (isOddCol ? (cellWidth + buttonGap) / 2 : 0);
   
   // Y offset is based on 75% height overlap of hexes, with gap consideration
