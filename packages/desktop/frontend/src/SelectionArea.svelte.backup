@@ -57,6 +57,9 @@
   let smartNavButtonContent = null;
   let notificationStyle = null;
   
+  // NEW: Layout calculation state - determines 'symmetrical' or 'asymmetrical' content placement
+  let chosenLayout = 'symmetrical';
+  
   // Reactive system button content that updates independently
   $: userButtonContent = (() => {
     const currentUser = $authStore.currentUser;
@@ -440,12 +443,10 @@
   let rectItemsPerRow = 1; // Dynamic: calculated columns
   let rectTotalRows = 1; // Dynamic: calculated rows
 
-  let chosenLayout = 'symmetrical';
-
-  // --- EXPLICIT GRID REBUILD FUNCTION (replaces reactive blocks) ---
+  // --- EXPLICIT GRID REBUILD FUNCTION (simplified) ---
   /**
-   * Explicitly rebuilds the grid layout and content.
-   * Called only when layout type changes or on mount, breaking the infinite reactive loop.
+   * Rebuilds grid with consistent full logical structure.
+   * The chosenLayout determines content placement, not grid structure.
    */
   function rebuildGridAndContent() {
     if (containerWidth <= 0 || containerHeight <= 0) {
@@ -453,8 +454,6 @@
     }
 
     if (layoutType === '6-6-6') {
-      // // // // // // // // // // // // // // // addLog('DEBUG', `6-6-6 CALC: Container=${containerWidth}x${containerHeight}px`);
-      
       const hexGrid = calculateOptimalGrid(
         containerWidth, 
         containerHeight, 
@@ -471,15 +470,10 @@
       optimalHexHeight = hexGrid.buttonHeight;
       chosenLayout = hexGrid.layout;
       
-      // // // // // // // // // // // // // // // addLog('INFO', `6-6-6 RESULT (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)}px)`);
-      
       if (itemsPerRow > 0 && totalRows > 0) {
-        // // // // // // // // // // // // // // // addLog('DEBUG', `REBUILDING GRID (${chosenLayout}): ${itemsPerRow}×${totalRows} (${optimalHexWidth.toFixed(1)}×${optimalHexHeight.toFixed(1)})`);
-        gridCells = buildGridStructure();
+        gridCells = buildFullGridStructure();
       }
     } else if (layoutType === '4-4-4') {
-      // // // // // // // // // // // // // // // addLog('DEBUG', `4-4-4 CALC: Container=${containerWidth}x${containerHeight}px`);
-      
       const rectGrid = calculateOptimalGrid(
         containerWidth, 
         containerHeight, 
@@ -496,10 +490,8 @@
       rectButtonHeight = rectGrid.buttonHeight;
       chosenLayout = rectGrid.layout;
 
-      // // // // // // // // // // // // // // // addLog('INFO', `4-4-4 RESULT: ${rectItemsPerRow}×${rectTotalRows} (${rectButtonWidth.toFixed(1)}×${rectButtonHeight.toFixed(1)}px)`);
-      
       if (rectItemsPerRow > 0 && rectTotalRows > 0) {
-        gridCells = buildGridStructure();
+        gridCells = buildFullGridStructure();
       }
     } else {
       itemsPerRow = 1;
@@ -555,161 +547,109 @@
   // The grid content will still update correctly on render without these
   
   
-  function buildGridStructure() {
-    const cells = [];
-    
-    if (layoutType === '6-6-6') {
-      for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
-        buildHoneycombRow(cells, rowIndex, chosenLayout);
-      }
-    } else if (layoutType === '4-4-4') {
-      buildRectGridLayout(cells, chosenLayout);
+  /**
+   * Determines if a position in the virtual grid is usable for placing buttons
+   * based on the chosen layout (symmetrical/asymmetrical)
+   */
+  function isPositionUsable(row, col, layout, layoutType) {
+    if (layout === 'asymmetrical') {
+      return true; // Все позиции используются в асимметричной раскладке
     }
     
+    // Симметричная раскладка
+    const isEvenRow = row % 2 === 0;
+    
+    if (layoutType === '6-6-6') {
+      const virtualWidth = itemsPerRow * 2;
+      if (isEvenRow) {
+        // В четных рядах первая и последняя позиции неиспользуемы (создаем отступы)
+        return col > 0 && col < (virtualWidth - 1);
+      } else {
+        // В нечетных рядах все позиции используются
+        return col >= 0 && col < virtualWidth;
+      }
+    } else if (layoutType === '4-4-4') {
+      const virtualWidth = rectItemsPerRow * 2;
+      if (isEvenRow) {
+        // В четных рядах первая и последняя позиции неиспользуемы (создаем отступы)
+        return col > 0 && col < (virtualWidth - 1);
+      } else {
+        // В нечетных рядах все позиции используются  
+        return col >= 0 && col < virtualWidth;
+      }
+    }
+    
+    return true;
+  }
+
+  function buildFullGridStructure() {
+    const cells = [];
+    
+    // Строим квадратную виртуальную таблицу с шириной × 2 (в виртуальных единицах)
+    // Сохраняем пропорциональные расстояния для будущих расчетов вероятности
+    if (layoutType === '6-6-6') {
+      const virtualWidth = itemsPerRow * 2; // Умножаем на 2 для виртуальных единиц
+      
+      for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
+        for (let colIndex = 0; colIndex < virtualWidth; colIndex++) {
+          const isUsable = isPositionUsable(rowIndex, colIndex, chosenLayout, layoutType);
+          
+          cells.push({ 
+            id: `cell-${rowIndex}-${colIndex}`, 
+            type: 'full', 
+            content: null, 
+            rowIndex, 
+            columnIndex: colIndex,
+            usable: isUsable  // Ключевое поле для фильтрации!
+          });
+        }
+      }
+    } else if (layoutType === '4-4-4') {
+      const virtualWidth = rectItemsPerRow * 2; // Умножаем на 2 для виртуальных единиц
+      
+      for (let rowIndex = 0; rowIndex < rectTotalRows; rowIndex++) {
+        for (let colIndex = 0; colIndex < virtualWidth; colIndex++) {
+          const isUsable = isPositionUsable(rowIndex, colIndex, chosenLayout, layoutType);
+          
+          cells.push({ 
+            id: `cell-${rowIndex}-${colIndex}`, 
+            type: 'full', 
+            content: null, 
+            rowIndex, 
+            columnIndex: colIndex,
+            usable: isUsable  // Ключевое поле для фильтрации!
+          });
+        }
+      }
+    }
+
+    console.log(`🔧 [VirtualGrid] Built virtual grid: ${layoutType} layout="${chosenLayout}"`, {
+      totalCells: cells.length,
+      usableCells: cells.filter(c => c.usable).length,
+      unusableCells: cells.filter(c => !c.usable).length,
+      virtualWidth: layoutType === '6-6-6' ? itemsPerRow * 2 : rectItemsPerRow * 2,
+      physicalWidth: layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow
+    });
 
     return cells;
   }
   
-  function buildHoneycombRow(cells, rowIndex, layoutType) {
-    const isOddRow = rowIndex % 2 === 1;
-
-    if (layoutType === 'symmetrical') {
-        const fullButtonsInRow = isOddRow ? itemsPerRow : itemsPerRow - 1;
-        if (fullButtonsInRow < 0) return; // Avoid creating rows with negative buttons
-
-        if (!isOddRow) {
-            cells.push({ id: `half-start-${rowIndex}`, type: 'left-half', content: null, rowIndex, columnIndex: 0 });
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i + 1 });
-            }
-            cells.push({ id: `half-end-${rowIndex}`, type: 'right-half', content: null, rowIndex, columnIndex: fullButtonsInRow + 1 });
-        } else {
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i });
-            }
-        }
-    } else { // Asymmetrical
-        const fullButtonsInRow = itemsPerRow;
-        if (!isOddRow) {
-            cells.push({ id: `half-start-${rowIndex}`, type: 'left-half', content: null, rowIndex, columnIndex: 0 });
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i + 1 });
-            }
-        } else {
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ id: `full-${rowIndex}-${i}`, type: 'full', content: null, rowIndex, columnIndex: i });
-            }
-            cells.push({ id: `half-end-${rowIndex}`, type: 'right-half', content: null, rowIndex, columnIndex: fullButtonsInRow });
-        }
-    }
+  
+  
+  /**
+   * Returns only the usable cells from the virtual grid for content placement.
+   * Now simplified - just filter by the 'usable' property that was set during grid building.
+   */
+  function getTargetCellsForContent(grid) {
+    // Фильтруем только usable позиции и сортируем в порядке чтения (слева направо, сверху вниз)
+    return grid
+      .filter(cell => cell.usable === true)
+      .sort((a, b) => {
+        if (a.rowIndex !== b.rowIndex) return a.rowIndex - b.rowIndex;
+        return a.columnIndex - b.columnIndex;
+      });
   }
-  
-  
-  function buildRectGridLayout(cells, layoutType) {
-    // Build rectangular grid with alternating full/half rows like honeycomb
-    for (let rowIndex = 0; rowIndex < rectTotalRows; rowIndex++) {
-      buildRectRow(cells, rowIndex, layoutType);
-    }
-  }
-  
-  function buildRectRow(cells, rowIndex, layoutType) {
-    const isOddRow = rowIndex % 2 === 1;
 
-    if (layoutType === 'symmetrical') {
-        const fullButtonsInRow = isOddRow ? rectItemsPerRow : rectItemsPerRow - 1;
-        if (fullButtonsInRow < 0) return; // Avoid creating rows with negative buttons
-
-        if (!isOddRow) {
-            cells.push({ 
-                id: `rect-half-start-${rowIndex}`, 
-                type: 'left-half-rect', 
-                content: null, 
-                rowIndex, 
-                columnIndex: 0,
-                width: rectButtonWidth / 2 - RECT_GAP / 2,
-                height: rectButtonHeight
-            });
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ 
-                    id: `rect-full-${rowIndex}-${i}`, 
-                    type: 'rect-grid', 
-                    content: null, 
-                    rowIndex, 
-                    columnIndex: i + 1,
-                    width: rectButtonWidth,
-                    height: rectButtonHeight
-                });
-            }
-            cells.push({ 
-                id: `rect-half-end-${rowIndex}`, 
-                type: 'right-half-rect', 
-                content: null, 
-                rowIndex, 
-                columnIndex: fullButtonsInRow + 1,
-                width: rectButtonWidth / 2 - RECT_GAP / 2,
-                height: rectButtonHeight
-            });
-        } else {
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ 
-                    id: `rect-full-${rowIndex}-${i}`, 
-                    type: 'rect-grid', 
-                    content: null, 
-                    rowIndex, 
-                    columnIndex: i,
-                    width: rectButtonWidth,
-                    height: rectButtonHeight
-                });
-            }
-        }
-    } else { // Asymmetrical
-        const fullButtonsInRow = rectItemsPerRow;
-        if (!isOddRow) {
-            cells.push({ 
-                id: `rect-half-start-${rowIndex}`, 
-                type: 'left-half-rect', 
-                content: null, 
-                rowIndex, 
-                columnIndex: 0,
-                width: rectButtonWidth / 2 - RECT_GAP / 2,
-                height: rectButtonHeight
-            });
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ 
-                    id: `rect-full-${rowIndex}-${i}`, 
-                    type: 'rect-grid', 
-                    content: null, 
-                    rowIndex, 
-                    columnIndex: i + 1,
-                    width: rectButtonWidth,
-                    height: rectButtonHeight
-                });
-            }
-        } else {
-            for (let i = 0; i < fullButtonsInRow; i++) {
-                cells.push({ 
-                    id: `rect-full-${rowIndex}-${i}`, 
-                    type: 'rect-grid', 
-                    content: null, 
-                    rowIndex, 
-                    columnIndex: i,
-                    width: rectButtonWidth,
-                    height: rectButtonHeight
-                });
-            }
-            cells.push({ 
-                id: `rect-half-end-${rowIndex}`, 
-                type: 'right-half-rect', 
-                content: null, 
-                rowIndex, 
-                columnIndex: fullButtonsInRow,
-                width: rectButtonWidth / 2 - RECT_GAP / 2,
-                height: rectButtonHeight
-            });
-        }
-    }
-  }
-  
   function clearGridContent() {
     gridCells.forEach(cell => {
       cell.content = null;
@@ -845,9 +785,13 @@
   
   function populateWithCategories(grid, categories) {
     let categoryIndex = 0;
-    for (const cell of grid) {
+    
+    // Filter cells based on symmetrical/asymmetrical layout
+    const targetCells = getTargetCellsForContent(grid);
+    
+    for (const cell of targetCells) {
       if (categoryIndex >= categories.length) break;
-      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.isTableButton && !cell.content) {
+      if (!cell.isPinpadTrigger && !cell.isTableButton && !cell.content) {
         cell.content = categories[categoryIndex];
         categoryIndex++;
       }
@@ -855,20 +799,19 @@
   }
   
   function populateWithProducts(grid, products) {
-    // Add back button to second topmost left half button (since first is now system button)
-    const leftHalfCells = grid.filter(cell => 
-      (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
-    );
-    if (leftHalfCells.length > 0) {
-      leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
-      const leftHalfCell = leftHalfCells[0];
-      leftHalfCell.content = { isBackButton: true, icon: '←' };
+    // Add back button - for symmetrical layout, use first cell, for asymmetrical use first available slot
+    const targetCells = getTargetCellsForContent(grid);
+    if (targetCells.length > 0 && currentView === 'products') {
+      const backButtonCell = targetCells[0];
+      if (!backButtonCell.isPinpadTrigger && !backButtonCell.isTableButton) {
+        backButtonCell.content = { isBackButton: true, icon: '←' };
+      }
     }
 
     let productIndex = 0;
-    for (const cell of grid) {
+    for (const cell of targetCells) {
       if (productIndex >= products.length) break;
-      if ((cell.type === 'full' || cell.type === 'rect-grid') && !cell.isPinpadTrigger && !cell.isTableButton && !cell.content) {
+      if (!cell.isPinpadTrigger && !cell.isTableButton && !cell.content) {
         cell.content = products[productIndex];
         productIndex++;
       }
@@ -876,20 +819,18 @@
   }
 
   function assignPaymentButtons(grid) {
-    // Find all full buttons in the bottom row, excluding the Pinpad and Table triggers
+    // Find available cells in the bottom row - only usable positions
     const maxRowIndex = Math.max(...grid.map(cell => cell.rowIndex));
-    const bottomRowFullButtons = grid.filter(cell => 
+    const bottomRowCells = grid.filter(cell => 
       cell.rowIndex === maxRowIndex && 
-      (cell.type === 'full' || cell.type === 'rect-grid') && 
+      cell.usable === true && // Только usable позиции в виртуальной таблице
       !cell.isPinpadTrigger &&
       !cell.isTableButton &&
       !cell.content // Don't overwrite already assigned buttons
     );
     
-    // // // // // // // // // // // // // // // addLog('DEBUG', `Found ${bottomRowFullButtons.length} bottom row buttons for payment assignment`);
-    
     // Sort by column index from right to left (descending)
-    bottomRowFullButtons.sort((a, b) => b.columnIndex - a.columnIndex);
+    bottomRowCells.sort((a, b) => b.columnIndex - a.columnIndex);
     
     // Payment buttons in priority order (right to left) - muted professional colors
     const paymentButtons = [
@@ -899,9 +840,9 @@
     ];
     
     // Assign payment buttons to rightmost available positions
-    for (let i = 0; i < Math.min(paymentButtons.length, bottomRowFullButtons.length); i++) {
+    for (let i = 0; i < Math.min(paymentButtons.length, bottomRowCells.length); i++) {
       const button = paymentButtons[i];
-      const cell = bottomRowFullButtons[i];
+      const cell = bottomRowCells[i];
       
       cell.content = {
         isPaymentButton: true,
@@ -1682,33 +1623,35 @@ buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5
         {#each gridRows as row, rowIndex}
           <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
             {#each row as cell (`${currentView}-${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
-                {@const content = getButtonContent(cell)}
-                {#if content.paymentButton}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
-                {:else if content.isBetrugerCap}
-                  <UniversalButton 
-                      {...getButtonProps(cell)} 
-                      label={content.label} 
-                      color={content.color} 
-                      active={content.active} 
-                      on:click={content.onClick}
-                  >
-                      <BetrugerCapIconOutline />
-                  </UniversalButton>
-                {:else if content.isKeyboardToggle}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
-                {:else if content.component}
-                  <UniversalButton {...getButtonProps(cell)} active={content.active} on:click={content.onClick}>
-                    <svelte:component this={content.component} />
-                  </UniversalButton>
-                {:else if content.label && !content.data}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
-                {:else if content.disabled}
-                  <UniversalButton {...getButtonProps(cell)} disabled={true} />
-                {:else if content.icon !== undefined || content.showShape}
-                  <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
-                {:else if content.label}
-                  <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                {#if cell.content}
+                  {@const content = getButtonContent(cell)}
+                  {#if content.paymentButton}
+                    <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} icon={content.icon} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                  {:else if content.isBetrugerCap}
+                    <UniversalButton 
+                        {...getButtonProps(cell)} 
+                        label={content.label} 
+                        color={content.color} 
+                        active={content.active} 
+                        on:click={content.onClick}
+                    >
+                        <BetrugerCapIconOutline />
+                    </UniversalButton>
+                  {:else if content.isKeyboardToggle}
+                    <UniversalButton {...getButtonProps(cell)} label={content.label} icon={content.icon} color={content.color} textColor={content.textColor} active={content.active} on:click={content.onClick} />
+                  {:else if content.component}
+                    <UniversalButton {...getButtonProps(cell)} active={content.active} on:click={content.onClick}>
+                      <svelte:component this={content.component} />
+                    </UniversalButton>
+                  {:else if content.label && !content.data}
+                    <UniversalButton {...getButtonProps(cell)} label={content.label} active={content.active} disabled={content.disabled} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} on:click={content.onClick} />
+                  {:else if content.disabled}
+                    <UniversalButton {...getButtonProps(cell)} disabled={true} />
+                  {:else if content.icon !== undefined || content.showShape}
+                    <UniversalButton {...getButtonProps(cell)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
+                  {:else if content.label}
+                    <UniversalButton {...getButtonProps(cell)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                  {/if}
                 {/if}
             {/each}
           </div>
