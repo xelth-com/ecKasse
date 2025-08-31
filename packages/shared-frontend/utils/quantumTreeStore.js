@@ -16,9 +16,9 @@ export const treeMode = writable(false);
 export const categoryLayouts = writable(new Map());
 
 // Priority constants
-const PRIORITY_LATEST = 100;      // Most recent opened category
-const PRIORITY_SECONDARY = 90;    // Second most recent (dimmed)
-const PRIORITY_TERTIARY = 80;     // Third most recent (more dimmed)
+const PRIORITY_LATEST = 70;       // Most recent opened category
+const PRIORITY_SECONDARY = 60;    // Second most recent (dimmed)
+const PRIORITY_TERTIARY = 50;     // Third most recent (more dimmed)
 const MAX_HISTORY = 3;            // Maximum categories to keep open
 
 // Utility functions for managing category history

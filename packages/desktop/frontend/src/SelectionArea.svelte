@@ -23,7 +23,7 @@
   import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
   // GridManager - for center content area (full buttons)
-  import { GridManager } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
+  import { GridManager, PRIORITIES as GRID_PRIORITIES } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
 
   let categories = [];
   let productsByCategoryId = new Map();
@@ -1301,7 +1301,7 @@
         isTreeCategory: true,
         isExpanded: openCats.has(category.id),
         displayName: category.category_names?.de || category.name || 'Unknown Category',
-        treePriority: priority,
+        treePriority: GRID_PRIORITIES.CATEGORY_PRIORITY,
         isLatest: priority === PRIORITIES.LATEST,
         isSecondary: priority === PRIORITIES.SECONDARY,
         isTertiary: priority === PRIORITIES.TERTIARY

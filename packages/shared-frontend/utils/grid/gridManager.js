@@ -11,10 +11,10 @@ import { createGeometryRenderer } from './geometryRenderer.js';
 
 // --- PRIORITY DEFINITIONS ---
 const PRIORITIES = {
-    TABLE_BUTTON: 110,     // Table/Collapse button - HIGHEST priority, always visible
-    PAYMENT_BUTTON: 105,   // Bar, Card, etc. - Higher than content
-    PINPAD_BUTTON: 102,    // Pinpad/Search trigger - Higher than content  
-    MAX_CONTENT: 100,      // Products/Categories in the active view
+    TABLE_BUTTON: 75,      // Table/Collapse button - Higher than products, lower than categories
+    PAYMENT_BUTTON: 75,    // Bar, Card, etc. - Higher than products, lower than categories
+    PINPAD_BUTTON: 75,     // Pinpad/Search trigger - Higher than products, lower than categories  
+    CATEGORY_PRIORITY: 80, // Categories have highest priority and remain static
     CATEGORY_NAVIGATION: 70, // Categories on main view
     DEFAULT: 50,
     MIN: 1
@@ -206,88 +206,54 @@ export class GridManager {
     
     console.log('🎄 [TreePattern] Starting placement for', products.length, 'products from', `${rootSlot.row},${rootSlot.col}`, 'with priority', priority);
     
-    // Level 1: Try positions directly below and to sides
-    const level1Positions = [
-      { row: rootSlot.row + 1, col: rootSlot.col - 1, desc: 'bottom-left' },
-      { row: rootSlot.row + 1, col: rootSlot.col + 1, desc: 'bottom-right' }
-    ];
+    // Get all usable slots and sort them by distance from root category
+    const allUsableSlots = this.contentGrid.getUsableSlots();
     
-    const placedProducts = [];
-    const placementQueue = [];
+    // Calculate distance from root and filter out the root slot itself
+    const availableSlots = allUsableSlots
+      .filter(slot => !(slot.row === rootSlot.row && slot.col === rootSlot.col)) // Exclude root slot
+      .filter(slot => slot.isEmpty || slot.priority < priority) // Only empty or lower priority slots
+      .map(slot => ({
+        slot,
+        distance: Math.abs(slot.row - rootSlot.row) + Math.abs(slot.col - rootSlot.col),
+        rowDistance: Math.abs(slot.row - rootSlot.row),
+        colDistance: Math.abs(slot.col - rootSlot.col)
+      }))
+      .sort((a, b) => {
+        // Primary sort: by total distance (closer slots first)
+        if (a.distance !== b.distance) return a.distance - b.distance;
+        
+        // Secondary sort: prefer positions to the right and below (positive row/col diff)
+        const aIsRightOrBelow = (a.slot.col >= rootSlot.col) && (a.slot.row >= rootSlot.row);
+        const bIsRightOrBelow = (b.slot.col >= rootSlot.col) && (b.slot.row >= rootSlot.row);
+        
+        if (aIsRightOrBelow && !bIsRightOrBelow) return -1;
+        if (!aIsRightOrBelow && bIsRightOrBelow) return 1;
+        
+        // Tertiary sort: prefer row differences over column differences (spread vertically)
+        if (a.rowDistance !== b.rowDistance) return a.rowDistance - b.rowDistance;
+        
+        return a.colDistance - b.colDistance;
+      });
+    
+    console.log('🎄 [TreePattern] Found', availableSlots.length, 'available slots sorted by distance from', `${rootSlot.row},${rootSlot.col}`);
+    
+    // Place products in order of proximity to category
     let productIndex = 0;
-    
-    // Try to place products at level 1 positions
-    for (const pos of level1Positions) {
+    for (const slotInfo of availableSlots) {
       if (productIndex >= products.length) break;
       
-      const targetSlot = this.contentGrid.getSlot(pos.row, pos.col);
-      if (this.canPlaceAt(targetSlot, priority)) {
-        console.log('📋 [Content Grid] Assigned to slot:', `${pos.row},${pos.col}`, 'Type:', products[productIndex].type || 'product', 'Label:', products[productIndex].displayName, 'Is category:', false);
-        targetSlot.setContent(products[productIndex], priority);
-        placedProducts.push(products[productIndex]);
-        placementQueue.push({ slot: targetSlot, level: 1 });
-        console.log('🎄 Level 1: Placed', products[productIndex].displayName, 'at', `${pos.row},${pos.col}`, `(${pos.desc})`);
+      const { slot, distance } = slotInfo;
+      if (this.canPlaceAt(slot, priority)) {
+        console.log('📋 [Content Grid] Assigned to slot:', `${slot.row},${slot.col}`, 'Type:', products[productIndex].type || 'product', 'Label:', products[productIndex].displayName, 'Is category:', false);
+        slot.setContent(products[productIndex], priority);
+        console.log('🎄 [TreePattern] Placed', products[productIndex].displayName, 'at', `${slot.row},${slot.col}`, `(distance: ${distance})`);
         productIndex++;
-      } else {
-        console.log('🎄 Level 1: Cannot place at', `${pos.row},${pos.col}`, `(${pos.desc})`, 
-                   targetSlot ? (targetSlot.isUsable ? `occupied by priority ${targetSlot.priority}` : 'unusable slot') : 'out of bounds');
       }
     }
     
-    // If we couldn't place all products at level 1, use fallback strategy
     if (productIndex < products.length) {
-      console.log('🎄 [TreePattern] Level 1 full or blocked, using fallback for remaining', products.length - productIndex, 'products');
-      
-      let fallbackRow = rootSlot.row + 1;
-      
-      // Try going down row by row until we find usable space or run out of grid
-      while (fallbackRow < this.contentGrid.rows && productIndex < products.length) {
-        const tryPositions = [];
-        
-        // Check center position first
-        const centerSlot = this.contentGrid.getSlot(fallbackRow, rootSlot.col);
-        if (centerSlot && centerSlot.isUsable) {
-          // Center position is usable (not xxx)
-          tryPositions.push({ row: fallbackRow, col: rootSlot.col, desc: 'center' });
-        } else {
-          // Center is unusable (xxx), try adjacent positions
-          const leftCol = rootSlot.col - 1;
-          const rightCol = rootSlot.col + 1;
-          
-          if (leftCol >= 0) {
-            tryPositions.push({ row: fallbackRow, col: leftCol, desc: 'left of xxx' });
-          }
-          if (rightCol < this.contentGrid.cols) {
-            tryPositions.push({ row: fallbackRow, col: rightCol, desc: 'right of xxx' });
-          }
-        }
-        
-        // Try to place products in this row
-        for (const pos of tryPositions) {
-          if (productIndex >= products.length) break;
-          
-          const fallbackSlot = this.contentGrid.getSlot(pos.row, pos.col);
-          if (this.canPlaceAt(fallbackSlot, priority)) {
-            console.log('📋 [Content Grid] Assigned to slot:', `${pos.row},${pos.col}`, 'Type:', products[productIndex].type || 'product', 'Label:', products[productIndex].displayName, 'Is category:', false);
-            fallbackSlot.setContent(products[productIndex], priority);
-            placedProducts.push(products[productIndex]);
-            placementQueue.push({ slot: fallbackSlot, level: Math.floor(fallbackRow - rootSlot.row) });
-            console.log('🎄 Fallback Row', fallbackRow + ':', 'Placed', products[productIndex].displayName, 
-                       'at', `${pos.row},${pos.col}`, `(${pos.desc})`);
-            productIndex++;
-          }
-        }
-        
-        fallbackRow++;
-      }
-    }
-    
-    // If we still have unplaced products, continue expansion
-    if (productIndex < products.length && placementQueue.length > 0) {
-      console.log('🎄 [TreePattern] Continuing expansion for remaining', products.length - productIndex, 'products');
-      this.expandTreeFromQueue(placementQueue, products.slice(productIndex), priority);
-    } else if (productIndex < products.length) {
-      console.warn('🎄 [TreePattern] Could not place', products.length - productIndex, 'products - grid full or no suitable positions');
+      console.warn('🎄 [TreePattern] Could not place', products.length - productIndex, 'products - no more suitable positions available');
     }
     
     console.log('🎄 [TreePattern] Completed placement:', productIndex, 'of', products.length, 'products placed');
