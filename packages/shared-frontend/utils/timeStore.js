@@ -73,6 +73,7 @@ export const currentTime = derived(
   timeStore,
   ($timeStore, set) => {
     const updateTime = () => {
+      // console.log('⏱️ [timeStore] Tick! Updating current time.');
       const serverTime = timeStore.getServerTime();
       set(serverTime);
     };

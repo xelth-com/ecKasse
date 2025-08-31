@@ -465,6 +465,7 @@
    * Called only when layout type changes or on mount, breaking the infinite reactive loop.
    */
   function rebuildGridAndContent() {
+    console.log('🔥 [SelectionArea] rebuildGridAndContent() called!', new Date().toLocaleTimeString());
     if (containerWidth <= 0 || containerHeight <= 0) {
       return;
     }
