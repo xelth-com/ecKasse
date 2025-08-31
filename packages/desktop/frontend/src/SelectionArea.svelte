@@ -17,6 +17,8 @@
   import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
   import { uiConstantsStore } from '@eckasse/shared-frontend/utils/uiConstantsStore.js';
   import { notificationStore } from '@eckasse/shared-frontend/utils/notificationStore.js';
+  import { openCategories, toggleCategory, closeAllCategories, categoryHistory, PRIORITIES } from '@eckasse/shared-frontend/utils/quantumTreeStore.js';
+  import { UIStates, uiState, enableQuantumTree, disableQuantumTree } from '@eckasse/shared-frontend/utils/uiState.js';
   import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/icons/BetrugerCapIconOutline.svelte';
   import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
@@ -745,8 +747,11 @@
     // Then initialize system buttons in remaining slots
     initializeSystemButtons(gridCells);
     
-    // Add back button for products view
+    // Add navigation button based on current view and UI state
+    const currentUIState = get(uiState);
+    
     if (currentView === 'products') {
+      // Back button for products view
       const leftHalfCells = gridCells.filter(cell => 
         (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
       );
@@ -754,6 +759,16 @@
         leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
         const leftHalfCell = leftHalfCells[0];
         leftHalfCell.content = { isBackButton: true, icon: '←' };
+      }
+    } else if (currentUIState === UIStates.QUANTUM_TREE) {
+      // Home button for tree mode
+      const leftHalfCells = gridCells.filter(cell => 
+        (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
+      );
+      if (leftHalfCells.length > 0) {
+        leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
+        const leftHalfCell = leftHalfCells[0];
+        leftHalfCell.content = { isHomeButton: true, icon: '🏠' };
       }
     }
     
@@ -829,6 +844,7 @@
           textColor: '#666' 
         };
       }
+
 
       // Last Slot (Bottommost): Time Button
       if (rightHalfCells.length > 1) {
@@ -917,9 +933,24 @@
       gridManager.placeSystemElements(systemElements);
     }
     
-    // Then place content based on current view - this will fill remaining slots
+    // Then place content based on current view - always use tree mode for categories
     if (currentView === 'categories') {
-      gridManager.placeItems(categories, priorities.MAX_CONTENT); // Use MAX_CONTENT for higher priority
+      // Always use quantum tree layout for categories
+      const treeItems = calculateQuantumTreeLayout(categories);
+      
+      // First place all categories with their individual priorities
+      const categoriesOnly = treeItems.filter(item => item.isTreeCategory);
+      
+      // Sort by priority (highest first) to ensure proper placement order
+      const sortedCategories = categoriesOnly.sort((a, b) => b.treePriority - a.treePriority);
+      
+      // Place each category with its individual priority
+      sortedCategories.forEach(category => {
+        gridManager.placeItems([category], category.treePriority);
+      });
+      
+      // Then use tree algorithm to place products under their categories
+      gridManager.placeItemsAsTree(treeItems, priorities.MAX_CONTENT);
     } else if (currentView === 'products') {
       gridManager.placeItems(products, priorities.MAX_CONTENT);
     }
@@ -1099,13 +1130,13 @@
       }, 500);
     }
     
-    // Handle product loading response
+    // Handle product loading response - always use tree mode
     if (state.lastMessage?.command === 'getItemsByCategoryResponse') {
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
         products = state.lastMessage.payload;
-        currentView = 'products';
+        // Always stay in categories view and show products inline
         status = '';
-        updateGridContent(); // Update with loaded products
+        updateGridContent(); // Update to show expanded products
       } else {
         status = 'Error: Could not load products from backend.';
       }
@@ -1151,12 +1182,23 @@
   function handleCategoryClick(event) {
     const categoryData = event.detail?.data || event;
     if (categoryData && categoryData.id) {
-      selectedCategory = categoryData;
-      status = 'Loading products...';
-      wsStore.send({ 
-        command: 'getItemsByCategory', 
-        payload: { categoryId: categoryData.id } 
-      });
+      const openCats = get(openCategories);
+      
+      if (openCats.has(categoryData.id)) {
+        // Category is open - just close it
+        toggleCategory(categoryData.id);
+        updateGridContent();
+      } else {
+        // Category is closed - load products and open it
+        selectedCategory = categoryData;
+        status = 'Loading products...';
+        toggleCategory(categoryData.id); // Open immediately
+        
+        wsStore.send({ 
+          command: 'getItemsByCategory', 
+          payload: { categoryId: categoryData.id } 
+        });
+      }
     }
   }
 
@@ -1176,9 +1218,92 @@
     status = '';
     updateGridContent();
   }
+
+  function goHome() {
+    // Reset all category expansions in tree mode
+    closeAllCategories();
+    
+    // Reset to top level selection
+    currentView = 'categories';
+    selectedCategory = null;
+    products = [];
+    status = '';
+    
+    // Switch back to normal mode if in tree mode
+    disableQuantumTree();
+    
+    updateGridContent();
+  }
   
   function toggleLayoutType() {
     layoutType = layoutType === '6-6-6' ? '4-4-4' : '6-6-6';
+  }
+
+  // Quantum Tree Algorithm - calculates layout with expanded categories
+  function calculateQuantumTreeLayout(categories) {
+    const treeItems = [];
+    const history = get(categoryHistory);
+    const openCats = get(openCategories);
+    
+    categories.forEach((category, index) => {
+      // Add the category itself - mark as expanded if open
+      // Find priority from history
+      const historyItem = history.find(h => h.id === category.id);
+      const priority = historyItem ? historyItem.priority : 100; // Default priority for non-opened
+      
+      const categoryItem = {
+        ...category,
+        isTreeCategory: true,
+        isExpanded: openCats.has(category.id),
+        displayName: category.category_names?.de || category.name || 'Unknown Category',
+        treePriority: priority,
+        isLatest: priority === PRIORITIES.LATEST,
+        isSecondary: priority === PRIORITIES.SECONDARY,
+        isTertiary: priority === PRIORITIES.TERTIARY
+      };
+      treeItems.push(categoryItem);
+      
+      // If category is expanded, add its products RIGHT AFTER the category
+      if (openCats.has(category.id)) {
+        // Get real products from current state if available, otherwise mock
+        let categoryProducts = [];
+        if (selectedCategory && selectedCategory.id === category.id && products.length > 0) {
+          categoryProducts = products;
+        } else {
+          categoryProducts = getMockProductsForCategory(category.id);
+        }
+        
+        categoryProducts.forEach((product) => {
+          treeItems.push({
+            ...product,
+            isTreeProduct: true,
+            parentCategoryId: category.id,
+            displayName: product.display_names?.menu?.de || product.display_names?.button?.de || product.name || 'Unknown Product',
+            treePriority: priority,
+            isLatest: priority === PRIORITIES.LATEST,
+            isSecondary: priority === PRIORITIES.SECONDARY,
+            isTertiary: priority === PRIORITIES.TERTIARY
+          });
+        });
+      }
+    });
+    
+    return treeItems;
+  }
+
+  // Mock function to simulate products - replace with real DB call later
+  function getMockProductsForCategory(categoryId) {
+    const mockProductsMap = {
+      5: [{ id: 101, name: 'Spaghetti Carbonara' }, { id: 102, name: 'Penne Arrabbiata' }],
+      6: [{ id: 201, name: 'Extra Cheese' }, { id: 202, name: 'Extra Mushrooms' }],
+      7: [{ id: 301, name: 'Caesar Salad' }],
+      8: [{ id: 401, name: 'Greek Salad' }, { id: 402, name: 'Garden Salad' }],
+      9: [{ id: 501, name: 'Coca Cola' }, { id: 502, name: 'Sprite' }],
+      10: [{ id: 601, name: 'Tiramisu' }],
+      11: [{ id: 701, name: 'Espresso' }, { id: 702, name: 'Cappuccino' }],
+      12: [{ id: 801, name: 'Iced Coffee' }]
+    };
+    return mockProductsMap[categoryId] || [];
   }
 
   async function handleTimeClick() {
@@ -1644,6 +1769,7 @@
       return { disabled: true, style: 'opacity: 0; pointer-events: none;' };
     }
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
+    if (cell.content.isHomeButton) return { icon: '🏠', onClick: goHome, active: true };
     if (cell.content.isLayoutToggle) return { 
       icon: cell.content.icon || '', 
       onClick: toggleLayoutType, 
@@ -1773,7 +1899,8 @@
     
     // Handle category/product content
     if (cell.content && (cell.content.category_names || cell.content.display_names)) {
-      const isCategory = currentView === 'categories';
+      // Check if this is actually a category (has category_names) or product (has display_names but not category_names)
+      const isCategory = cell.content.category_names && !cell.content.isTreeProduct;
       const label = isCategory 
         ? parseJsonField(cell.content.category_names).de || 'Unnamed'
         : parseJsonField(cell.content.display_names).button.de || 'Unnamed Product';

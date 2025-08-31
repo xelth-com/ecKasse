@@ -20,6 +20,9 @@ const PRIORITIES = {
     MIN: 1
 };
 
+// Export priorities for external use
+export { PRIORITIES };
+
 /**
  * Main Grid Manager Class
  */
@@ -121,6 +124,197 @@ export class GridManager {
       }
       this.markDirty();
       return results;
+  }
+
+  /**
+   * Places products in a tree-like pattern below their parent category.
+   * Algorithm: From category position, spread products in a tree/christmas-tree pattern:
+   * - Level 1: Try col-1, col+1 on row+1
+   * - Level 2: From each successful placement, try spreading further
+   * - If blocked by higher priority items, try next level down
+   * 
+   * @param {Array} categories - Categories with their products
+   * @param {number} priority - Priority for product placement
+   */
+  placeItemsAsTree(categories, priority = PRIORITIES.MAX_CONTENT) {
+    console.log('🎄 [GridManager] Starting tree placement for categories:', categories.length);
+    
+    for (const category of categories) {
+      // Skip if not a tree category or no products
+      if (!category.isTreeCategory || !category.isExpanded) continue;
+      
+      // Find category position in grid
+      const categorySlot = this.findSlotByContent(category);
+      if (!categorySlot) {
+        console.warn('🎄 Category not found in grid:', category.displayName);
+        continue;
+      }
+      
+      // Get products for this category
+      const products = categories.filter(item => 
+        item.isTreeProduct && item.parentCategoryId === category.id
+      );
+      
+      // Use the category's priority for its products
+      const categoryPriority = category.treePriority || priority;
+      
+      if (products.length === 0) continue;
+      
+      console.log('🎄 Placing', products.length, 'products under', category.displayName, 
+                  'at', `${categorySlot.row},${categorySlot.col}`);
+      
+      // Start tree algorithm from category position
+      this.placeProductsInTreePattern(categorySlot, products, categoryPriority);
+    }
+    
+    this.markDirty();
+  }
+  
+  /**
+   * Tree placement algorithm - recursive spreading pattern
+   */
+  placeProductsInTreePattern(rootSlot, products, priority) {
+    if (products.length === 0) return;
+    
+    // Level 1: Try positions directly below and to sides
+    const level1Positions = [
+      { row: rootSlot.row + 1, col: rootSlot.col - 1 },  // Bottom-left
+      { row: rootSlot.row + 1, col: rootSlot.col + 1 }   // Bottom-right
+    ];
+    
+    const placedProducts = [];
+    const placementQueue = []; // For next level expansion
+    let productIndex = 0;
+    
+    // Try to place products at level 1
+    for (const pos of level1Positions) {
+      if (productIndex >= products.length) break;
+      
+      const targetSlot = this.contentGrid.getSlot(pos.row, pos.col);
+      if (this.canPlaceAt(targetSlot, priority)) {
+        targetSlot.setContent(products[productIndex], priority);
+        placedProducts.push(products[productIndex]);
+        placementQueue.push({ slot: targetSlot, level: 1 });
+        productIndex++;
+        console.log('🎄 Level 1: Placed', products[productIndex-1].displayName, 'at', `${pos.row},${pos.col}`);
+      }
+    }
+    
+    // If we couldn't place at level 1 (both positions occupied), 
+    // keep going down level by level, staying at original column
+    if (placedProducts.length === 0 && productIndex < products.length) {
+      let fallbackRow = rootSlot.row + 1;
+      let foundFallback = false;
+      
+      // Try going down row by row until we find usable space
+      while (!foundFallback && fallbackRow < this.contentGrid.rows && productIndex < products.length) {
+        // Generate all possible positions to try in this row
+        let tryPositions = [];
+        
+        // First check if center position (original column) is usable
+        const centerSlot = this.contentGrid.getSlot(fallbackRow, rootSlot.col);
+        if (centerSlot && centerSlot.isUsable) {
+          // Center is usable, try it first
+          tryPositions.push({ row: fallbackRow, col: rootSlot.col, desc: 'center' });
+        } else {
+          // Center is xxx (unusable), try left and right in same row
+          tryPositions.push(
+            { row: fallbackRow, col: rootSlot.col - 1, desc: 'left of xxx' },
+            { row: fallbackRow, col: rootSlot.col + 1, desc: 'right of xxx' }
+          );
+        }
+        
+        // Try each position in this row - place as many products as possible
+        for (const pos of tryPositions) {
+          if (productIndex >= products.length) break; // No more products to place
+          
+          const fallbackSlot = this.contentGrid.getSlot(pos.row, pos.col);
+          if (this.canPlaceAt(fallbackSlot, priority)) {
+            fallbackSlot.setContent(products[productIndex], priority);
+            placedProducts.push(products[productIndex]);
+            placementQueue.push({ slot: fallbackSlot, level: 1 });
+            productIndex++;
+            foundFallback = true;
+            console.log('🎄 Fallback: Placed', products[productIndex-1].displayName, 'at', `${pos.row},${pos.col}` + ` (${pos.desc}, avoided occupied level 1)`);
+          }
+        }
+        
+        // Continue to next row if we still have products to place
+        if (productIndex < products.length) {
+          fallbackRow++; // Try next row down
+        } else {
+          // All products placed, exit loop
+          break;
+        }
+      }
+    }
+    
+    // Recursive expansion from placed products
+    this.expandTreeFromQueue(placementQueue, products.slice(productIndex), priority);
+  }
+  
+  /**
+   * Recursively expand tree from current placements
+   */
+  expandTreeFromQueue(queue, remainingProducts, priority) {
+    if (queue.length === 0 || remainingProducts.length === 0) return;
+    
+    const nextQueue = [];
+    let productIndex = 0;
+    
+    for (const queueItem of queue) {
+      if (productIndex >= remainingProducts.length) break;
+      
+      const { slot, level } = queueItem;
+      
+      // Generate next level positions (spread further)
+      const nextPositions = [
+        { row: slot.row + 1, col: slot.col - 1 },  // Down-left
+        { row: slot.row + 1, col: slot.col + 1 }   // Down-right  
+      ];
+      
+      // Try to place products at next level
+      for (const pos of nextPositions) {
+        if (productIndex >= remainingProducts.length) break;
+        
+        const targetSlot = this.contentGrid.getSlot(pos.row, pos.col);
+        if (this.canPlaceAt(targetSlot, priority)) {
+          targetSlot.setContent(remainingProducts[productIndex], priority);
+          nextQueue.push({ slot: targetSlot, level: level + 1 });
+          productIndex++;
+          console.log(`🎄 Level ${level + 1}: Placed`, remainingProducts[productIndex-1].displayName, 'at', `${pos.row},${pos.col}`);
+        }
+      }
+    }
+    
+    // Continue expanding if there are more products
+    if (productIndex < remainingProducts.length && nextQueue.length > 0) {
+      this.expandTreeFromQueue(nextQueue, remainingProducts.slice(productIndex), priority);
+    }
+  }
+  
+  /**
+   * Check if we can place content at a slot
+   */
+  canPlaceAt(slot, newPriority) {
+    if (!slot || !slot.isUsable) return false;
+    if (slot.isEmpty) return true;
+    return slot.priority < newPriority; // Can override lower priority content
+  }
+  
+  /**
+   * Find slot containing specific content
+   */
+  findSlotByContent(content) {
+    for (let row = 0; row < this.contentGrid.rows; row++) {
+      for (let col = 0; col < this.contentGrid.cols; col++) {
+        const slot = this.contentGrid.getSlot(row, col);
+        if (slot && slot.content === content) {
+          return slot;
+        }
+      }
+    }
+    return null;
   }
 
   /**

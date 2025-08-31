@@ -3,6 +3,7 @@ import { writable } from 'svelte/store';
 // Define UI states as constants
 export const UIStates = {
   TOP_LEVEL_SELECTION: 'TOP_LEVEL_SELECTION',
+  QUANTUM_TREE: 'QUANTUM_TREE',
   DEEP_NAVIGATION: 'DEEP_NAVIGATION',
   CHECKOUT_FLOW: 'CHECKOUT_FLOW',
   ADMIN_MODE: 'ADMIN_MODE',
@@ -92,10 +93,20 @@ export function resetNavigation() {
   setUIState(UIStates.TOP_LEVEL_SELECTION);
 }
 
+// Tree mode helpers
+export function enableQuantumTree() {
+  setUIState(UIStates.QUANTUM_TREE);
+}
+
+export function disableQuantumTree() {
+  resetNavigation();
+}
+
 // State validation
 export function isValidTransition(fromState, toState) {
   const validTransitions = {
-    [UIStates.TOP_LEVEL_SELECTION]: [UIStates.DEEP_NAVIGATION, UIStates.ADMIN_MODE, UIStates.CHECKOUT_FLOW],
+    [UIStates.TOP_LEVEL_SELECTION]: [UIStates.QUANTUM_TREE, UIStates.DEEP_NAVIGATION, UIStates.ADMIN_MODE, UIStates.CHECKOUT_FLOW],
+    [UIStates.QUANTUM_TREE]: [UIStates.TOP_LEVEL_SELECTION, UIStates.CHECKOUT_FLOW],
     [UIStates.DEEP_NAVIGATION]: [UIStates.TOP_LEVEL_SELECTION, UIStates.CHECKOUT_FLOW, UIStates.DEEP_NAVIGATION],
     [UIStates.CHECKOUT_FLOW]: [UIStates.TOP_LEVEL_SELECTION, UIStates.IDLE_STATE],
     [UIStates.ADMIN_MODE]: [UIStates.TOP_LEVEL_SELECTION],
