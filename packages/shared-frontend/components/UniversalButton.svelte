@@ -28,6 +28,10 @@
 
   function handleClick() {
     if (!disabled && !isLongPressing) {
+      console.log('🖱️ [Button Click] Clicked button:', label, 'Type:', data?.type, 'ID:', data?.id);
+      if (data?.type === 'category') {
+        console.log('➡️ [Navigation] Triggering navigateToCategory for ID:', data.id);
+      }
       dispatch('click', { data, label });
     }
   }

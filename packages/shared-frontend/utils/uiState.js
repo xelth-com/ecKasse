@@ -53,11 +53,24 @@ export function setUIState(newState, context = {}) {
 
 // Navigation helpers
 export function navigateToCategory(categoryId, categoryName) {
-  navigationContext.update(current => ({
-    ...current,
-    currentCategory: { id: categoryId, name: categoryName },
-    breadcrumb: [...current.breadcrumb, { type: 'category', id: categoryId, name: categoryName }]
-  }));
+  navigationContext.update(current => {
+    const newBreadcrumb = [...current.breadcrumb, { type: 'category', id: categoryId, name: categoryName }];
+    console.log('🔍 [Navigation] Navigated to category:', categoryId, 'New breadcrumb:', newBreadcrumb);
+    
+    // Persist breadcrumb to localStorage
+    try {
+      localStorage.setItem('breadcrumb', JSON.stringify(newBreadcrumb));
+      console.log('💾 [Navigation] Breadcrumb persisted to localStorage');
+    } catch (e) {
+      console.warn('⚠️ [Navigation] Failed to persist breadcrumb to localStorage:', e);
+    }
+    
+    return {
+      ...current,
+      currentCategory: { id: categoryId, name: categoryName },
+      breadcrumb: newBreadcrumb
+    };
+  });
   
   setUIState(UIStates.DEEP_NAVIGATION);
 }
@@ -65,6 +78,15 @@ export function navigateToCategory(categoryId, categoryName) {
 export function navigateBack() {
   navigationContext.update(current => {
     const newBreadcrumb = current.breadcrumb.slice(0, -1);
+    console.log('🔍 [Navigation] Navigated back. New breadcrumb:', newBreadcrumb);
+    
+    // Persist breadcrumb to localStorage
+    try {
+      localStorage.setItem('breadcrumb', JSON.stringify(newBreadcrumb));
+      console.log('💾 [Navigation] Breadcrumb persisted to localStorage after back navigation');
+    } catch (e) {
+      console.warn('⚠️ [Navigation] Failed to persist breadcrumb to localStorage:', e);
+    }
     
     return {
       ...current,
@@ -90,7 +112,37 @@ export function resetNavigation() {
     timestamp: Date.now()
   });
   
+  // Clear localStorage too
+  try {
+    localStorage.removeItem('breadcrumb');
+    console.log('💾 [Navigation] Breadcrumb cleared from localStorage');
+  } catch (e) {
+    console.warn('⚠️ [Navigation] Failed to clear breadcrumb from localStorage:', e);
+  }
+  
+  console.log('⚠️ [Navigation] Reset navigation. Breadcrumb cleared.');
   setUIState(UIStates.TOP_LEVEL_SELECTION);
+}
+
+// Load breadcrumb from localStorage on initialization
+export function loadBreadcrumbFromStorage() {
+  try {
+    const stored = localStorage.getItem('breadcrumb');
+    if (stored) {
+      const breadcrumb = JSON.parse(stored);
+      console.log('💾 [Navigation] Loading breadcrumb from localStorage:', breadcrumb);
+      navigationContext.update(current => ({
+        ...current,
+        breadcrumb,
+        currentCategory: breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1] : null
+      }));
+      return breadcrumb;
+    }
+  } catch (e) {
+    console.warn('⚠️ [Navigation] Failed to load breadcrumb from localStorage:', e);
+    localStorage.removeItem('breadcrumb'); // Clear corrupted data
+  }
+  return null;
 }
 
 // Tree mode helpers

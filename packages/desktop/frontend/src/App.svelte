@@ -7,12 +7,16 @@
   import { wsStore } from '@eckasse/shared-frontend/utils/wsStore.js';
   import { currentView } from '@eckasse/shared-frontend/utils/viewStore.js';
   import { addLog } from '@eckasse/shared-frontend/utils/logStore.js';
+  import { navigationContext, loadBreadcrumbFromStorage } from '@eckasse/shared-frontend/utils/uiState.js';
   
   let consoleViewComponent;
   let isAtBottom = false;
   
   // Handle demo mode auto-login and session restoration
   onMount(async () => {
+    // Load breadcrumb from localStorage
+    loadBreadcrumbFromStorage();
+    
     // Check for existing session first
     await authStore.checkSession();
     
@@ -42,9 +46,19 @@
       });
     }
     
+    // Add resize event listener for debugging
+    function handleResize() {
+      let currentBreadcrumb;
+      navigationContext.subscribe(context => currentBreadcrumb = context.breadcrumb)();
+      console.log('📏 [Resize] Window resized. Current breadcrumb:', currentBreadcrumb);
+    }
+    
+    window.addEventListener('resize', handleResize);
+    
     // Cleanup function
     return () => {
       unsubscribe();
+      window.removeEventListener('resize', handleResize);
     };
   });
   

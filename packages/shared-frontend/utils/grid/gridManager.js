@@ -112,6 +112,7 @@ export class GridManager {
       
       if (targetSlot) {
         console.log(`🎄 [PlaceItems] Placing ${item.displayName} at ${targetSlot.row},${targetSlot.col} with priority ${priority} (was: ${targetSlot.isEmpty ? 'empty' : targetSlot.priority})`);
+        console.log('📋 [Content Grid] Assigned to slot:', `${targetSlot.row},${targetSlot.col}`, 'Type:', item.type || (item.category_names ? 'category' : 'product'), 'Label:', item.displayName, 'Is category:', !!(item.category_names || item.type === 'category'));
         targetSlot.setContent(item, priority);
         itemsPlaced++;
         placementResults.push({ item, placed: true, slot: targetSlot });
@@ -221,6 +222,7 @@ export class GridManager {
       
       const targetSlot = this.contentGrid.getSlot(pos.row, pos.col);
       if (this.canPlaceAt(targetSlot, priority)) {
+        console.log('📋 [Content Grid] Assigned to slot:', `${pos.row},${pos.col}`, 'Type:', products[productIndex].type || 'product', 'Label:', products[productIndex].displayName, 'Is category:', false);
         targetSlot.setContent(products[productIndex], priority);
         placedProducts.push(products[productIndex]);
         placementQueue.push({ slot: targetSlot, level: 1 });
@@ -266,6 +268,7 @@ export class GridManager {
           
           const fallbackSlot = this.contentGrid.getSlot(pos.row, pos.col);
           if (this.canPlaceAt(fallbackSlot, priority)) {
+            console.log('📋 [Content Grid] Assigned to slot:', `${pos.row},${pos.col}`, 'Type:', products[productIndex].type || 'product', 'Label:', products[productIndex].displayName, 'Is category:', false);
             fallbackSlot.setContent(products[productIndex], priority);
             placedProducts.push(products[productIndex]);
             placementQueue.push({ slot: fallbackSlot, level: Math.floor(fallbackRow - rootSlot.row) });

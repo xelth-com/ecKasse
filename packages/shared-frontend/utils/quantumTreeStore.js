@@ -23,19 +23,26 @@ const MAX_HISTORY = 3;            // Maximum categories to keep open
 
 // Utility functions for managing category history
 export function toggleCategory(categoryId) {
+  console.log('🔄 [QuantumTree] toggleCategory called for categoryId:', categoryId);
   categoryHistory.update(history => {
     const existingIndex = history.findIndex(item => item.id === categoryId);
     
     if (existingIndex !== -1) {
       // Category exists - remove it (close)
+      console.log('🔄 [QuantumTree] Closing category', categoryId, 'current history:', history.map(h => h.id));
       const newHistory = [...history];
       newHistory.splice(existingIndex, 1);
       
       // Recalculate priorities for remaining categories
-      return recalculatePriorities(newHistory);
+      const recalculatedHistory = recalculatePriorities(newHistory);
+      console.log('🔄 [QuantumTree] After close, new history:', recalculatedHistory.map(h => h.id));
+      return recalculatedHistory;
     } else {
       // Category doesn't exist - add it (open) as highest priority
-      return addCategoryToHistory(history, categoryId);
+      console.log('🔄 [QuantumTree] Opening category', categoryId, 'current history:', history.map(h => h.id));
+      const newHistory = addCategoryToHistory(history, categoryId);
+      console.log('🔄 [QuantumTree] After open, new history:', newHistory.map(h => h.id));
+      return newHistory;
     }
   });
 }

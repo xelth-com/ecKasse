@@ -883,6 +883,8 @@
   function updateCenterContent() {
     if (!gridManager) return;
     
+    console.log('🔄 [UpdateCenterContent] Called! Current view:', currentView, 'Open categories:', Array.from(get(openCategories)));
+    
     // Clear and reset GridManager
     gridManager.clearAndReset();
     
@@ -1273,7 +1275,11 @@
     console.log('🎄 [QuantumTree] Category history:', history.map(h => `${h.id}(${h.priority})`).join(', '));
     console.log('🎄 [QuantumTree] Open categories:', Array.from(openCats));
     
-    categories.forEach((category, index) => {
+    // Sort categories deterministically by ID to prevent left shift
+    const sortedCategories = [...categories].sort((a, b) => a.id - b.id);
+    console.log('🎄 [QuantumTree] Categories sorted by ID:', sortedCategories.map(c => `${c.id}:${c.category_names?.de}`).join(', '));
+    
+    sortedCategories.forEach((category, index) => {
       // Add the category itself - mark as expanded if open
       // Find priority from history
       const historyItem = history.find(h => h.id === category.id);
@@ -1295,12 +1301,15 @@
       
       // If category is expanded, add its products RIGHT AFTER the category
       if (openCats.has(category.id)) {
-        // Get real products from current state if available, otherwise mock
+        // FIXED: Only show products for the currently selected category (the one with real data)
         let categoryProducts = [];
         if (selectedCategory && selectedCategory.id === category.id && products.length > 0) {
           categoryProducts = products;
+          console.log(`🎄 [QuantumTree] Using REAL products for category ${category.id}:`, categoryProducts.length);
         } else {
-          categoryProducts = getMockProductsForCategory(category.id);
+          // Don't show mock products for other open categories - only for current selected
+          categoryProducts = [];
+          console.log(`🎄 [QuantumTree] SKIPPING products for non-selected category ${category.id} (no real products loaded)`);
         }
         
         console.log(`🎄 [QuantumTree] Adding ${categoryProducts.length} products for category ${category.id} with priority ${priority}`);

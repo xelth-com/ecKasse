@@ -21,6 +21,10 @@
 
   function handleClick() {
     if (!disabled && !isLongPressing) {
+      console.log('🖱️ [Hex Button] Clicked:', label, 'Is category?', data?.type === 'category', 'ID:', data?.id);
+      if (data?.type === 'category') {
+        console.log('➡️ [Navigation] HexButton triggering category navigation for ID:', data.id);
+      }
       dispatch('click', { data, label });
     }
   }
