@@ -127,66 +127,72 @@ export class GridManager {
   }
 
   /**
-   * Places products in a tree-like pattern below their parent category.
-   * Algorithm: From category position, spread products in a tree/christmas-tree pattern:
-   * - Level 1: Try col-1, col+1 on row+1
-   * - Level 2: From each successful placement, try spreading further
-   * - If blocked by higher priority items, try next level down
+   * Places items in a tree-like pattern with proper priority handling.
+   * This is the corrected algorithm that handles multiple open categories properly.
    * 
-   * @param {Array} categories - Categories with their products
-   * @param {number} priority - Priority for product placement
+   * @param {Array} treeItems - All items (categories and products) with tree properties
    */
-  placeItemsAsTree(categories, priority = PRIORITIES.MAX_CONTENT) {
-    console.log('🎄 [GridManager] Starting tree placement for categories:', categories.length);
+  placeItemsAsTree(treeItems) {
+    console.log('🎄 [GridManager] Starting corrected tree placement for items:', treeItems.length);
     
+    // First, place all categories in order of priority (highest first)
+    const categories = treeItems.filter(item => item.isTreeCategory)
+      .sort((a, b) => b.treePriority - a.treePriority);
+    
+    console.log('🎄 [GridManager] Categories to place:', categories.map(c => `${c.displayName}(${c.treePriority})`));
+    
+    // Place categories using regular placement
     for (const category of categories) {
-      // Skip if not a tree category or no products
-      if (!category.isTreeCategory || !category.isExpanded) continue;
+      this.placeItems([category], category.treePriority, 1);
+    }
+    
+    // Then place products under their respective categories
+    for (const category of categories) {
+      if (!category.isExpanded) continue;
       
-      // Find category position in grid
+      // Find category position in grid after placement
       const categorySlot = this.findSlotByContent(category);
       if (!categorySlot) {
-        console.warn('🎄 Category not found in grid:', category.displayName);
+        console.warn('🎄 Category not found in grid after placement:', category.displayName);
         continue;
       }
       
-      // Get products for this category
-      const products = categories.filter(item => 
+      // Get products for this category from the tree items
+      const products = treeItems.filter(item => 
         item.isTreeProduct && item.parentCategoryId === category.id
       );
-      
-      // Use the category's priority for its products
-      const categoryPriority = category.treePriority || priority;
       
       if (products.length === 0) continue;
       
       console.log('🎄 Placing', products.length, 'products under', category.displayName, 
-                  'at', `${categorySlot.row},${categorySlot.col}`);
+                  'at', `${categorySlot.row},${categorySlot.col}`, 'with priority', category.treePriority);
       
-      // Start tree algorithm from category position
-      this.placeProductsInTreePattern(categorySlot, products, categoryPriority);
+      // Place products using the corrected tree algorithm
+      this.placeProductsInTreePattern(categorySlot, products, category.treePriority);
     }
     
     this.markDirty();
   }
   
   /**
-   * Tree placement algorithm - recursive spreading pattern
+   * Corrected tree placement algorithm with proper priority and fallback handling
    */
   placeProductsInTreePattern(rootSlot, products, priority) {
     if (products.length === 0) return;
     
+    console.log('🎄 [TreePattern] Starting placement for', products.length, 'products from', `${rootSlot.row},${rootSlot.col}`, 'with priority', priority);
+    
     // Level 1: Try positions directly below and to sides
     const level1Positions = [
-      { row: rootSlot.row + 1, col: rootSlot.col - 1 },  // Bottom-left
-      { row: rootSlot.row + 1, col: rootSlot.col + 1 }   // Bottom-right
+      { row: rootSlot.row + 1, col: rootSlot.col - 1, desc: 'bottom-left' },
+      { row: rootSlot.row + 1, col: rootSlot.col + 1, desc: 'bottom-right' }
     ];
     
     const placedProducts = [];
-    const placementQueue = []; // For next level expansion
+    const placementQueue = [];
     let productIndex = 0;
     
-    // Try to place products at level 1
+    // Try to place products at level 1 positions
     for (const pos of level1Positions) {
       if (productIndex >= products.length) break;
       
@@ -195,69 +201,82 @@ export class GridManager {
         targetSlot.setContent(products[productIndex], priority);
         placedProducts.push(products[productIndex]);
         placementQueue.push({ slot: targetSlot, level: 1 });
+        console.log('🎄 Level 1: Placed', products[productIndex].displayName, 'at', `${pos.row},${pos.col}`, `(${pos.desc})`);
         productIndex++;
-        console.log('🎄 Level 1: Placed', products[productIndex-1].displayName, 'at', `${pos.row},${pos.col}`);
+      } else {
+        console.log('🎄 Level 1: Cannot place at', `${pos.row},${pos.col}`, `(${pos.desc})`, 
+                   targetSlot ? (targetSlot.isUsable ? `occupied by priority ${targetSlot.priority}` : 'unusable slot') : 'out of bounds');
       }
     }
     
-    // If we couldn't place at level 1 (both positions occupied), 
-    // keep going down level by level, staying at original column
-    if (placedProducts.length === 0 && productIndex < products.length) {
-      let fallbackRow = rootSlot.row + 1;
-      let foundFallback = false;
+    // If we couldn't place all products at level 1, use fallback strategy
+    if (productIndex < products.length) {
+      console.log('🎄 [TreePattern] Level 1 full or blocked, using fallback for remaining', products.length - productIndex, 'products');
       
-      // Try going down row by row until we find usable space
-      while (!foundFallback && fallbackRow < this.contentGrid.rows && productIndex < products.length) {
-        // Generate all possible positions to try in this row
-        let tryPositions = [];
+      let fallbackRow = rootSlot.row + 1;
+      
+      // Try going down row by row until we find usable space or run out of grid
+      while (fallbackRow < this.contentGrid.rows && productIndex < products.length) {
+        const tryPositions = [];
         
-        // First check if center position (original column) is usable
+        // Check center position first
         const centerSlot = this.contentGrid.getSlot(fallbackRow, rootSlot.col);
         if (centerSlot && centerSlot.isUsable) {
-          // Center is usable, try it first
+          // Center position is usable (not xxx)
           tryPositions.push({ row: fallbackRow, col: rootSlot.col, desc: 'center' });
         } else {
-          // Center is xxx (unusable), try left and right in same row
-          tryPositions.push(
-            { row: fallbackRow, col: rootSlot.col - 1, desc: 'left of xxx' },
-            { row: fallbackRow, col: rootSlot.col + 1, desc: 'right of xxx' }
-          );
+          // Center is unusable (xxx), try adjacent positions
+          const leftCol = rootSlot.col - 1;
+          const rightCol = rootSlot.col + 1;
+          
+          if (leftCol >= 0) {
+            tryPositions.push({ row: fallbackRow, col: leftCol, desc: 'left of xxx' });
+          }
+          if (rightCol < this.contentGrid.cols) {
+            tryPositions.push({ row: fallbackRow, col: rightCol, desc: 'right of xxx' });
+          }
         }
         
-        // Try each position in this row - place as many products as possible
+        // Try to place products in this row
         for (const pos of tryPositions) {
-          if (productIndex >= products.length) break; // No more products to place
+          if (productIndex >= products.length) break;
           
           const fallbackSlot = this.contentGrid.getSlot(pos.row, pos.col);
           if (this.canPlaceAt(fallbackSlot, priority)) {
             fallbackSlot.setContent(products[productIndex], priority);
             placedProducts.push(products[productIndex]);
-            placementQueue.push({ slot: fallbackSlot, level: 1 });
+            placementQueue.push({ slot: fallbackSlot, level: Math.floor(fallbackRow - rootSlot.row) });
+            console.log('🎄 Fallback Row', fallbackRow + ':', 'Placed', products[productIndex].displayName, 
+                       'at', `${pos.row},${pos.col}`, `(${pos.desc})`);
             productIndex++;
-            foundFallback = true;
-            console.log('🎄 Fallback: Placed', products[productIndex-1].displayName, 'at', `${pos.row},${pos.col}` + ` (${pos.desc}, avoided occupied level 1)`);
           }
         }
         
-        // Continue to next row if we still have products to place
-        if (productIndex < products.length) {
-          fallbackRow++; // Try next row down
-        } else {
-          // All products placed, exit loop
-          break;
-        }
+        fallbackRow++;
       }
     }
     
-    // Recursive expansion from placed products
-    this.expandTreeFromQueue(placementQueue, products.slice(productIndex), priority);
+    // If we still have unplaced products, continue expansion
+    if (productIndex < products.length && placementQueue.length > 0) {
+      console.log('🎄 [TreePattern] Continuing expansion for remaining', products.length - productIndex, 'products');
+      this.expandTreeFromQueue(placementQueue, products.slice(productIndex), priority);
+    } else if (productIndex < products.length) {
+      console.warn('🎄 [TreePattern] Could not place', products.length - productIndex, 'products - grid full or no suitable positions');
+    }
+    
+    console.log('🎄 [TreePattern] Completed placement:', productIndex, 'of', products.length, 'products placed');
   }
   
   /**
-   * Recursively expand tree from current placements
+   * Recursively expand tree from current placements with improved logging
    */
   expandTreeFromQueue(queue, remainingProducts, priority) {
-    if (queue.length === 0 || remainingProducts.length === 0) return;
+    if (queue.length === 0 || remainingProducts.length === 0) {
+      console.log('🎄 [ExpandTree] Stopping expansion:', queue.length === 0 ? 'no queue items' : 'no remaining products');
+      return;
+    }
+    
+    console.log('🎄 [ExpandTree] Expanding from', queue.length, 'positions for', remainingProducts.length, 'remaining products');
     
     const nextQueue = [];
     let productIndex = 0;
@@ -267,10 +286,10 @@ export class GridManager {
       
       const { slot, level } = queueItem;
       
-      // Generate next level positions (spread further)
+      // Generate next level positions (spread outward)
       const nextPositions = [
-        { row: slot.row + 1, col: slot.col - 1 },  // Down-left
-        { row: slot.row + 1, col: slot.col + 1 }   // Down-right  
+        { row: slot.row + 1, col: slot.col - 1, desc: 'down-left' },
+        { row: slot.row + 1, col: slot.col + 1, desc: 'down-right' }
       ];
       
       // Try to place products at next level
@@ -281,15 +300,19 @@ export class GridManager {
         if (this.canPlaceAt(targetSlot, priority)) {
           targetSlot.setContent(remainingProducts[productIndex], priority);
           nextQueue.push({ slot: targetSlot, level: level + 1 });
+          console.log(`🎄 Level ${level + 1}: Placed`, remainingProducts[productIndex].displayName, 
+                     'at', `${pos.row},${pos.col}`, `(${pos.desc})`);
           productIndex++;
-          console.log(`🎄 Level ${level + 1}: Placed`, remainingProducts[productIndex-1].displayName, 'at', `${pos.row},${pos.col}`);
         }
       }
     }
     
-    // Continue expanding if there are more products
+    // Continue expanding if there are more products and valid placements
     if (productIndex < remainingProducts.length && nextQueue.length > 0) {
+      console.log('🎄 [ExpandTree] Recursing with', nextQueue.length, 'new positions');
       this.expandTreeFromQueue(nextQueue, remainingProducts.slice(productIndex), priority);
+    } else if (productIndex < remainingProducts.length) {
+      console.warn('🎄 [ExpandTree] Cannot expand further:', remainingProducts.length - productIndex, 'products remain unplaced');
     }
   }
   

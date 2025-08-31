@@ -935,22 +935,11 @@
     
     // Then place content based on current view - always use tree mode for categories
     if (currentView === 'categories') {
-      // Always use quantum tree layout for categories
+      // Calculate quantum tree layout with proper priorities
       const treeItems = calculateQuantumTreeLayout(categories);
       
-      // First place all categories with their individual priorities
-      const categoriesOnly = treeItems.filter(item => item.isTreeCategory);
-      
-      // Sort by priority (highest first) to ensure proper placement order
-      const sortedCategories = categoriesOnly.sort((a, b) => b.treePriority - a.treePriority);
-      
-      // Place each category with its individual priority
-      sortedCategories.forEach(category => {
-        gridManager.placeItems([category], category.treePriority);
-      });
-      
-      // Then use tree algorithm to place products under their categories
-      gridManager.placeItemsAsTree(treeItems, priorities.MAX_CONTENT);
+      // Use the corrected single tree placement algorithm
+      gridManager.placeItemsAsTree(treeItems);
     } else if (currentView === 'products') {
       gridManager.placeItems(products, priorities.MAX_CONTENT);
     }
@@ -1245,11 +1234,17 @@
     const history = get(categoryHistory);
     const openCats = get(openCategories);
     
+    console.log('🎄 [QuantumTree] calculateQuantumTreeLayout called with', categories.length, 'categories');
+    console.log('🎄 [QuantumTree] Category history:', history.map(h => `${h.id}(${h.priority})`).join(', '));
+    console.log('🎄 [QuantumTree] Open categories:', Array.from(openCats));
+    
     categories.forEach((category, index) => {
       // Add the category itself - mark as expanded if open
       // Find priority from history
       const historyItem = history.find(h => h.id === category.id);
       const priority = historyItem ? historyItem.priority : 100; // Default priority for non-opened
+      
+      console.log(`🎄 [QuantumTree] Processing category ${category.id} (${category.category_names?.de}): historyItem=${!!historyItem}, priority=${priority}, isOpen=${openCats.has(category.id)}`);
       
       const categoryItem = {
         ...category,
@@ -1273,8 +1268,10 @@
           categoryProducts = getMockProductsForCategory(category.id);
         }
         
-        categoryProducts.forEach((product) => {
-          treeItems.push({
+        console.log(`🎄 [QuantumTree] Adding ${categoryProducts.length} products for category ${category.id} with priority ${priority}`);
+        
+        categoryProducts.forEach((product, productIndex) => {
+          const productItem = {
             ...product,
             isTreeProduct: true,
             parentCategoryId: category.id,
@@ -1283,10 +1280,16 @@
             isLatest: priority === PRIORITIES.LATEST,
             isSecondary: priority === PRIORITIES.SECONDARY,
             isTertiary: priority === PRIORITIES.TERTIARY
-          });
+          };
+          treeItems.push(productItem);
+          console.log(`🎄 [QuantumTree] Added product ${productIndex}: ${productItem.displayName} (priority=${priority}, parentCategoryId=${category.id})`);
         });
       }
     });
+    
+    console.log('🎄 [QuantumTree] Final treeItems:', treeItems.map(item => 
+      `${item.displayName}(${item.isTreeCategory ? 'CAT' : 'PROD'}:${item.treePriority})`
+    ).join(', '));
     
     return treeItems;
   }
