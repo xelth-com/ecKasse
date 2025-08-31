@@ -26,7 +26,7 @@
   import { GridManager } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
 
   let categories = [];
-  let products = [];
+  let productsByCategoryId = new Map();
   let status = 'Connecting to backend...';
   let isConnected = false;
   let currentView = 'categories'; // 'categories' or 'products'
@@ -1159,7 +1159,8 @@
     // Handle product loading response - always use tree mode
     if (state.lastMessage?.command === 'getItemsByCategoryResponse') {
       if (state.lastMessage.status === 'success' && Array.isArray(state.lastMessage.payload)) {
-        products = state.lastMessage.payload;
+        productsByCategoryId.set(selectedCategory.id, state.lastMessage.payload);
+        productsByCategoryId = productsByCategoryId; // Trigger reactivity
         // Always stay in categories view and show products inline
         status = '';
         updateGridContent(); // Update to show expanded products
@@ -1215,15 +1216,21 @@
         toggleCategory(categoryData.id);
         updateGridContent();
       } else {
-        // Category is closed - load products and open it
+        // Category is closed - open it and load products if needed
         selectedCategory = categoryData;
-        status = 'Loading products...';
         toggleCategory(categoryData.id); // Open immediately
         
-        wsStore.send({ 
-          command: 'getItemsByCategory', 
-          payload: { categoryId: categoryData.id } 
-        });
+        if (!productsByCategoryId.has(categoryData.id)) {
+          // Only fetch if not already loaded
+          status = 'Loading products...';
+          wsStore.send({ 
+            command: 'getItemsByCategory', 
+            payload: { categoryId: categoryData.id } 
+          });
+        } else {
+          // Products already loaded, just update grid
+          updateGridContent();
+        }
       }
     }
   }
@@ -1240,7 +1247,8 @@
   function goBackToCategories() {
     currentView = 'categories';
     selectedCategory = null;
-    products = [];
+    productsByCategoryId.clear();
+    productsByCategoryId = productsByCategoryId; // Trigger reactivity
     status = '';
     updateGridContent();
   }
@@ -1252,7 +1260,8 @@
     // Reset to top level selection
     currentView = 'categories';
     selectedCategory = null;
-    products = [];
+    productsByCategoryId.clear();
+    productsByCategoryId = productsByCategoryId; // Trigger reactivity
     status = '';
     
     // Switch back to normal mode if in tree mode
@@ -1301,16 +1310,9 @@
       
       // If category is expanded, add its products RIGHT AFTER the category
       if (openCats.has(category.id)) {
-        // FIXED: Only show products for the currently selected category (the one with real data)
-        let categoryProducts = [];
-        if (selectedCategory && selectedCategory.id === category.id && products.length > 0) {
-          categoryProducts = products;
-          console.log(`🎄 [QuantumTree] Using REAL products for category ${category.id}:`, categoryProducts.length);
-        } else {
-          // Don't show mock products for other open categories - only for current selected
-          categoryProducts = [];
-          console.log(`🎄 [QuantumTree] SKIPPING products for non-selected category ${category.id} (no real products loaded)`);
-        }
+        // Get products from the Map for this specific category
+        let categoryProducts = productsByCategoryId.get(category.id) || [];
+        console.log(`🎄 [QuantumTree] Using products for category ${category.id}:`, categoryProducts.length);
         
         console.log(`🎄 [QuantumTree] Adding ${categoryProducts.length} products for category ${category.id} with priority ${priority}`);
         
