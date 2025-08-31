@@ -88,14 +88,36 @@ export class GridManager {
     for (const item of contentItems) {
       if (itemsPlaced >= maxItems) break;
 
-      // Find the next available empty slot
-      const targetSlot = emptySlots[itemsPlaced];
+      // Try to find a slot where we can place this item (empty slot or lower priority)
+      let targetSlot = null;
+      let targetSlotIndex = -1;
+      
+      // First try empty slots
+      if (itemsPlaced < emptySlots.length) {
+        targetSlot = emptySlots[itemsPlaced];
+        targetSlotIndex = itemsPlaced;
+      } else {
+        // No empty slots, look for slots with lower priority content that we can replace
+        for (let row = 0; row < this.contentGrid.rows; row++) {
+          for (let col = 0; col < this.contentGrid.cols; col++) {
+            const slot = this.contentGrid.getSlot(row, col);
+            if (this.canPlaceAt(slot, priority)) {
+              targetSlot = slot;
+              break;
+            }
+          }
+          if (targetSlot) break;
+        }
+      }
       
       if (targetSlot) {
-          // Only place if the slot is usable (not a dead zone)
-          targetSlot.setContent(item, priority);
-          itemsPlaced++;
-          placementResults.push({ item, placed: true, slot: targetSlot });
+        console.log(`🎄 [PlaceItems] Placing ${item.displayName} at ${targetSlot.row},${targetSlot.col} with priority ${priority} (was: ${targetSlot.isEmpty ? 'empty' : targetSlot.priority})`);
+        targetSlot.setContent(item, priority);
+        itemsPlaced++;
+        placementResults.push({ item, placed: true, slot: targetSlot });
+      } else {
+        console.log(`🎄 [PlaceItems] Could not place ${item.displayName} - no available slots for priority ${priority}`);
+        placementResults.push({ item, placed: false, slot: null });
       }
     }
 
@@ -141,9 +163,10 @@ export class GridManager {
     
     console.log('🎄 [GridManager] Categories to place:', categories.map(c => `${c.displayName}(${c.treePriority})`));
     
-    // Place categories using regular placement
+    // Place categories using priority-based placement (higher priority can displace lower priority)
     for (const category of categories) {
-      this.placeItems([category], category.treePriority, 1);
+      const placementResult = this.placeItems([category], category.treePriority, 1);
+      console.log(`🎄 [GridManager] Placed category ${category.displayName} with priority ${category.treePriority}:`, placementResult.length > 0 ? 'SUCCESS' : 'FAILED');
     }
     
     // Then place products under their respective categories

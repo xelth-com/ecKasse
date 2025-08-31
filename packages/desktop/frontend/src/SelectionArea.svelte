@@ -168,14 +168,19 @@
   // Track previous minute to detect actual changes
   let previousMinute = null;
   
-  // Update time button only when minute actually changes
+  // Update time button only when minute actually changes - optimized
+  let timeUpdateTimer;
   $: if ($currentMinuteTime) {
     const currentMinute = $currentMinuteTime.minute;
     if (previousMinute !== null && previousMinute !== currentMinute && gridCells.length > 0) {
-      // Force grid re-render to update time button
-      setTimeout(() => {
-        gridCells = [...gridCells];
-      }, 0);
+      // Debounce time-based grid updates to prevent multiple rapid updates
+      if (timeUpdateTimer) clearTimeout(timeUpdateTimer);
+      timeUpdateTimer = setTimeout(() => {
+        // Only update if grid is actually visible and has content
+        if (gridCells.length > 0) {
+          gridCells = [...gridCells];
+        }
+      }, 200);
     }
     previousMinute = currentMinute;
   }
@@ -513,35 +518,51 @@
     }
   }
   
-  // Update grid content when data/view changes
+  // Update grid content when data/view changes (debounced to prevent excessive updates)
+  let gridContentUpdateTimer;
   $: {
     if (gridManager && (
       (currentView === 'categories' && categories.length >= 0) ||
       (currentView === 'products' && products.length >= 0)
     )) {
-      updateGridContent();
+      // Debounce grid content updates to prevent excessive re-rendering
+      if (gridContentUpdateTimer) clearTimeout(gridContentUpdateTimer);
+      gridContentUpdateTimer = setTimeout(() => {
+        updateGridContent();
+      }, 50);
     }
   }
   
 
-  // Update center content when order state changes (for payment buttons)
+  // Update center content when order state changes (for payment buttons) - debounced
+  let centerContentUpdateTimer;
   $: {
     if (gridManager && $orderStore) {
-      // Use setTimeout to avoid infinite loops and batch updates
-      setTimeout(() => {
+      // Debounce center content updates to prevent excessive re-rendering
+      if (centerContentUpdateTimer) clearTimeout(centerContentUpdateTimer);
+      centerContentUpdateTimer = setTimeout(() => {
         updateCenterContent();
-      }, 0);
+      }, 100);
     }
   }
 
-  // Update grid when system button content changes (auth or notifications)
+  // Update grid when system button content changes (auth or notifications) - optimized
+  let systemButtonUpdateTimer;
+  let lastUserButtonContent = null;
+  let lastSmartNavButtonContent = null;
   $: {
-    if (gridCells.length > 0 && (userButtonContent || smartNavButtonContent)) {
-      // Force re-render of grid cells to update system buttons
-      // Use setTimeout to avoid infinite loops
-      setTimeout(() => {
+    // Only update if content actually changed to prevent unnecessary re-renders
+    const userChanged = JSON.stringify(userButtonContent) !== JSON.stringify(lastUserButtonContent);
+    const smartNavChanged = JSON.stringify(smartNavButtonContent) !== JSON.stringify(lastSmartNavButtonContent);
+    
+    if (gridCells.length > 0 && (userChanged || smartNavChanged)) {
+      // Debounce system button updates and only trigger when content actually changes
+      if (systemButtonUpdateTimer) clearTimeout(systemButtonUpdateTimer);
+      systemButtonUpdateTimer = setTimeout(() => {
+        lastUserButtonContent = userButtonContent;
+        lastSmartNavButtonContent = smartNavButtonContent;
         gridCells = [...gridCells];
-      }, 0);
+      }, 150);
     }
   }
   
@@ -935,8 +956,12 @@
     
     // Then place content based on current view - always use tree mode for categories
     if (currentView === 'categories') {
+      console.log('🎄 [MAIN] About to calculate quantum tree layout, currentView:', currentView, 'categories.length:', categories.length);
+      
       // Calculate quantum tree layout with proper priorities
       const treeItems = calculateQuantumTreeLayout(categories);
+      
+      console.log('🎄 [MAIN] Received treeItems from calculateQuantumTreeLayout:', treeItems.length);
       
       // Use the corrected single tree placement algorithm
       gridManager.placeItemsAsTree(treeItems);
@@ -1037,48 +1062,51 @@
   }
 
 
-  let resizeObserver;
   let containerElement;
   let debounceTimer;
   let initialLoadDone = false;
 
   onMount(() => {
+    // Initial setup when component mounts
     if (containerElement) {
-      resizeObserver = new ResizeObserver(entries => {
-        addLog('DEBUG', 'ResizeObserver triggered', { entriesCount: entries.length });
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          for (let entry of entries) {
-            const newWidth = entry.contentRect.width;
-            const newHeight = entry.contentRect.height;
-            addLog('DEBUG', 'ResizeObserver: container dimensions detected', { 
-              newWidth, 
-              newHeight,
-              previousWidth: containerWidth,
-              previousHeight: containerHeight
-            });
-            if (containerWidth !== newWidth || containerHeight !== newHeight) {
-              addLog('INFO', 'Container size changed, triggering rebuild', {
-                from: `${containerWidth}x${containerHeight}`,
-                to: `${newWidth}x${newHeight}`
-              });
-              containerWidth = newWidth;
-              containerHeight = newHeight;
-              rebuildGridAndContent();
-            } else {
-              addLog('DEBUG', 'Container size unchanged, no rebuild needed');
-            }
-          }
-        }, 300);
-      });
-      resizeObserver.observe(containerElement);
-      
       setTimeout(() => {
         containerWidth = containerElement.clientWidth;
         containerHeight = containerElement.clientHeight;
         rebuildGridAndContent();
       }, 100);
     }
+
+    // Debounced window resize handler
+    const handleWindowResize = () => {
+      if (!containerElement) return;
+      
+      addLog('DEBUG', 'Window resize event triggered');
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const newWidth = containerElement.clientWidth;
+        const newHeight = containerElement.clientHeight;
+        addLog('DEBUG', 'Window resize: container dimensions detected', { 
+          newWidth, 
+          newHeight,
+          previousWidth: containerWidth,
+          previousHeight: containerHeight
+        });
+        if (containerWidth !== newWidth || containerHeight !== newHeight) {
+          addLog('INFO', 'Container size changed, triggering rebuild', {
+            from: `${containerWidth}x${containerHeight}`,
+            to: `${newWidth}x${newHeight}`
+          });
+          containerWidth = newWidth;
+          containerHeight = newHeight;
+          rebuildGridAndContent();
+        } else {
+          addLog('DEBUG', 'Container size unchanged, no rebuild needed');
+        }
+      }, 300);
+    };
+
+    // Add window resize listener
+    window.addEventListener('resize', handleWindowResize);
 
     const handleAutoCollapseComplete = () => {
       currentView = 'categories';
@@ -1089,8 +1117,15 @@
     window.addEventListener('autoCollapseComplete', handleAutoCollapseComplete);
 
     return () => {
-      resizeObserver?.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
       window.removeEventListener('autoCollapseComplete', handleAutoCollapseComplete);
+      
+      // Clean up all timers to prevent memory leaks
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (gridContentUpdateTimer) clearTimeout(gridContentUpdateTimer);
+      if (centerContentUpdateTimer) clearTimeout(centerContentUpdateTimer);
+      if (systemButtonUpdateTimer) clearTimeout(systemButtonUpdateTimer);
+      if (timeUpdateTimer) clearTimeout(timeUpdateTimer);
     };
   });
 

@@ -9,6 +9,9 @@
   export let height = 121; // Height in pixels, default to original size (7.5625rem = 121px)
   
   const dispatch = createEventDispatcher();
+
+
+
   
   // Use the full label without truncation to allow proper wrapping
   $: displayLabel = label;
