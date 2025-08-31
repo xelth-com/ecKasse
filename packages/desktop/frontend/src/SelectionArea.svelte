@@ -850,59 +850,59 @@
     gridManager.clearAndReset();
     
     const priorities = gridManager.getPriorities();
-    const currentTotalRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
-    const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
-    const centerCols = currentItemsPerRow - 1; // GridManager columns (excluding half-buttons)
+    // Use GridManager's internal dimensions, not SelectionArea's metrics
+    const gridRows = gridManager.config.dimensions.rows;      // Virtual table rows (e.g., 4)
+    const gridCols = gridManager.config.dimensions.cols;      // Virtual table cols (e.g., 12, where 2 units = 1 full button)
     
     // First place system buttons in specific positions
     const systemElements = [];
     
     // Place 'Tisch' button in second-to-last row, leftmost position
-    if (currentTotalRows > 1) {
+    if (gridRows > 1) {
       systemElements.push({
-        row: currentTotalRows - 2, 
+        row: gridRows - 2, 
         col: 0, 
         content: { type: 'tisch', label: 'Tisch', onClick: () => handleTableSelection() }, 
-        priority: priorities.SYSTEM_BUTTON 
+        priority: priorities.TABLE_BUTTON 
       });
     }
     
     // Place 'Pinpad' button in bottom row, center position
-    if (centerCols > 0) {
-      const pinpadCol = Math.floor(centerCols / 2);
+    if (gridCols > 0) {
+      const pinpadCol = Math.floor(gridCols / 2);
       systemElements.push({
-        row: currentTotalRows - 1, 
+        row: gridRows - 1, 
         col: pinpadCol, 
         content: { type: 'pinpad', label: 'Pinpad', onClick: handleKeyboardToggle }, 
         priority: priorities.PINPAD_BUTTON 
       });
     }
     
-    // Place payment buttons if order is active - independently, starting from right
+    // Place payment buttons if order is active - starting from rightmost grid position
     if ($orderStore && $orderStore.total > 0) {
       // 'Karte' button - rightmost position (highest priority)
       systemElements.push({
-        row: currentTotalRows - 1, 
-        col: centerCols - 1, 
+        row: gridRows - 1, 
+        col: gridCols - 1, 
         content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, 
         priority: priorities.PAYMENT_BUTTON 
       });
       
       // 'Bar' button - second from right (if space available)  
-      if (centerCols > 1) {
+      if (gridCols > 2) {
         systemElements.push({
-          row: currentTotalRows - 1, 
-          col: centerCols - 2, 
+          row: gridRows - 1, 
+          col: gridCols - 3, 
           content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, 
           priority: priorities.PAYMENT_BUTTON 
         });
       }
       
       // 'Zwischenrechnung' button - third from right (lowest priority, can be sacrificed)
-      if (centerCols > 2) {
+      if (gridCols > 4) {
         systemElements.push({
-          row: currentTotalRows - 1, 
-          col: centerCols - 3, 
+          row: gridRows - 1, 
+          col: gridCols - 5, 
           content: { type: 'zwischenrechnung', label: 'Zwischenrechnung', onClick: () => handleIntermediateReceipt() }, 
           priority: priorities.PAYMENT_BUTTON 
         });
@@ -911,6 +911,9 @@
     
     // Place system elements first
     if (systemElements.length > 0) {
+      console.log('🔧 [DEBUG] System elements to place:', systemElements);
+      console.log('🔧 [DEBUG] GridManager dimensions:', { gridRows, gridCols });
+      console.log('🔧 [DEBUG] Order store total:', $orderStore?.total || 0);
       gridManager.placeSystemElements(systemElements);
     }
     
@@ -1631,7 +1634,15 @@
         backgroundStyle: 'radial-gradient(ellipse at center, #4A2F2A 0%, #3E2723 30%, #2E1A16 70%, #1A0F0D 100%)'
       };
     }
-    if (!cell.content) return { disabled: true, style: 'opacity: 0; pointer-events: none;' };
+    if (!cell.content) {
+      // Half-buttons should be visible as disabled placeholders
+      const isHalfButton = cell.type && cell.type.includes('half');
+      if (isHalfButton) {
+        return { disabled: true };
+      }
+      // Full buttons remain transparent
+      return { disabled: true, style: 'opacity: 0; pointer-events: none;' };
+    }
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
     if (cell.content.isLayoutToggle) return { 
       icon: cell.content.icon || '', 
@@ -1902,6 +1913,8 @@
                   <UniversalButton {...getButtonProps(cell, content)} icon={content.icon} active={content.active} showShape={content.showShape} color={content.color} textColor={content.textColor} backgroundStyle={content.backgroundStyle} notificationStyle={content.notificationStyle} on:click={content.onClick} />
                 {:else if content.label}
                   <UniversalButton {...getButtonProps(cell, content)} label={content.label} data={content.data} active={content.active} color={content.color} backgroundStyle={content.backgroundStyle} textColor={content.textColor} on:click={content.onClick} on:secondaryaction={handleSecondaryAction} />
+                {:else}
+                  <UniversalButton {...getButtonProps(cell, content)} disabled={true} />
                 {/if}
             {/each}
           </div>
