@@ -11,10 +11,11 @@ import { createGeometryRenderer } from './geometryRenderer.js';
 
 // --- PRIORITY DEFINITIONS ---
 const PRIORITIES = {
-    TABLE_BUTTON: 90,      // Table/Collapse button - HIGHEST priority, always visible
-    PAYMENT_BUTTON: 85,    // Bar, Card, etc. - Higher than categories
-    PINPAD_BUTTON: 85,     // Pinpad/Search trigger - Higher than categories  
-    CATEGORY_PRIORITY: 80, // Categories have high priority and remain static
+    TABLE_BUTTON: 90,        // Table/Collapse button - HIGHEST priority, always visible
+    PAYMENT_BUTTON: 85,      // Bar, Card, etc. - Higher than categories
+    PINPAD_BUTTON: 85,       // Pinpad/Search trigger - Higher than categories  
+    NEW_PRODUCTS: 82,        // Products from newly opened categories - can displace categories
+    CATEGORY_PRIORITY: 80,   // Categories have high priority and remain static
     CATEGORY_NAVIGATION: 70, // Categories on main view
     DEFAULT: 50,
     MIN: 1
@@ -201,6 +202,14 @@ export class GridManager {
     
     console.log('🎄 [GridManager] Categories to place:', categories.map(c => `${c.displayName}(${c.treePriority})`));
     
+    // Save original treePriorities from treeItems before any processing
+    const originalPriorities = new Map();
+    treeItems.forEach(item => {
+      if (item.isTreeProduct) {
+        originalPriorities.set(item.parentCategoryId, item.treePriority);
+      }
+    });
+    
     // Place categories using priority-based placement (higher priority can displace lower priority)
     for (const category of categories) {
       const placementResult = this.placeItems([category], category.treePriority, 1);
@@ -225,11 +234,14 @@ export class GridManager {
       
       if (products.length === 0) continue;
       
-      console.log('🎄 Placing', products.length, 'products under', category.displayName, 
-                  'at', `${categorySlot.row},${categorySlot.col}`, 'with priority', category.treePriority);
+      // Use the saved original treePriority for products
+      const productPriority = originalPriorities.get(category.id);
       
-      // Place products using the corrected tree algorithm
-      this.placeProductsInTreePattern(categorySlot, products, category.treePriority);
+      console.log('🎄 Placing', products.length, 'products under', category.displayName, 
+                  'at', `${categorySlot.row},${categorySlot.col}`, 'with priority', productPriority, '(using saved treePriority)');
+      
+      // Place products using the tree algorithm with displacement support
+      this.placeProductsInTreePattern(categorySlot, products, productPriority);
     }
     
     this.markDirty();
@@ -275,17 +287,55 @@ export class GridManager {
     
     console.log('🎄 [TreePattern] Found', availableSlots.length, 'available slots sorted by distance from', `${rootSlot.row},${rootSlot.col}`);
     
-    // Place products in order of proximity to category
+    // Place products in order of proximity to category with displacement support
     let productIndex = 0;
+    const evictedItems = []; // Items displaced by higher-priority products
+    
     for (const slotInfo of availableSlots) {
       if (productIndex >= products.length) break;
       
       const { slot, distance } = slotInfo;
       if (this.canPlaceAt(slot, priority)) {
+        // If the slot is occupied by lower-priority content, evict it
+        if (!slot.isEmpty && slot.priority < priority) {
+          const evictedContent = {
+            content: slot.content,
+            priority: slot.priority
+          };
+          evictedItems.push(evictedContent);
+          console.log(`🔄 [TreePattern] Evicting ${evictedContent.content.displayName || 'content'} (priority ${evictedContent.priority}) from ${slot.row},${slot.col}`);
+        }
+        
         console.log('📋 [Content Grid] Assigned to slot:', `${slot.row},${slot.col}`, 'Type:', products[productIndex].type || 'product', 'Label:', products[productIndex].displayName, 'Is category:', false);
         slot.setContent(products[productIndex], priority);
         console.log('🎄 [TreePattern] Placed', products[productIndex].displayName, 'at', `${slot.row},${slot.col}`, `(distance: ${distance})`);
         productIndex++;
+      }
+    }
+    
+    // Re-home evicted items in remaining empty slots
+    if (evictedItems.length > 0) {
+      console.log(`🔄 [TreePattern] Re-homing ${evictedItems.length} evicted items`);
+      
+      // Get all empty slots after placement
+      const emptySlots = this.contentGrid.getUsableEmptySlots();
+      emptySlots.sort((a, b) => {
+        if (a.row !== b.row) return a.row - b.row;
+        return a.col - b.col;
+      });
+      
+      let evictedIndex = 0;
+      for (const slot of emptySlots) {
+        if (evictedIndex >= evictedItems.length) break;
+        
+        const evictedItem = evictedItems[evictedIndex];
+        slot.setContent(evictedItem.content, evictedItem.priority);
+        console.log(`🏠 [TreePattern] Re-homed ${evictedItem.content.displayName || 'content'} to ${slot.row},${slot.col} with original priority ${evictedItem.priority}`);
+        evictedIndex++;
+      }
+      
+      if (evictedIndex < evictedItems.length) {
+        console.warn(`🔄 [TreePattern] Could not re-home ${evictedItems.length - evictedIndex} evicted items - no empty slots available`);
       }
     }
     
