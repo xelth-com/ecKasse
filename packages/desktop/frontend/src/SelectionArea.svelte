@@ -17,7 +17,7 @@
   import { agentStore } from '@eckasse/shared-frontend/utils/agentStore.js';
   import { uiConstantsStore } from '@eckasse/shared-frontend/utils/uiConstantsStore.js';
   import { notificationStore } from '@eckasse/shared-frontend/utils/notificationStore.js';
-  import { openCategories, toggleCategory, closeAllCategories, categoryHistory, PRIORITIES } from '@eckasse/shared-frontend/utils/quantumTreeStore.js';
+  import { openCategories, toggleCategory, closeAllCategories, categoryHistory, hasOpenCategories, PRIORITIES } from '@eckasse/shared-frontend/utils/quantumTreeStore.js';
   import { UIStates, uiState, enableQuantumTree, disableQuantumTree } from '@eckasse/shared-frontend/utils/uiState.js';
   import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/icons/BetrugerCapIconOutline.svelte';
   import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
@@ -63,6 +63,7 @@
   // System button state - derived from stores independently of grid updates
   let userButtonContent = null;
   let smartNavButtonContent = null;
+  let homeButtonContent = null;
   let notificationStyle = null;
   
   // Reactive system button content that updates independently
@@ -146,6 +147,27 @@
         notificationStyle: $notificationStore.style
       };
     }
+  })();
+
+  $: homeButtonContent = (() => {
+    // Home button always has the same appearance but we can adjust color based on state
+    const currentUIState = get(uiState);
+    const hasOpenCats = get(hasOpenCategories);
+    
+    // Use different colors based on whether there are open categories
+    const homeColor = hasOpenCats ? '#d32f2f' : '#666'; // Red when categories open, gray otherwise
+    
+    const homeIcon = `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+      <path d="M25 2L2 20h6v25h34V20h6L25 2zm0 6.8L40 18v25H30V30H20v13H10V18L25 8.8z" fill="${homeColor}"/>
+    </svg>`;
+    
+    return {
+      icon: homeIcon,
+      onClick: goHome,
+      active: true,
+      showShape: '',
+      color: homeColor
+    };
   })();
 
   // Debug logging for store changes
@@ -569,17 +591,20 @@
   let systemButtonUpdateTimer;
   let lastUserButtonContent = null;
   let lastSmartNavButtonContent = null;
+  let lastHomeButtonContent = null;
   $: {
     // Only update if content actually changed to prevent unnecessary re-renders
     const userChanged = JSON.stringify(userButtonContent) !== JSON.stringify(lastUserButtonContent);
     const smartNavChanged = JSON.stringify(smartNavButtonContent) !== JSON.stringify(lastSmartNavButtonContent);
+    const homeChanged = JSON.stringify(homeButtonContent) !== JSON.stringify(lastHomeButtonContent);
     
-    if (gridCells.length > 0 && (userChanged || smartNavChanged)) {
+    if (gridCells.length > 0 && (userChanged || smartNavChanged || homeChanged)) {
       // Debounce system button updates and only trigger when content actually changes
       if (systemButtonUpdateTimer) clearTimeout(systemButtonUpdateTimer);
       systemButtonUpdateTimer = setTimeout(() => {
         lastUserButtonContent = userButtonContent;
         lastSmartNavButtonContent = smartNavButtonContent;
+        lastHomeButtonContent = homeButtonContent;
         gridCells = [...gridCells];
       }, 150);
     }
@@ -818,15 +843,7 @@
       
       // Slot 1 (Topmost): Home Button
       if (leftHalfCells[0]) {
-        const homeIcon = `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-          <path d="M25 2L2 20h6v25h34V20h6L25 2zm0 6.8L40 18v25H30V30H20v13H10V18L25 8.8z" fill="#666"/>
-        </svg>`;
-        
-        leftHalfCells[0].content = {
-          isHomeButton: true,
-          icon: homeIcon,
-          showShape: ''
-        };
+        leftHalfCells[0].content = { isHomeButton: true };
       }
       
       // Second from top: User Button
@@ -1840,7 +1857,7 @@
       return { disabled: true, style: 'opacity: 0; pointer-events: none;' };
     }
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
-    if (cell.content.isHomeButton) return { icon: '🏠', onClick: goHome, active: true };
+    if (cell.content.isHomeButton) return homeButtonContent;
     if (cell.content.isLayoutToggle) return { 
       icon: cell.content.icon || '', 
       onClick: toggleLayoutType, 
