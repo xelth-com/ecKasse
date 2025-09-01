@@ -8,6 +8,7 @@
 
 import { ContentGrid } from './contentGrid.js';
 import { createGeometryRenderer } from './geometryRenderer.js';
+import { getCellCenter } from './hexPositioning.js';
 
 // --- PRIORITY DEFINITIONS ---
 const PRIORITIES = {
@@ -262,15 +263,27 @@ export class GridManager {
     const availableSlots = allUsableSlots
       .filter(slot => !(slot.row === rootSlot.row && slot.col === rootSlot.col)) // Exclude root slot
       .filter(slot => slot.isEmpty || slot.priority < priority) // Only empty or lower priority slots
-      .map(slot => ({
-        slot,
-        distance: Math.abs(slot.row - rootSlot.row) + Math.abs(slot.col - rootSlot.col)
-      }))
+      .map(slot => {
+        // Calculate real euclidean distance using hex positioning
+        const rootCenter = getCellCenter(rootSlot.row, rootSlot.col, this.config.rendering);
+        const slotCenter = getCellCenter(slot.row, slot.col, this.config.rendering);
+        const distanceSquared = Math.round(
+          Math.pow(slotCenter.x - rootCenter.x, 2) + 
+          Math.pow(slotCenter.y - rootCenter.y, 2)
+        );
+        
+        return {
+          slot,
+          distance: distanceSquared,
+          rowDistance: Math.abs(slot.row - rootSlot.row),
+          colDistance: Math.abs(slot.col - rootSlot.col)
+        };
+      })
       .sort((a, b) => {
-        // Primary sort: by total distance (closer slots first)
+        // Primary sort: by weighted distance (horizontal neighbors preferred)
         if (a.distance !== b.distance) return a.distance - b.distance;
         
-        // Secondary sort: standard reading order (top to bottom, left to right)
+        // Secondary sort: standard reading order for same distance
         if (a.slot.row !== b.slot.row) return a.slot.row - b.slot.row;
         return a.slot.col - b.slot.col;
       });
