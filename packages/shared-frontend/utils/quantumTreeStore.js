@@ -28,15 +28,24 @@ export function toggleCategory(categoryId) {
     const existingIndex = history.findIndex(item => item.id === categoryId);
     
     if (existingIndex !== -1) {
-      // Category exists - remove it (close)
-      console.log('🔄 [QuantumTree] Closing category', categoryId, 'current history:', history.map(h => h.id));
-      const newHistory = [...history];
-      newHistory.splice(existingIndex, 1);
-      
-      // Recalculate priorities for remaining categories
-      const recalculatedHistory = recalculatePriorities(newHistory);
-      console.log('🔄 [QuantumTree] After close, new history:', recalculatedHistory.map(h => h.id));
-      return recalculatedHistory;
+      // Category exists
+      if (existingIndex === 0) {
+        // Category is already the most recent (active) - close it
+        console.log('🔄 [QuantumTree] Closing active category', categoryId, 'current history:', history.map(h => h.id));
+        const newHistory = [...history];
+        newHistory.splice(existingIndex, 1);
+        
+        // Recalculate priorities for remaining categories
+        const recalculatedHistory = recalculatePriorities(newHistory);
+        console.log('🔄 [QuantumTree] After close, new history:', recalculatedHistory.map(h => h.id));
+        return recalculatedHistory;
+      } else {
+        // Category is open but not the most recent - make it the most recent (active)
+        console.log('🔄 [QuantumTree] Making category active', categoryId, 'current history:', history.map(h => h.id));
+        const newHistory = addCategoryToHistory(history, categoryId);
+        console.log('🔄 [QuantumTree] After making active, new history:', newHistory.map(h => h.id));
+        return newHistory;
+      }
     } else {
       // Category doesn't exist - add it (open) as highest priority
       console.log('🔄 [QuantumTree] Opening category', categoryId, 'current history:', history.map(h => h.id));

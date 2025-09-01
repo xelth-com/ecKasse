@@ -791,7 +791,7 @@
     const currentUIState = get(uiState);
     
     if (currentView === 'products') {
-      // Back button for products view
+      // Back button for products view - find available slot after system buttons
       const leftHalfCells = gridCells.filter(cell => 
         (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
       );
@@ -799,16 +799,6 @@
         leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
         const leftHalfCell = leftHalfCells[0];
         leftHalfCell.content = { isBackButton: true, icon: '←' };
-      }
-    } else if (currentUIState === UIStates.QUANTUM_TREE) {
-      // Home button for tree mode
-      const leftHalfCells = gridCells.filter(cell => 
-        (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
-      );
-      if (leftHalfCells.length > 0) {
-        leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
-        const leftHalfCell = leftHalfCells[0];
-        leftHalfCell.content = { isHomeButton: true, icon: '🏠' };
       }
     }
     
@@ -825,6 +815,19 @@
     );
     if (leftHalfCells.length > 0) {
       leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort ascending to get top first
+      
+      // Slot 1 (Topmost): Home Button
+      if (leftHalfCells[0]) {
+        const homeIcon = `<svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+          <path d="M25 2L2 20h6v25h34V20h6L25 2zm0 6.8L40 18v25H30V30H20v13H10V18L25 8.8z" fill="#666"/>
+        </svg>`;
+        
+        leftHalfCells[0].content = {
+          isHomeButton: true,
+          icon: homeIcon,
+          showShape: ''
+        };
+      }
       
       // Second from top: User Button
       if (leftHalfCells.length > 1) {
