@@ -11,10 +11,10 @@ import { createGeometryRenderer } from './geometryRenderer.js';
 
 // --- PRIORITY DEFINITIONS ---
 const PRIORITIES = {
-    TABLE_BUTTON: 75,      // Table/Collapse button - Higher than products, lower than categories
-    PAYMENT_BUTTON: 75,    // Bar, Card, etc. - Higher than products, lower than categories
-    PINPAD_BUTTON: 75,     // Pinpad/Search trigger - Higher than products, lower than categories  
-    CATEGORY_PRIORITY: 80, // Categories have highest priority and remain static
+    TABLE_BUTTON: 90,      // Table/Collapse button - HIGHEST priority, always visible
+    PAYMENT_BUTTON: 85,    // Bar, Card, etc. - Higher than categories
+    PINPAD_BUTTON: 85,     // Pinpad/Search trigger - Higher than categories  
+    CATEGORY_PRIORITY: 80, // Categories have high priority and remain static
     CATEGORY_NAVIGATION: 70, // Categories on main view
     DEFAULT: 50,
     MIN: 1

@@ -294,6 +294,25 @@
     return field;
   }
 
+  // Helper function to convert hex color to RGB
+  function hexToRgb(hex) {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
+    // Handle 3-digit hex
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    
+    // Parse RGB values
+    const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
   function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
     addLog('DEBUG', 'calculateOptimalGrid called', {
       containerWidth, 
@@ -1966,12 +1985,72 @@
         buttonProps.backgroundStyle = 'radial-gradient(ellipse at center, #645540 0%, #5A4B35 30%, #4A3B28 70%, #3A2F20 100%)';
         buttonProps.textColor = '#DDDDD0';
       } else {
-        // Products - check for AI-suggested color
+        // Products - check for AI-suggested color and apply priority-based styling
         let buttonColor = '#666666'; // Default gray
+        let textColor = '#DDDDD0'; // Default text color
+        let opacity = 1; // Default opacity
+        
         if (cell.content?.additional_item_attributes?.ui_suggestions?.background_color_hex) {
           buttonColor = cell.content.additional_item_attributes.ui_suggestions.background_color_hex;
         }
+        
+        // Apply priority-based styling for products
+        if (cell.content.isTreeProduct) {
+          if (cell.content.isSecondary) {
+            // Secondary priority (60): 1/5 оригинального + 4/5 серого
+            const rgb = hexToRgb(buttonColor);
+            const targetRgb = hexToRgb('#3a3a3a');
+            if (rgb && targetRgb) {
+              // Mix: 1/5 оригинал + 4/5 серый  
+              const mixR = Math.round(rgb.r * 0.2 + targetRgb.r * 0.8);
+              const mixG = Math.round(rgb.g * 0.2 + targetRgb.g * 0.8);
+              const mixB = Math.round(rgb.b * 0.2 + targetRgb.b * 0.8);
+              buttonColor = `rgb(${mixR}, ${mixG}, ${mixB})`;
+            } else {
+              buttonColor = '#555555'; // Fallback middle gray
+            }
+            // Text 50% darker than original (умножение на 0.5)
+            const originalTextRgb = hexToRgb(textColor);
+            if (originalTextRgb) {
+              const darkerR = Math.max(0, Math.round(originalTextRgb.r * 0.5));
+              const darkerG = Math.max(0, Math.round(originalTextRgb.g * 0.5));
+              const darkerB = Math.max(0, Math.round(originalTextRgb.b * 0.5));
+              textColor = `rgb(${darkerR}, ${darkerG}, ${darkerB})`;
+            } else {
+              textColor = '#999999'; // Fallback darker text
+            }
+          } else if (cell.content.isTertiary) {
+            // Tertiary priority (50): 1/10 оригинального + 9/10 серого
+            const rgb = hexToRgb(buttonColor);
+            const targetRgb = hexToRgb('#3a3a3a');
+            if (rgb && targetRgb) {
+              // Mix: 1/10 оригинал + 9/10 серый
+              const mixR = Math.round(rgb.r * 0.1 + targetRgb.r * 0.9);
+              const mixG = Math.round(rgb.g * 0.1 + targetRgb.g * 0.9);
+              const mixB = Math.round(rgb.b * 0.1 + targetRgb.b * 0.9);
+              buttonColor = `rgb(${mixR}, ${mixG}, ${mixB})`;
+            } else {
+              buttonColor = '#3a3a3a'; // Fallback to target
+            }
+            // Text 60% darker than original (умножение на 0.4)
+            const originalTextRgb = hexToRgb(textColor);
+            if (originalTextRgb) {
+              const darkerR = Math.max(0, Math.round(originalTextRgb.r * 0.4));
+              const darkerG = Math.max(0, Math.round(originalTextRgb.g * 0.4));
+              const darkerB = Math.max(0, Math.round(originalTextRgb.b * 0.4));
+              textColor = `rgb(${darkerR}, ${darkerG}, ${darkerB})`;
+            } else {
+              textColor = '#666666'; // Fallback very muted text
+            }
+            opacity = 0.8; // Additional transparency
+          }
+        }
+        
         buttonProps.color = buttonColor;
+        buttonProps.textColor = textColor;
+        if (opacity < 1) {
+          buttonProps.customStyle = `opacity: ${opacity};`;
+        }
       }
       
       return buttonProps;
