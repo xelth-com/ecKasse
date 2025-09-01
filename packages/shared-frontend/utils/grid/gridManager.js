@@ -156,7 +156,7 @@ export class GridManager {
       
       // Log any items that couldn't be re-homed
       if (evictedIndex < evictedItems.length) {
-        console.warn(`🔄 [PlaceItems] Could not re-home ${evictedItems.length - evictedIndex} evicted items - no empty slots available`);
+        console.log(`🔄 [PlaceItems] ${evictedItems.length - evictedIndex} lower-priority items not displayed due to space constraints`);
       }
     }
 
@@ -335,7 +335,7 @@ export class GridManager {
       }
       
       if (evictedIndex < evictedItems.length) {
-        console.warn(`🔄 [TreePattern] Could not re-home ${evictedItems.length - evictedIndex} evicted items - no empty slots available`);
+        console.log(`🔄 [TreePattern] ${evictedItems.length - evictedIndex} lower-priority items not displayed due to space constraints`);
       }
     }
     

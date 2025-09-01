@@ -2029,16 +2029,8 @@
             } else {
               buttonColor = '#555555'; // Fallback middle gray
             }
-            // Text 50% darker than original (умножение на 0.5)
-            const originalTextRgb = hexToRgb(textColor);
-            if (originalTextRgb) {
-              const darkerR = Math.max(0, Math.round(originalTextRgb.r * 0.5));
-              const darkerG = Math.max(0, Math.round(originalTextRgb.g * 0.5));
-              const darkerB = Math.max(0, Math.round(originalTextRgb.b * 0.5));
-              textColor = `rgb(${darkerR}, ${darkerG}, ${darkerB})`;
-            } else {
-              textColor = '#999999'; // Fallback darker text
-            }
+            // Black text for secondary priority
+            textColor = '#000000';
           } else if (cell.content.isTertiary) {
             // Tertiary priority (50): 1/10 оригинального + 9/10 серого
             const rgb = hexToRgb(buttonColor);
@@ -2052,16 +2044,8 @@
             } else {
               buttonColor = '#3a3a3a'; // Fallback to target
             }
-            // Text 60% darker than original (умножение на 0.4)
-            const originalTextRgb = hexToRgb(textColor);
-            if (originalTextRgb) {
-              const darkerR = Math.max(0, Math.round(originalTextRgb.r * 0.4));
-              const darkerG = Math.max(0, Math.round(originalTextRgb.g * 0.4));
-              const darkerB = Math.max(0, Math.round(originalTextRgb.b * 0.4));
-              textColor = `rgb(${darkerR}, ${darkerG}, ${darkerB})`;
-            } else {
-              textColor = '#666666'; // Fallback very muted text
-            }
+            // Black text for tertiary priority
+            textColor = '#000000';
             opacity = 0.8; // Additional transparency
           }
         }
