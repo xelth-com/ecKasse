@@ -264,25 +264,15 @@ export class GridManager {
       .filter(slot => slot.isEmpty || slot.priority < priority) // Only empty or lower priority slots
       .map(slot => ({
         slot,
-        distance: Math.abs(slot.row - rootSlot.row) + Math.abs(slot.col - rootSlot.col),
-        rowDistance: Math.abs(slot.row - rootSlot.row),
-        colDistance: Math.abs(slot.col - rootSlot.col)
+        distance: Math.abs(slot.row - rootSlot.row) + Math.abs(slot.col - rootSlot.col)
       }))
       .sort((a, b) => {
         // Primary sort: by total distance (closer slots first)
         if (a.distance !== b.distance) return a.distance - b.distance;
         
-        // Secondary sort: prefer positions to the right and below (positive row/col diff)
-        const aIsRightOrBelow = (a.slot.col >= rootSlot.col) && (a.slot.row >= rootSlot.row);
-        const bIsRightOrBelow = (b.slot.col >= rootSlot.col) && (b.slot.row >= rootSlot.row);
-        
-        if (aIsRightOrBelow && !bIsRightOrBelow) return -1;
-        if (!aIsRightOrBelow && bIsRightOrBelow) return 1;
-        
-        // Tertiary sort: prefer row differences over column differences (spread vertically)
-        if (a.rowDistance !== b.rowDistance) return a.rowDistance - b.rowDistance;
-        
-        return a.colDistance - b.colDistance;
+        // Secondary sort: standard reading order (top to bottom, left to right)
+        if (a.slot.row !== b.slot.row) return a.slot.row - b.slot.row;
+        return a.slot.col - b.slot.col;
       });
     
     console.log('🎄 [TreePattern] Found', availableSlots.length, 'available slots sorted by distance from', `${rootSlot.row},${rootSlot.col}`);
