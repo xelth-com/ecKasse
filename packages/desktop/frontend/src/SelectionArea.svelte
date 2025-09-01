@@ -1797,12 +1797,12 @@
       };
     }
     if (!cell.content) {
-      // Half-buttons should be visible as disabled placeholders in hex mode only
+      // Half-buttons should be visible as disabled placeholders in both modes
       const isHalfButton = cell.type && cell.type.includes('half');
-      if (isHalfButton && layoutType === '6-6-6') {
+      if (isHalfButton) {
         return { disabled: true };
       }
-      // In rect mode, half-buttons and full buttons remain transparent
+      // Full buttons remain transparent in both modes
       return { disabled: true, style: 'opacity: 0; pointer-events: none;' };
     }
     if (cell.content.isBackButton) return { icon: '←', onClick: goBackToCategories, active: true };
