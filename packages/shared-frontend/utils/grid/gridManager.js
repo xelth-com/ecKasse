@@ -52,21 +52,23 @@ export class GridManager {
 
   /**
    * Places a collection of items onto the logical grid based on priority.
-   * This is the core 'Quantum Collapse' mechanism.
+   * This is the core 'Quantum Collapse' mechanism with priority-based displacement.
+   * 
+   * High-priority items can displace lower-priority ones, which are then re-homed
+   * in a second pass to create predictable placement behavior.
    * 
    * @param {Array<Object>} contentItems - Items to place (e.g., categories or products)
-   * @param {string} placementType - 'content' or 'system'
    * @param {number} priority - Priority level for placement
    * @param {number} maxItems - Optional maximum items to place (for content)
    */
   placeItems(contentItems, priority = PRIORITIES.DEFAULT, maxItems = Infinity) {
     if (!contentItems || contentItems.length === 0) return [];
 
-    // 1. Identify all usable empty slots
-    const emptySlots = this.contentGrid.getUsableEmptySlots();
+    // 1. Get ALL usable slots (both empty and occupied)
+    const allUsableSlots = this.contentGrid.getUsableSlots();
     
-    // Explicitly sort empty slots to ensure top-to-bottom, left-to-right placement
-    emptySlots.sort((a, b) => {
+    // Sort slots to ensure top-to-bottom, left-to-right placement preference
+    allUsableSlots.sort((a, b) => {
       if (a.row !== b.row) {
         return a.row - b.row; // Top to bottom
       }
@@ -75,50 +77,85 @@ export class GridManager {
     
     let itemsPlaced = 0;
     const placementResults = [];
+    const evictedItems = []; // Items displaced by higher-priority content
 
     // 2. Sort items by natural order (e.g., database order) before placing
     contentItems.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     
-    console.log('🎯 [GridManager] Placing items:', {
+    console.log('🎯 [GridManager] Placing items with priority-based displacement:', {
       itemCount: contentItems.length,
-      availableSlots: emptySlots.length,
-      firstSlot: emptySlots[0] ? `${emptySlots[0].row},${emptySlots[0].col}` : 'none'
+      priority: priority,
+      totalUsableSlots: allUsableSlots.length,
+      maxItems: maxItems
     });
 
+    // PHASE 1: Place new high-priority items, evicting lower-priority content
     for (const item of contentItems) {
       if (itemsPlaced >= maxItems) break;
 
-      // Try to find a slot where we can place this item (empty slot or lower priority)
       let targetSlot = null;
-      let targetSlotIndex = -1;
       
-      // First try empty slots
-      if (itemsPlaced < emptySlots.length) {
-        targetSlot = emptySlots[itemsPlaced];
-        targetSlotIndex = itemsPlaced;
-      } else {
-        // No empty slots, look for slots with lower priority content that we can replace
-        for (let row = 0; row < this.contentGrid.rows; row++) {
-          for (let col = 0; col < this.contentGrid.cols; col++) {
-            const slot = this.contentGrid.getSlot(row, col);
-            if (this.canPlaceAt(slot, priority)) {
-              targetSlot = slot;
-              break;
-            }
-          }
-          if (targetSlot) break;
+      // Look for the first available slot (empty or lower priority)
+      for (const slot of allUsableSlots) {
+        if (this.canPlaceAt(slot, priority)) {
+          targetSlot = slot;
+          break;
         }
       }
       
       if (targetSlot) {
-        console.log(`🎄 [PlaceItems] Placing ${item.displayName} at ${targetSlot.row},${targetSlot.col} with priority ${priority} (was: ${targetSlot.isEmpty ? 'empty' : targetSlot.priority})`);
+        // If the slot is occupied by lower-priority content, evict it
+        if (!targetSlot.isEmpty && targetSlot.priority < priority) {
+          const evictedContent = {
+            content: targetSlot.content,
+            priority: targetSlot.priority
+          };
+          evictedItems.push(evictedContent);
+          console.log(`🔄 [PlaceItems] Evicting ${evictedContent.content.displayName || 'content'} (priority ${evictedContent.priority}) from ${targetSlot.row},${targetSlot.col}`);
+        }
+
+        console.log(`🎯 [PlaceItems] Placing ${item.displayName} at ${targetSlot.row},${targetSlot.col} with priority ${priority} (was: ${targetSlot.isEmpty ? 'empty' : `occupied by priority ${targetSlot.priority}`})`);
         console.log('📋 [Content Grid] Assigned to slot:', `${targetSlot.row},${targetSlot.col}`, 'Type:', item.type || (item.category_names ? 'category' : 'product'), 'Label:', item.displayName, 'Is category:', !!(item.category_names || item.type === 'category'));
+        
         targetSlot.setContent(item, priority);
         itemsPlaced++;
         placementResults.push({ item, placed: true, slot: targetSlot });
       } else {
-        console.log(`🎄 [PlaceItems] Could not place ${item.displayName} - no available slots for priority ${priority}`);
+        console.log(`🎯 [PlaceItems] Could not place ${item.displayName} - no available slots for priority ${priority}`);
         placementResults.push({ item, placed: false, slot: null });
+      }
+    }
+
+    // PHASE 2: Re-home evicted items in remaining empty slots
+    if (evictedItems.length > 0) {
+      console.log(`🔄 [PlaceItems] Re-homing ${evictedItems.length} evicted items`);
+      
+      // Get all empty slots after phase 1 placement
+      const emptySlots = this.contentGrid.getUsableEmptySlots();
+      
+      // Sort empty slots by position (top-to-bottom, left-to-right)
+      emptySlots.sort((a, b) => {
+        if (a.row !== b.row) {
+          return a.row - b.row;
+        }
+        return a.col - b.col;
+      });
+      
+      // Place evicted items in available empty slots
+      let evictedIndex = 0;
+      for (const slot of emptySlots) {
+        if (evictedIndex >= evictedItems.length) break;
+        
+        const evictedItem = evictedItems[evictedIndex];
+        slot.setContent(evictedItem.content, evictedItem.priority);
+        
+        console.log(`🏠 [PlaceItems] Re-homed ${evictedItem.content.displayName || 'content'} to ${slot.row},${slot.col} with original priority ${evictedItem.priority}`);
+        evictedIndex++;
+      }
+      
+      // Log any items that couldn't be re-homed
+      if (evictedIndex < evictedItems.length) {
+        console.warn(`🔄 [PlaceItems] Could not re-home ${evictedItems.length - evictedIndex} evicted items - no empty slots available`);
       }
     }
 
