@@ -619,24 +619,14 @@
     addLog('DEBUG', 'buildGridStructure called', { layoutType, chosenLayout });
     const cells = [];
     
-    // Use unified logic for both layouts
-    const gridRows = layoutType === '6-6-6' ? totalRows : rectTotalRows;
+    // Always use hex parameters for grid structure - only visual form differs
+    addLog('DEBUG', 'Building grid structure', { 
+      totalRows, 
+      itemsPerRow,
+      buttonSize: layoutType === '6-6-6' ? `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}` : `${rectButtonWidth.toFixed(1)}x${rectButtonHeight.toFixed(1)}`
+    });
     
-    if (layoutType === '6-6-6') {
-      addLog('DEBUG', 'Building hexagonal grid structure', { 
-        totalRows, 
-        itemsPerRow,
-        buttonSize: `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}`
-      });
-    } else if (layoutType === '4-4-4') {
-      addLog('DEBUG', 'Building rectangular grid structure', { 
-        rectTotalRows, 
-        rectItemsPerRow,
-        buttonSize: `${rectButtonWidth.toFixed(1)}x${rectButtonHeight.toFixed(1)}`
-      });
-    }
-    
-    for (let rowIndex = 0; rowIndex < gridRows; rowIndex++) {
+    for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
       const cellCountBefore = cells.length;
       buildRow(cells, rowIndex, chosenLayout);
       const cellsAddedInRow = cells.length - cellCountBefore;
@@ -656,157 +646,107 @@
     const isOddRow = rowIndex % 2 === 1;
 
     if (chosenLayoutType === 'symmetrical') {
-        // Set dimensions and cell counts based on current layout type
-        const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
-        const fullButtonsInRow = isOddRow ? currentItemsPerRow : currentItemsPerRow - 1;
+        // Always use hex logic for grid structure - only form differs
+        const fullButtonsInRow = isOddRow ? itemsPerRow : itemsPerRow - 1;
         if (fullButtonsInRow < 0) return; // Avoid creating rows with negative buttons
 
         if (!isOddRow) {
             // Left half button
             const leftHalfCell = { 
-                id: layoutType === '6-6-6' ? `half-start-${rowIndex}` : `rect-half-start-${rowIndex}`, 
+                id: `half-start-${rowIndex}`, 
                 type: layoutType === '6-6-6' ? 'left-half' : 'left-half-rect', 
                 content: null, 
                 rowIndex, 
                 columnIndex: 0 
             };
             
-            // Add dimensions for rectangular layout
-            if (layoutType === '4-4-4') {
-                leftHalfCell.width = rectButtonWidth / 2 - RECT_GAP / 2;
-                leftHalfCell.height = rectButtonHeight;
-            }
-            
             cells.push(leftHalfCell);
             
             // Full buttons
             for (let i = 0; i < fullButtonsInRow; i++) {
                 const fullCell = { 
-                    id: layoutType === '6-6-6' ? `full-${rowIndex}-${i}` : `rect-full-${rowIndex}-${i}`, 
+                    id: `full-${rowIndex}-${i}`, 
                     type: layoutType === '6-6-6' ? 'full' : 'rect-grid', 
                     content: null, 
                     rowIndex, 
                     columnIndex: i + 1 
                 };
                 
-                // Add dimensions for rectangular layout
-                if (layoutType === '4-4-4') {
-                    fullCell.width = rectButtonWidth;
-                    fullCell.height = rectButtonHeight;
-                }
-                
                 cells.push(fullCell);
             }
             
             // Right half button
             const rightHalfCell = { 
-                id: layoutType === '6-6-6' ? `half-end-${rowIndex}` : `rect-half-end-${rowIndex}`, 
+                id: `half-end-${rowIndex}`, 
                 type: layoutType === '6-6-6' ? 'right-half' : 'right-half-rect', 
                 content: null, 
                 rowIndex, 
                 columnIndex: fullButtonsInRow + 1 
             };
             
-            // Add dimensions for rectangular layout
-            if (layoutType === '4-4-4') {
-                rightHalfCell.width = rectButtonWidth / 2 - RECT_GAP / 2;
-                rightHalfCell.height = rectButtonHeight;
-            }
-            
             cells.push(rightHalfCell);
         } else {
             // Odd rows - just full buttons
             for (let i = 0; i < fullButtonsInRow; i++) {
                 const fullCell = { 
-                    id: layoutType === '6-6-6' ? `full-${rowIndex}-${i}` : `rect-full-${rowIndex}-${i}`, 
+                    id: `full-${rowIndex}-${i}`, 
                     type: layoutType === '6-6-6' ? 'full' : 'rect-grid', 
                     content: null, 
                     rowIndex, 
                     columnIndex: i 
                 };
                 
-                // Add dimensions for rectangular layout
-                if (layoutType === '4-4-4') {
-                    fullCell.width = rectButtonWidth;
-                    fullCell.height = rectButtonHeight;
-                }
-                
                 cells.push(fullCell);
             }
         }
     } else { // Asymmetrical
-        const currentItemsPerRow = layoutType === '6-6-6' ? itemsPerRow : rectItemsPerRow;
-        
+        // Always use hex logic for grid structure - only form differs
         if (!isOddRow) {
             // Left half button
             const leftHalfCell = { 
-                id: layoutType === '6-6-6' ? `half-start-${rowIndex}` : `rect-half-start-${rowIndex}`, 
+                id: `half-start-${rowIndex}`, 
                 type: layoutType === '6-6-6' ? 'left-half' : 'left-half-rect', 
                 content: null, 
                 rowIndex, 
                 columnIndex: 0 
             };
             
-            // Add dimensions for rectangular layout
-            if (layoutType === '4-4-4') {
-                leftHalfCell.width = rectButtonWidth / 2 - RECT_GAP / 2;
-                leftHalfCell.height = rectButtonHeight;
-            }
-            
             cells.push(leftHalfCell);
             
             // Full buttons
-            for (let i = 0; i < currentItemsPerRow; i++) {
+            for (let i = 0; i < itemsPerRow; i++) {
                 const fullCell = { 
-                    id: layoutType === '6-6-6' ? `full-${rowIndex}-${i}` : `rect-full-${rowIndex}-${i}`, 
+                    id: `full-${rowIndex}-${i}`, 
                     type: layoutType === '6-6-6' ? 'full' : 'rect-grid', 
                     content: null, 
                     rowIndex, 
                     columnIndex: i + 1 
                 };
                 
-                // Add dimensions for rectangular layout
-                if (layoutType === '4-4-4') {
-                    fullCell.width = rectButtonWidth;
-                    fullCell.height = rectButtonHeight;
-                }
-                
                 cells.push(fullCell);
             }
         } else {
             // Odd rows
-            for (let i = 0; i < currentItemsPerRow; i++) {
+            for (let i = 0; i < itemsPerRow; i++) {
                 const fullCell = { 
-                    id: layoutType === '6-6-6' ? `full-${rowIndex}-${i}` : `rect-full-${rowIndex}-${i}`, 
+                    id: `full-${rowIndex}-${i}`, 
                     type: layoutType === '6-6-6' ? 'full' : 'rect-grid', 
                     content: null, 
                     rowIndex, 
                     columnIndex: i 
                 };
                 
-                // Add dimensions for rectangular layout
-                if (layoutType === '4-4-4') {
-                    fullCell.width = rectButtonWidth;
-                    fullCell.height = rectButtonHeight;
-                }
-                
                 cells.push(fullCell);
             }
             
             // Right half button
             const rightHalfCell = { 
-                id: layoutType === '6-6-6' ? `half-end-${rowIndex}` : `rect-half-end-${rowIndex}`, 
+                id: `half-end-${rowIndex}`, 
                 type: layoutType === '6-6-6' ? 'right-half' : 'right-half-rect', 
                 content: null, 
                 rowIndex, 
-                columnIndex: currentItemsPerRow 
+                columnIndex: itemsPerRow 
             };
-            
-            // Add dimensions for rectangular layout
-            if (layoutType === '4-4-4') {
-                rightHalfCell.width = rectButtonWidth / 2 - RECT_GAP / 2;
-                rightHalfCell.height = rectButtonHeight;
-            }
             
             cells.push(rightHalfCell);
         }
@@ -1843,8 +1783,8 @@
       width = isHalf ? optimalHexWidth / 2 - HEX_BUTTON_GAP / 2 : optimalHexWidth;
       height = optimalHexHeight;
     } else {
-      width = cell.width || rectButtonWidth;
-      height = cell.height || rectButtonHeight;
+      width = isHalf ? rectButtonWidth / 2 - RECT_GAP / 2 : rectButtonWidth;
+      height = rectButtonHeight;
     }
     
     return { 
