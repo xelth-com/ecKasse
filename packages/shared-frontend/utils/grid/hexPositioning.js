@@ -43,11 +43,17 @@ function virtualToPhysicalHex(row, col, cellWidth, cellHeight, buttonGap, hexOff
 
 /**
  * Convert virtual coordinates to rectangular grid physical coordinates  
- * Now properly accounts for buttonGap in positioning calculations
+ * Uses same hex-like logic but without vertical overlap (75% spacing)
  */
 function virtualToPhysicalRect(row, col, cellWidth, cellHeight, buttonGap) {
-  // Rectangular grid positioning with proper gap spacing
-  const x = col * (cellWidth + buttonGap);
+  // Use SAME logic as hex but without vertical overlap
+  const isOddCol = col % 2 === 1;
+  const visualCol = Math.floor(col / 2);
+  
+  // X position: identical to hex - visual column * (full width + gap) + half-offset for odd columns
+  const x = visualCol * (cellWidth + buttonGap) + (isOddCol ? (cellWidth + buttonGap) / 2 : 0);
+  
+  // Y position: full height spacing (no overlap like in hex)
   const y = row * (cellHeight + buttonGap);
   
   console.log(`🔮 [rectPositioning] row=${row}, col=${col}, x=${x}, y=${y}, gap=${buttonGap}`);

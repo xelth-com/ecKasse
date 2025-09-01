@@ -2259,10 +2259,7 @@
     margin-bottom: 0;
   }
   
-  /* Staggered brickwork pattern for rectangular layout */
-  .button-row.rect-row:nth-child(odd) {
-    margin-left: calc(var(--rect-button-width, 120px) / 2 + 3px);
-  }
+  /* Staggered brickwork pattern now handled by virtualToPhysicalRect positioning */
   
   .empty-category-info {
     position: absolute;
