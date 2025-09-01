@@ -1,65 +1,43 @@
 /**
- * Hex positioning utility for converting virtual grid coordinates to physical pixel positions
+ * Unified positioning utility for converting virtual grid coordinates to physical pixel positions
+ * Uses hex-like staggered positioning with configurable vertical overlap
  */
 export function virtualToPhysical(row, col, config) {
   const {
     cellWidth = 120,
     cellHeight = 80,
     buttonGap = 6,
-    hexOffset = 0.5,
-    shape = 'hex' // 'hex' or 'rect'
+    verticalOverlap = 0.75, // 0.75 for hex overlap, 1.0 for no overlap (rect)
+    shape = 'hex' // kept for compatibility, but positioning logic is unified
   } = config;
 
-  if (shape === 'hex') {
-    return virtualToPhysicalHex(row, col, cellWidth, cellHeight, buttonGap, hexOffset);
-  } else {
-    return virtualToPhysicalRect(row, col, cellWidth, cellHeight, buttonGap);
-  }
+  return virtualToPhysicalUnified(row, col, cellWidth, cellHeight, buttonGap, verticalOverlap);
 }
 
 /**
- * Convert virtual coordinates to hexagonal grid physical coordinates
- * Now properly accounts for buttonGap in positioning calculations
+ * Unified positioning function - works for both hex and rect modes
+ * Uses staggered column layout with configurable vertical overlap
  */
-function virtualToPhysicalHex(row, col, cellWidth, cellHeight, buttonGap, hexOffset) {
-  // For hexagonal grid: doubled column indexes for staggered layout
-  // Even columns are left-aligned, odd columns are offset
+function virtualToPhysicalUnified(row, col, cellWidth, cellHeight, buttonGap, verticalOverlap) {
+  // Staggered layout logic (same as original hex)
   const isOddCol = col % 2 === 1;
   const visualCol = Math.floor(col / 2);
   
   // X position: visual column * (full width + gap) + half-offset for odd columns
   const x = visualCol * (cellWidth + buttonGap) + (isOddCol ? (cellWidth + buttonGap) / 2 : 0);
   
-  // Y offset is based on 75% height overlap of hexes, with gap consideration
-  // For hexagonal layout, we need to account for vertical spacing too
-  const verticalSpacing = cellHeight * 0.75;
+  // Y position: configurable vertical spacing
+  // verticalOverlap = 0.75 for hex (75% overlap), 1.0 for rect (no overlap)  
+  const verticalSpacing = cellHeight * verticalOverlap;
   const y = row * (verticalSpacing + buttonGap);
   
   // Debug positioning for all buttons
-  console.log(`🔮 [hexPositioning] row=${row}, col=${col}, isOddCol=${isOddCol}, visualCol=${visualCol}, x=${x}, y=${y}, gap=${buttonGap}`);
+  console.log(`🔮 [unifiedPositioning] row=${row}, col=${col}, isOddCol=${isOddCol}, visualCol=${visualCol}, x=${x}, y=${y}, gap=${buttonGap}, overlap=${verticalOverlap}`);
   
   return { x, y };
 }
 
-/**
- * Convert virtual coordinates to rectangular grid physical coordinates  
- * Uses same hex-like logic but without vertical overlap (75% spacing)
- */
-function virtualToPhysicalRect(row, col, cellWidth, cellHeight, buttonGap) {
-  // Use SAME logic as hex but without vertical overlap
-  const isOddCol = col % 2 === 1;
-  const visualCol = Math.floor(col / 2);
-  
-  // X position: identical to hex - visual column * (full width + gap) + half-offset for odd columns
-  const x = visualCol * (cellWidth + buttonGap) + (isOddCol ? (cellWidth + buttonGap) / 2 : 0);
-  
-  // Y position: full height spacing (no overlap like in hex)
-  const y = row * (cellHeight + buttonGap);
-  
-  console.log(`🔮 [rectPositioning] row=${row}, col=${col}, x=${x}, y=${y}, gap=${buttonGap}`);
-  
-  return { x, y };
-}
+// Old rectangular positioning function removed - now using unified approach
 
 /**
  * Calculate the center point of a cell's physical position

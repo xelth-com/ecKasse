@@ -499,11 +499,7 @@
   let itemsPerRow = 1;
   let totalRows = 1;
   
-  // Variables for 4-4-4 rectangular grid layout
-  let rectButtonWidth = MIN_BUTTON_SIZE; // calculated rectangular button width
-  let rectButtonHeight = MIN_BUTTON_SIZE; // calculated rectangular button height
-  let rectItemsPerRow = 1; // Dynamic: calculated columns
-  let rectTotalRows = 1; // Dynamic: calculated rows
+  // Note: Now using unified variables (optimalHexWidth/Height, itemsPerRow, totalRows) for both modes
 
   let chosenLayout = 'symmetrical';
 
@@ -518,33 +514,25 @@
       return;
     }
 
-    let grid;
-    if (layoutType === '6-6-6') {
-      grid = calculateOptimalGrid(containerWidth, containerHeight, MIN_BUTTON_SIZE, 3/4, HEX_EDGE_GAP, HEX_VERTICAL_PADDING, true);
-      itemsPerRow = grid.columns;
-      totalRows = grid.rows;
-      optimalHexWidth = grid.buttonWidth;
-      optimalHexHeight = grid.buttonHeight;
-      chosenLayout = grid.layout;
-    } else if (layoutType === '4-4-4') {
-      grid = calculateOptimalGrid(containerWidth, containerHeight, MIN_BUTTON_SIZE, 3/4, RECT_GAP, RECT_VERTICAL_PADDING, false);
-      rectItemsPerRow = grid.columns;
-      rectTotalRows = grid.rows;
-      rectButtonWidth = grid.buttonWidth;
-      rectButtonHeight = grid.buttonHeight;
-      chosenLayout = grid.layout;
-    } else {
-      return;
-    }
+    // Unified grid calculation - same for both modes
+    const hasOverlap = layoutType === '6-6-6'; // only difference
+    const grid = calculateOptimalGrid(containerWidth, containerHeight, MIN_BUTTON_SIZE, 3/4, HEX_EDGE_GAP, HEX_VERTICAL_PADDING, hasOverlap);
+    
+    itemsPerRow = grid.columns;
+    totalRows = grid.rows;
+    optimalHexWidth = grid.buttonWidth;
+    optimalHexHeight = grid.buttonHeight;
+    chosenLayout = grid.layout;
 
     if (grid.columns > 0 && grid.rows > 0) {
       gridManager = new GridManager({
         dimensions: { rows: grid.rows, cols: grid.columns * 2 },
         layoutType: chosenLayout,
         rendering: { 
-          shape: layoutType === '6-6-6' ? 'hex' : 'rect',
+          shape: layoutType === '6-6-6' ? 'hex' : 'rect', // kept for compatibility
           cellWidth: grid.buttonWidth,
-          cellHeight: grid.buttonHeight
+          cellHeight: grid.buttonHeight,
+          verticalOverlap: layoutType === '6-6-6' ? 0.75 : 1.0 // 0.75 for hex overlap, 1.0 for no overlap
         }
       });
       gridCells = buildGridStructure();
@@ -623,7 +611,7 @@
     addLog('DEBUG', 'Building grid structure', { 
       totalRows, 
       itemsPerRow,
-      buttonSize: layoutType === '6-6-6' ? `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}` : `${rectButtonWidth.toFixed(1)}x${rectButtonHeight.toFixed(1)}`
+      buttonSize: layoutType === '6-6-6' ? `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}` : `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}`
     });
     
     for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
@@ -654,7 +642,7 @@
             // Left half button
             const leftHalfCell = { 
                 id: `half-start-${rowIndex}`, 
-                type: layoutType === '6-6-6' ? 'left-half' : 'left-half-rect', 
+                type: 'left-half', 
                 content: null, 
                 rowIndex, 
                 columnIndex: 0 
@@ -678,7 +666,7 @@
             // Right half button
             const rightHalfCell = { 
                 id: `half-end-${rowIndex}`, 
-                type: layoutType === '6-6-6' ? 'right-half' : 'right-half-rect', 
+                type: 'right-half', 
                 content: null, 
                 rowIndex, 
                 columnIndex: fullButtonsInRow + 1 
@@ -705,7 +693,7 @@
             // Left half button
             const leftHalfCell = { 
                 id: `half-start-${rowIndex}`, 
-                type: layoutType === '6-6-6' ? 'left-half' : 'left-half-rect', 
+                type: 'left-half', 
                 content: null, 
                 rowIndex, 
                 columnIndex: 0 
@@ -742,7 +730,7 @@
             // Right half button
             const rightHalfCell = { 
                 id: `half-end-${rowIndex}`, 
-                type: layoutType === '6-6-6' ? 'right-half' : 'right-half-rect', 
+                type: 'right-half', 
                 content: null, 
                 rowIndex, 
                 columnIndex: itemsPerRow 
@@ -784,7 +772,7 @@
     if (currentView === 'products') {
       // Back button for products view - find available slot after system buttons
       const leftHalfCells = gridCells.filter(cell => 
-        (cell.type === 'left-half' || cell.type === 'left-half-rect') && !cell.content
+        cell.type === 'left-half' && !cell.content
       );
       if (leftHalfCells.length > 0) {
         leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex);
@@ -802,7 +790,7 @@
     
     // --- Left Half-Buttons --- //
     const leftHalfCells = grid.filter(cell => 
-      cell.type === 'left-half' || cell.type === 'left-half-rect'
+      cell.type === 'left-half'
     );
     if (leftHalfCells.length > 0) {
       leftHalfCells.sort((a, b) => a.rowIndex - b.rowIndex); // Sort ascending to get top first
@@ -1183,7 +1171,7 @@
       if (!rowMap.has(cell.rowIndex)) rowMap.set(cell.rowIndex, []);
       rowMap.get(cell.rowIndex).push(cell);
     });
-    const maxRows = layoutType === '4-4-4' ? rectTotalRows : totalRows;
+    const maxRows = totalRows;
     for (let i = 0; i < maxRows; i++) {
       if (rowMap.has(i)) rows.push(rowMap.get(i).sort((a, b) => a.columnIndex - b.columnIndex));
     }
@@ -1772,20 +1760,15 @@
     categoryToEdit = null;
   }
 
-  // Universal button rendering function
+  // Unified button rendering function
   function getButtonProps(cell, content = null) {
     const shape = layoutType === '6-6-6' ? 'hex' : 'rect';
     const isHalf = cell.type.includes('half');
     const side = cell.type.includes('left') ? 'left' : (cell.type.includes('right') ? 'right' : '');
     
-    let width, height;
-    if (layoutType === '6-6-6') {
-      width = isHalf ? optimalHexWidth / 2 - HEX_BUTTON_GAP / 2 : optimalHexWidth;
-      height = optimalHexHeight;
-    } else {
-      width = isHalf ? rectButtonWidth / 2 - RECT_GAP / 2 : rectButtonWidth;
-      height = rectButtonHeight;
-    }
+    // Unified logic for both modes
+    const width = isHalf ? optimalHexWidth / 2 - HEX_BUTTON_GAP / 2 : optimalHexWidth;
+    const height = optimalHexHeight;
     
     return { 
       shape, 
@@ -2098,7 +2081,7 @@
              --hex-vertical-padding: {HEX_VERTICAL_PADDING}px;
              --rect-vertical-padding: {RECT_VERTICAL_PADDING}px;
              --optimal-hex-width: {optimalHexWidth}px;
-             --rect-button-height: {rectButtonHeight}px;
+             --rect-button-height: {optimalHexHeight}px;
            ">
         
         <!-- Empty category info overlay -->
@@ -2112,7 +2095,7 @@
         <!-- HALF-BUTTONS: Original grid system -->
         {#each gridRows as row, rowIndex}
           <div class="button-row" class:hex-row={layoutType === '6-6-6'} class:rect-row={layoutType === '4-4-4'}>
-            {#each row as cell (`${cell.id}-${layoutType}-${optimalHexWidth || rectButtonWidth}-${optimalHexHeight || rectButtonHeight}`)}
+            {#each row as cell (`${cell.id}-${layoutType}-${optimalHexWidth || optimalHexWidth}-${optimalHexHeight || optimalHexHeight}`)}
                 {@const content = getButtonContent(cell)}
                 {#if content.isBetrugerCap}
                   <UniversalButton 
@@ -2150,8 +2133,8 @@
           <div class="quantum-button" style="{cell.cssTransform}; position: absolute; left: 6px;">
             <UniversalButton
               shape={layoutType === '6-6-6' ? 'hex' : 'rect'}
-              width={layoutType === '6-6-6' ? optimalHexWidth : rectButtonWidth}
-              height={layoutType === '6-6-6' ? optimalHexHeight : rectButtonHeight}
+              width={optimalHexWidth}
+              height={optimalHexHeight}
               {...getCenterButtonContent(cell)}
               on:click={() => handleCellClick(cell)}
               on:secondaryaction={handleSecondaryAction}
@@ -2204,7 +2187,7 @@
   }
   
   .grid-container-unified.hex {
-    padding: var(--hex-vertical-padding, 0px) 0px; 
+    padding: var(--hex-vertical-padding, 6px) 0px; 
   }
   
   .grid-container-unified.rect {
