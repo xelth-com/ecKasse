@@ -2012,8 +2012,8 @@
             } else {
               buttonColor = '#555555'; // Fallback middle gray
             }
-            // Black text for secondary priority
-            textColor = '#000000';
+            // Soft dark text for secondary priority
+            textColor = '#202020';
           } else if (cell.content.isTertiary) {
             // Tertiary priority (50): 1/10 оригинального + 9/10 серого
             const rgb = hexToRgb(buttonColor);
@@ -2035,7 +2035,10 @@
         
         buttonProps.color = buttonColor;
         buttonProps.textColor = textColor;
-        if (opacity < 1) {
+        if (cell.content.isSecondary) {
+          // Remove text shadow for secondary priority items
+          buttonProps.customStyle = 'text-shadow: none;';
+        } else if (opacity < 1) {
           buttonProps.customStyle = `opacity: ${opacity};`;
         }
       }
@@ -2054,11 +2057,11 @@
   function handleCellClick(cell) {
     if (cell.content?.onClick) {
       cell.content.onClick();
-    } else if (cell.content && (cell.content.category_names || cell.content.display_names)) {
-      // Handle category/product clicks
-      if (currentView === 'categories' && cell.content.id) {
+    } else if (cell.content && cell.content.id) {
+      // Handle category/product clicks based on the item's type flags or properties
+      if (cell.content.isTreeCategory || cell.content.category_names) {
         handleCategoryClick(cell.content);
-      } else if (currentView === 'products' && cell.content.id) {
+      } else if (cell.content.isTreeProduct || cell.content.display_names) {
         handleProductClick(cell.content);
       }
     }
