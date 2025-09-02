@@ -21,6 +21,9 @@
   import { UIStates, uiState, enableQuantumTree, disableQuantumTree } from '@eckasse/shared-frontend/utils/uiState.js';
   import BetrugerCapIconOutline from '@eckasse/shared-frontend/components/icons/BetrugerCapIconOutline.svelte';
   import PinpadIcon from '@eckasse/shared-frontend/components/icons/PinpadIcon.svelte';
+  import WoodTableIcon from '@eckasse/shared-frontend/components/icons/WoodTableIcon.svelte';
+  import CardPaymentIcon from '@eckasse/shared-frontend/components/icons/CardPaymentIcon.svelte';
+  import CashPaymentIcon from '@eckasse/shared-frontend/components/icons/CashPaymentIcon.svelte';
   import { authStore } from '@eckasse/shared-frontend/utils/authStore.js';
   // GridManager - for center content area (full buttons)
   import { GridManager, PRIORITIES as GRID_PRIORITIES } from '@eckasse/shared-frontend/utils/grid/gridManager.js';
@@ -1907,11 +1910,12 @@
     if (cell.content?.type === 'tisch') {
       return {
         label: cell.content.label,
+        component: WoodTableIcon,
         onClick: cell.content.onClick,
         active: true,
-        color: '#5a4a3a',
-        backgroundStyle: 'radial-gradient(ellipse at center, #6A5A4A 0%, #5a4a3a 30%, #4A3A2A 70%, #3A2A1A 100%)',
-        textColor: '#F5E5C8'
+        color: '#3E2723', // Much darker wood color
+        textColor: '#F5DEB3', // Warm beige text
+        backgroundStyle: 'radial-gradient(ellipse at center, #4A2F2A 0%, #3E2723 30%, #2E1A16 70%, #1A0F0D 100%)'
       };
     }
     if (cell.content?.type === 'pinpad') {
@@ -1928,17 +1932,20 @@
       const hasOrder = $orderStore && $orderStore.total > 0;
       return {
         label: cell.content.label,
+        component: CashPaymentIcon,
         onClick: cell.content.onClick,
         active: hasOrder,
         disabled: !hasOrder,
         paymentButton: true,
-        color: hasOrder ? '#5a7a5a' : '#666'
+        color: hasOrder ? '#5a7a5a' : '#666',
+        backgroundStyle: hasOrder ? 'radial-gradient(ellipse at center, #6A8A6A 0%, #5a7a5a 30%, #4A6A4A 70%, #3A5A3A 100%)' : undefined
       };
     }
     if (cell.content?.type === 'karte') {
       const hasOrder = $orderStore && $orderStore.total > 0;
       return {
         label: cell.content.label,
+        component: CardPaymentIcon,
         onClick: cell.content.onClick,
         active: hasOrder,
         disabled: !hasOrder,
