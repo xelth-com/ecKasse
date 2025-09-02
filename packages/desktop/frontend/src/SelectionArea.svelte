@@ -918,7 +918,7 @@
       systemElements.push({
         row: gridRows - 1, 
         col: gridCols - 1, 
-        content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, 
+        content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('bar') }, 
         priority: priorities.PAYMENT_BUTTON 
       });
       
@@ -927,7 +927,7 @@
         systemElements.push({
           row: gridRows - 1, 
           col: gridCols - 2, 
-          content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, 
+          content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('karte') }, 
           priority: priorities.PAYMENT_BUTTON 
         });
       }
@@ -1409,14 +1409,24 @@
   }
 
   function handlePaymentClick(paymentType) {
-    // // // // // // // // // // // // // // // addLog('INFO', `Payment method selected: ${paymentType}`);
+    console.log('🚀 [FISCALIZATION] === Payment Process Started ===');
+    console.log('🚀 [FISCALIZATION] Payment type:', paymentType);
+    console.log('🚀 [FISCALIZATION] Timestamp:', new Date().toISOString());
     
     // Get current order state
     let currentOrderState;
     orderStore.subscribe(state => currentOrderState = state)();
     
+    console.log('📊 [FISCALIZATION] Current order state:', {
+      total: currentOrderState?.total,
+      itemCount: currentOrderState?.items?.length || 0,
+      transactionId: currentOrderState?.id,
+      status: currentOrderState?.status
+    });
+    
     if (currentOrderState.total <= 0) {
-      // // // // // // // // // // // // // // // addLog('WARNING', 'Cannot process payment: Order total is zero');
+      console.error('❌ [FISCALIZATION] PAYMENT BLOCKED: Order total is zero or negative');
+      console.log('❌ [FISCALIZATION] === Payment Process Aborted ===');
       return;
     }
     
@@ -1426,12 +1436,26 @@
         type: paymentType === 'bar' ? 'Bar' : 'Karte', 
         amount: currentOrderState.total 
       };
-      orderStore.finishOrder(paymentData);
-      // // // // // // // // // // // // // // // addLog('SUCCESS', `Payment processed: ${paymentData.type} - ${paymentData.amount.toFixed(2)}€`);
+      
+      console.log('💰 [FISCALIZATION] Preparing payment data:', paymentData);
+      console.log('💰 [FISCALIZATION] About to call orderStore.finishOrder()...');
+      
+      try {
+        orderStore.finishOrder(paymentData);
+        console.log('✅ [FISCALIZATION] orderStore.finishOrder() called successfully');
+        console.log('✅ [FISCALIZATION] Payment should now be processing on backend...');
+      } catch (error) {
+        console.error('💥 [FISCALIZATION] ERROR in orderStore.finishOrder():', error);
+        console.error('💥 [FISCALIZATION] Error stack:', error.stack);
+      }
+      
     } else if (paymentType === 'zwischenrechnung') {
-      // Interim receipt - just log for now
-      // // // // // // // // // // // // // // // addLog('INFO', 'Interim receipt requested');
+      console.log('📄 [FISCALIZATION] Interim receipt requested (zwischenrechnung)');
+    } else {
+      console.warn('⚠️ [FISCALIZATION] Unknown payment type:', paymentType);
     }
+    
+    console.log('🏁 [FISCALIZATION] === handlePaymentClick completed ===');
   }
 
   function handleTableSelection() {
@@ -1934,6 +1958,7 @@
         label: cell.content.label,
         component: CashPaymentIcon,
         onClick: cell.content.onClick,
+        data: { type: 'bar', id: 'payment_cash' },
         active: hasOrder,
         disabled: !hasOrder,
         paymentButton: true,
@@ -1947,6 +1972,7 @@
         label: cell.content.label,
         component: CardPaymentIcon,
         onClick: cell.content.onClick,
+        data: { type: 'karte', id: 'payment_card' },
         active: hasOrder,
         disabled: !hasOrder,
         paymentButton: true,
@@ -2055,14 +2081,24 @@
   }
 
   function handleCellClick(cell) {
-    if (cell.content?.onClick) {
-      cell.content.onClick();
-    } else if (cell.content && cell.content.id) {
-      // Handle category/product clicks based on the item's type flags or properties
-      if (cell.content.isTreeCategory || cell.content.category_names) {
-        handleCategoryClick(cell.content);
-      } else if (cell.content.isTreeProduct || cell.content.display_names) {
-        handleProductClick(cell.content);
+    const content = cell.content;
+    if (!content) return;
+
+    // ПРИОРИТЕТ 1: Сначала проверяем системные кнопки с прямым действием
+    if (typeof content.onClick === 'function') {
+      console.log('💳 [Payment] System button clicked:', content.type, 'Label:', content.label);
+      console.log('💳 [Payment] About to execute onClick function for payment type:', content.type);
+      content.onClick(); // Выполняем действие (например, handlePaymentClick('cash'))
+      console.log('💳 [Payment] onClick function executed for:', content.type);
+      return;          // и выходим
+    }
+
+    // ПРИОРИТЕТ 2: Если это не системная кнопка, обрабатываем как контент
+    if (content.id) {
+      if (content.isTreeCategory || content.category_names) {
+        handleCategoryClick(content);
+      } else if (content.isTreeProduct || content.display_names) {
+        handleProductClick(content);
       }
     }
   }

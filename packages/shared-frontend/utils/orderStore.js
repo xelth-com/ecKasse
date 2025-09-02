@@ -268,24 +268,55 @@ function createOrderStore() {
 	}
 
 	async function finishOrder(paymentData) {
+		console.log('🏪 [ORDERSTORE] === finishOrder called ===');
+		console.log('🏪 [ORDERSTORE] Payment data received:', paymentData);
+		
 		const userId = getAuthenticatedUserId();
+		console.log('🏪 [ORDERSTORE] User ID:', userId);
+		
 		let currentStoreState;
 		subscribe(s => currentStoreState = s)();
+		
+		console.log('🏪 [ORDERSTORE] Current store state:', {
+			transactionId: currentStoreState?.transactionId,
+			status: currentStoreState?.status,
+			total: currentStoreState?.total,
+			itemCount: currentStoreState?.items?.length || 0
+		});
 
 		if (!currentStoreState.transactionId || currentStoreState.status !== 'active') {
+			console.error('❌ [ORDERSTORE] CANNOT FINISH: No active transaction or invalid status');
+			console.error('❌ [ORDERSTORE] transactionId:', currentStoreState?.transactionId);
+			console.error('❌ [ORDERSTORE] status:', currentStoreState?.status);
 			addLog('ERROR', 'No active order to finish.');
 			return;
 		}
 
+		const wsPayload = {
+			transactionId: currentStoreState.transactionId,
+			paymentData,
+			userId
+		};
+		
+		console.log('📡 [ORDERSTORE] About to send finishTransaction WebSocket command');
+		console.log('📡 [ORDERSTORE] WebSocket payload:', wsPayload);
+		
 		addLog('INFO', `Finishing transaction ${currentStoreState.transactionId}...`);
-		wsStore.send({
-			command: 'finishTransaction',
-			payload: {
-				transactionId: currentStoreState.transactionId,
-				paymentData,
-				userId
-			}
-		});
+		
+		try {
+			wsStore.send({
+				command: 'finishTransaction',
+				payload: wsPayload
+			});
+			console.log('✅ [ORDERSTORE] finishTransaction command sent successfully via WebSocket');
+		} catch (error) {
+			console.error('💥 [ORDERSTORE] ERROR sending finishTransaction:', error);
+			console.error('💥 [ORDERSTORE] Error details:', error.message);
+			console.error('💥 [ORDERSTORE] Error stack:', error.stack);
+			addLog('ERROR', `Failed to send finishTransaction: ${error.message}`);
+		}
+		
+		console.log('🏁 [ORDERSTORE] === finishOrder completed ===');
 	}
 
 	async function parkCurrentOrder(tableIdentifier, updateTimestamp = true) {
