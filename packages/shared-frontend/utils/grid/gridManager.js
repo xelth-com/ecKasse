@@ -8,7 +8,7 @@
 
 import { ContentGrid } from './contentGrid.js';
 import { createGeometryRenderer } from './geometryRenderer.js';
-import { getCellCenter } from './hexPositioning.js';
+import { getCellCenter, virtualToPhysical, getCSSTransform } from './hexPositioning.js';
 
 // --- PRIORITY DEFINITIONS ---
 const PRIORITIES = {
@@ -166,26 +166,95 @@ export class GridManager {
   }
 
   /**
-   * Places high-priority system elements onto the grid in specific logical positions.
-   * System elements are placed regardless of current content priority, but can be 
-   * displaced later by higher priority items (e.g., MAX_CONTENT).
+   * Intelligently places high-priority system elements onto the grid.
+   * First attempts to place at the desired target coordinates. If that slot is occupied 
+   * by content with equal or higher priority, finds the nearest available empty slot
+   * based on geometric distance to ensure the button always appears in the most 
+   * intuitive location possible.
    * 
-   * @param {Array<Object>} systemElements - [{ row, col, type, content }]
-   * @param {number} priority - Base priority for this group
+   * @param {Array<Object>} systemElements - [{ row, col, type, content, priority }]
    */
   placeSystemElements(systemElements) {
       const results = [];
+      
       for (const element of systemElements) {
-          const placed = this.contentGrid.placeContentAt(
-              element.row, 
-              element.col, 
-              element.content, 
-              element.priority
-          );
-          results.push({ element, placed });
+          const targetSlot = this.contentGrid.getSlot(element.row, element.col);
+          let placed = false;
+          let finalSlot = null;
+          
+          // First, try to place at the desired target coordinates
+          if (this.canPlaceAt(targetSlot, element.priority)) {
+              // If the slot is occupied by lower-priority content, evict it
+              if (!targetSlot.isEmpty && targetSlot.priority < element.priority) {
+                  console.log(`🔄 [SystemElements] Evicting ${targetSlot.content.displayName || 'content'} (priority ${targetSlot.priority}) from ${targetSlot.row},${targetSlot.col} for system element ${element.type}`);
+              }
+              
+              targetSlot.setContent(element.content, element.priority);
+              placed = true;
+              finalSlot = targetSlot;
+              console.log(`🎯 [SystemElements] Placed ${element.type} at target location ${element.row},${element.col}`);
+          } else {
+              // Target slot is unavailable, find the nearest empty slot
+              const nearestSlot = this.findNearestEmptySlot(element.row, element.col);
+              
+              if (nearestSlot) {
+                  nearestSlot.setContent(element.content, element.priority);
+                  placed = true;
+                  finalSlot = nearestSlot;
+                  console.log(`🎯 [SystemElements] Target slot ${element.row},${element.col} occupied by higher priority content. Placed ${element.type} at nearest available slot ${nearestSlot.row},${nearestSlot.col}`);
+              } else {
+                  console.warn(`🚫 [SystemElements] Could not place ${element.type} - no available slots found`);
+              }
+          }
+          
+          results.push({ 
+              element, 
+              placed, 
+              originalSlot: { row: element.row, col: element.col },
+              finalSlot: finalSlot ? { row: finalSlot.row, col: finalSlot.col } : null 
+          });
       }
+      
       this.markDirty();
       return results;
+  }
+  
+  /**
+   * Finds the nearest empty slot to the given target coordinates using geometric distance.
+   * 
+   * @param {number} targetRow - Target row coordinate
+   * @param {number} targetCol - Target column coordinate
+   * @returns {Object|null} - The nearest empty slot or null if none available
+   */
+  findNearestEmptySlot(targetRow, targetCol) {
+      const emptySlots = this.contentGrid.getUsableEmptySlots();
+      
+      if (emptySlots.length === 0) {
+          return null;
+      }
+      
+      // Calculate the center point of the target position for distance calculations
+      const targetCenter = getCellCenter(targetRow, targetCol, this.config.rendering);
+      
+      // Find the slot with minimum geometric distance
+      let nearestSlot = null;
+      let minDistance = Infinity;
+      
+      for (const slot of emptySlots) {
+          const slotCenter = getCellCenter(slot.row, slot.col, this.config.rendering);
+          const distance = Math.sqrt(
+              Math.pow(slotCenter.x - targetCenter.x, 2) + 
+              Math.pow(slotCenter.y - targetCenter.y, 2)
+          );
+          
+          if (distance < minDistance) {
+              minDistance = distance;
+              nearestSlot = slot;
+          }
+      }
+      
+      console.log(`🔍 [FindNearest] Found nearest slot at ${nearestSlot?.row},${nearestSlot?.col} (distance: ${Math.round(minDistance)}) for target ${targetRow},${targetCol}`);
+      return nearestSlot;
   }
 
   /**

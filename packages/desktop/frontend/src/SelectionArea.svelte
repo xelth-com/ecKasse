@@ -889,22 +889,21 @@
     // First place system buttons in specific positions
     const systemElements = [];
     
-    // Place 'Tisch' button in second-to-last row, leftmost position
-    if (gridRows > 1) {
+    // Place 'Tisch' button in bottom row, second position
+    if (gridCols > 1) {
       systemElements.push({
-        row: gridRows - 2, 
-        col: 0, 
+        row: gridRows - 1, 
+        col: 1, 
         content: { type: 'tisch', label: 'Tisch', onClick: () => handleTableSelection() }, 
         priority: priorities.TABLE_BUTTON 
       });
     }
     
-    // Place 'Pinpad' button in bottom row, center position
+    // Place 'Pinpad' button in bottom-left corner
     if (gridCols > 0) {
-      const pinpadCol = Math.floor(gridCols / 2);
       systemElements.push({
         row: gridRows - 1, 
-        col: pinpadCol, 
+        col: 0, 
         content: { type: 'pinpad', label: 'Pinpad', onClick: handleKeyboardToggle }, 
         priority: priorities.PINPAD_BUTTON 
       });
@@ -912,20 +911,20 @@
     
     // Place payment buttons if order is active - starting from rightmost grid position
     if ($orderStore && $orderStore.total > 0) {
-      // 'Karte' button - rightmost position (highest priority)
+      // 'Bar' button - rightmost position (bottom-right corner, highest priority)
       systemElements.push({
         row: gridRows - 1, 
         col: gridCols - 1, 
-        content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, 
+        content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, 
         priority: priorities.PAYMENT_BUTTON 
       });
       
-      // 'Bar' button - second from right (if space available)  
-      if (gridCols > 2) {
+      // 'Karte' button - second from right (penultimate position)  
+      if (gridCols > 1) {
         systemElements.push({
           row: gridRows - 1, 
-          col: gridCols - 3, 
-          content: { type: 'bar', label: 'Bar', onClick: () => handlePaymentClick('cash') }, 
+          col: gridCols - 2, 
+          content: { type: 'karte', label: 'Karte', onClick: () => handlePaymentClick('card') }, 
           priority: priorities.PAYMENT_BUTTON 
         });
       }
@@ -1540,29 +1539,55 @@
   }
 
   function handleKeyboardToggle() {
+    console.log('🔢 [KeyboardToggle] Normal click on Pinpad button - activating numeric pinpad');
+    
     if ($pinpadStore.isActive) {
+      console.log('🔢 [KeyboardToggle] Pinpad already active - deactivating');
       pinpadStore.deactivate();
       // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard closed');
     } else {
-      pinpadStore.activateAlphaInput(
-        (inputValue) => {
-          // // // // // // // // // // // // // // // addLog('INFO', `Keyboard input: ${inputValue}`);
-        },
-        () => {
-          // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard input cancelled.');
-        },
-        agentStore
-      );
-      // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard opened');
+      console.log('🔢 [KeyboardToggle] Activating numeric pinpad for general input');
+      // Normal click - activate numeric pinpad 
+      pinpadStore.activate('general', null, null, 'numeric');
+      // // // // // // // // // // // // // // // addLog('INFO', 'Numeric pinpad opened');
     }
   }
 
   function handleSecondaryAction(event) {
     const { data, mouseX, mouseY } = event.detail;
     
+    console.log('🔄 [SecondaryAction] Long press detected:', { 
+      data, 
+      type: data?.type, 
+      mouseX, 
+      mouseY 
+    });
+    
     // Handle user button long press for logout
     if (data && data.isUserButton && data.authenticated) {
+      console.log('👤 [SecondaryAction] User button long press - logging out');
       handleUserButtonLongPress();
+      return;
+    }
+    
+    // Handle Pinpad button long press - show keyboard instead of numeric pinpad
+    if (data && data.type === 'pinpad') {
+      console.log('⌨️ [SecondaryAction] Pinpad long press detected - activating alpha keyboard');
+      if ($pinpadStore.isActive) {
+        console.log('⌨️ [SecondaryAction] Pinpad already active - deactivating first');
+        pinpadStore.deactivate();
+      }
+      
+      // Activate alpha keyboard instead of numeric pinpad
+      pinpadStore.activateAlphaInput(
+        (inputValue) => {
+          console.log('⌨️ [SecondaryAction] Alpha keyboard input:', inputValue);
+        },
+        () => {
+          console.log('⌨️ [SecondaryAction] Alpha keyboard input cancelled');
+        },
+        agentStore
+      );
       return;
     }
     
@@ -1890,10 +1915,12 @@
       };
     }
     if (cell.content?.type === 'pinpad') {
+      console.log('🔧 [getCenterButtonContent] Setting up Pinpad button with data:', { type: 'pinpad' });
       return {
         label: cell.content.label,
         component: PinpadIcon,
         onClick: cell.content.onClick,
+        data: { type: 'pinpad' }, // Add data object so secondary action can identify this button
         active: true
       };
     }

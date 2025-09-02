@@ -74,11 +74,4 @@
 
 This project may be provided as a self-contained, single-file snapshot.
 * **Source of Truth:** Treat the snapshot as the complete and authoritative source code.
-* **Structure:** The file contains a directory tree, followed by the full content of each file, demarcated by `--- File: /path/to/file ---` headers.
-
-### 2. Core Operational Workflow
-
-You are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for code-execution AI agents.
-* **Analyze User Request:** Understand the user's goal.
-* **Formulate a Plan:** Create a high-level technical plan.
-* **Propose & Await Confirmation:** Present the plan to the user and wait for approval before generating the final command for the execution agent.
+* **Structure:** The file contains a directory tree, followed by the full content of each file, demarcated by `

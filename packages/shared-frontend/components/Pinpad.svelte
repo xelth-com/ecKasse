@@ -15,6 +15,12 @@
   // Long-press functionality
   let longPressTimer = null;
   let pressedKey = null;
+  
+  // Long-press functionality for function buttons
+  let cancelLongPressTimer = null;
+  let backspaceLongPressTimer = null;
+  let isCancelLongPress = false;
+  let isBackspaceLongPress = false;
 
   const GAP = 6;
 
@@ -97,7 +103,10 @@
   }
 
   function handleBackspace() {
-    pinpadStore.backspace(agentStore);
+    if (!isBackspaceLongPress) {
+      console.log('⌫ [Backspace] Normal click - delete one character');
+      pinpadStore.backspace(agentStore);
+    }
   }
 
   function handleConfirm() {
@@ -105,11 +114,66 @@
   }
 
   function handleCancel() {
-    pinpadStore.cancel(agentStore);
+    if (!isCancelLongPress) {
+      console.log('❌ [Cancel] Normal click - closing pinpad');
+      pinpadStore.deactivate();
+      if (onClose) onClose();
+    }
   }
 
   function handleCloseDoubleClick() {
     onClose();
+  }
+
+  // New long-press handlers for cancel button
+  function startCancelLongPress() {
+    console.log('❌ [Cancel] Long press started');
+    isCancelLongPress = false;
+    cancelLongPressTimer = setTimeout(() => {
+      console.log('⌨️ [Cancel] Long press detected - switching to keyboard');
+      isCancelLongPress = true;
+      
+      // Switch between numeric and alpha layouts
+      const currentLayout = $pinpadStore.layout;
+      const newLayout = currentLayout === 'numeric' ? 'alpha' : 'numeric';
+      
+      console.log(`🔄 [Cancel] Switching from ${currentLayout} to ${newLayout}`);
+      
+      // Deactivate current pinpad
+      pinpadStore.deactivate();
+      
+      // Activate with new layout
+      setTimeout(() => {
+        pinpadStore.activate('general', null, null, newLayout);
+      }, 50);
+    }, 500);
+  }
+
+  function endCancelLongPress() {
+    if (cancelLongPressTimer) {
+      clearTimeout(cancelLongPressTimer);
+      cancelLongPressTimer = null;
+    }
+    setTimeout(() => { isCancelLongPress = false; }, 10);
+  }
+
+  // New long-press handlers for backspace button
+  function startBackspaceLongPress() {
+    console.log('⌫ [Backspace] Long press started');
+    isBackspaceLongPress = false;
+    backspaceLongPressTimer = setTimeout(() => {
+      console.log('🗑️ [Backspace] Long press detected - clearing all text');
+      isBackspaceLongPress = true;
+      pinpadStore.clear(agentStore);
+    }, 500);
+  }
+
+  function endBackspaceLongPress() {
+    if (backspaceLongPressTimer) {
+      clearTimeout(backspaceLongPressTimer);
+      backspaceLongPressTimer = null;
+    }
+    setTimeout(() => { isBackspaceLongPress = false; }, 10);
   }
 
   // Long-press handlers for letter keys
@@ -144,6 +208,10 @@
       longPressTimer = null;
     }
     pressedKey = null;
+    
+    // Clean up function button timers
+    endCancelLongPress();
+    endBackspaceLongPress();
   }
 
   // Cursor movement handlers
@@ -166,11 +234,22 @@
       <button class="numpad-key" on:click={() => handleKeyClick('1')}>1</button>
       <button class="numpad-key" on:click={() => handleKeyClick('2')}>2</button>
       <button class="numpad-key" on:click={() => handleKeyClick('3')}>3</button>
-      <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick} aria-label="Cancel">X</button>
+      <button class="function-key key-cancel" 
+              on:click={handleCancel} 
+              on:dblclick={handleCloseDoubleClick}
+              on:mousedown={startCancelLongPress}
+              on:mouseup={endCancelLongPress}
+              on:mouseleave={endCancelLongPress}
+              aria-label="Cancel">X</button>
       <button class="numpad-key" on:click={() => handleKeyClick('4')}>4</button>
       <button class="numpad-key" on:click={() => handleKeyClick('5')}>5</button>
       <button class="numpad-key" on:click={() => handleKeyClick('6')}>6</button>
-      <button class="function-key key-correct" on:click={handleBackspace} aria-label="Correct">←</button>
+      <button class="function-key key-correct" 
+              on:click={handleBackspace}
+              on:mousedown={startBackspaceLongPress}
+              on:mouseup={endBackspaceLongPress}
+              on:mouseleave={endBackspaceLongPress}
+              aria-label="Correct">←</button>
       <button class="numpad-key" on:click={() => handleKeyClick('7')}>7</button>
       <button class="numpad-key" on:click={() => handleKeyClick('8')}>8</button>
       <button class="numpad-key" on:click={() => handleKeyClick('9')}>9</button>
@@ -204,8 +283,19 @@
         <button class="function-key cursor-key" on:click={handleCursorLeft} aria-label="Move cursor left">←</button>
         <button class="function-key cursor-key" on:click={handleCursorRight} aria-label="Move cursor right">→</button>
         <button class="function-key language-key" on:click={handleLanguageSwitch} aria-label="Switch language">{$pinpadStore.currentLanguage}</button>
-        <button class="function-key key-cancel" on:click={handleCancel} on:dblclick={handleCloseDoubleClick} aria-label="Cancel">X</button>
-        <button class="function-key key-correct" on:click={handleBackspace} aria-label="Backspace">⌫</button>
+        <button class="function-key key-cancel"
+                on:click={handleCancel} 
+                on:dblclick={handleCloseDoubleClick}
+                on:mousedown={startCancelLongPress}
+                on:mouseup={endCancelLongPress}
+                on:mouseleave={endCancelLongPress}
+                aria-label="Cancel">X</button>
+        <button class="function-key key-correct"
+                on:click={handleBackspace}
+                on:mousedown={startBackspaceLongPress}
+                on:mouseup={endBackspaceLongPress}
+                on:mouseleave={endBackspaceLongPress}
+                aria-label="Backspace">⌫</button>
         <button class="function-key key-enter key-enter-large" on:click={handleConfirm} aria-label="Enter">↵</button>
       </div>
     </div>
