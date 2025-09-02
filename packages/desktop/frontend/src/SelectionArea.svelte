@@ -339,24 +339,24 @@
   }
 
   function calculateOptimalGrid(containerWidth, containerHeight, minButtonSize, targetAspectRatio, buttonGap, verticalPadding, hasOverlap = false) {
-    addLog('DEBUG', 'calculateOptimalGrid called', {
-      containerWidth, 
-      containerHeight, 
-      minButtonSize, 
-      targetAspectRatio, 
-      buttonGap, 
-      verticalPadding, 
-      hasOverlap
-    });
+    // // // // // addLog('DEBUG', 'calculateOptimalGrid called', {
+    //   containerWidth, 
+    //   containerHeight, 
+    //   minButtonSize, 
+    //   targetAspectRatio, 
+    //   buttonGap, 
+    //   verticalPadding, 
+    //   hasOverlap
+    // });
     
     const availableWidth = containerWidth;
     const availableHeight = containerHeight - 2 * verticalPadding;
     
-    addLog('DEBUG', 'calculateOptimalGrid: calculated available space', {
-      availableWidth,
-      availableHeight,
-      paddingReduction: 2 * verticalPadding
-    });
+    // // // // // addLog('DEBUG', 'calculateOptimalGrid: calculated available space', {
+    //   availableWidth,
+    //   availableHeight,
+    //   paddingReduction: 2 * verticalPadding
+    // });
     
     // Universal layout testing functions for both hex and rect
     function testSymmetricalLayout(cols) {
@@ -487,11 +487,11 @@
         layout: 'symmetrical'
     };
     
-    addLog('DEBUG', 'calculateOptimalGrid returning final layout', {
-      finalLayout,
-      wasFallback: !bestLayout,
-      totalColumnsTestedUpTo: Math.floor((availableWidth - buttonGap) / minButtonSize)
-    });
+    // // // // // addLog('DEBUG', 'calculateOptimalGrid returning final layout', {
+    //   finalLayout,
+    //   wasFallback: !bestLayout,
+    //   totalColumnsTestedUpTo: Math.floor((availableWidth - buttonGap) / minButtonSize)
+    // });
     
     return finalLayout;
   }
@@ -607,28 +607,28 @@
   
   
   function buildGridStructure() {
-    addLog('DEBUG', 'buildGridStructure called', { layoutType, chosenLayout });
+    // // // // // addLog('DEBUG', 'buildGridStructure called', { layoutType, chosenLayout });
     const cells = [];
     
     // Always use hex parameters for grid structure - only visual form differs
-    addLog('DEBUG', 'Building grid structure', { 
-      totalRows, 
-      itemsPerRow,
-      buttonSize: layoutType === '6-6-6' ? `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}` : `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}`
-    });
+    // // // // // addLog('DEBUG', 'Building grid structure', { 
+    //   totalRows, 
+    //   itemsPerRow,
+    //   buttonSize: layoutType === '6-6-6' ? `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}` : `${optimalHexWidth.toFixed(1)}x${optimalHexHeight.toFixed(1)}`
+    // });
     
     for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
       const cellCountBefore = cells.length;
       buildRow(cells, rowIndex, chosenLayout);
       const cellsAddedInRow = cells.length - cellCountBefore;
-      addLog('DEBUG', `Built row ${rowIndex}`, { cellsAdded: cellsAddedInRow, totalCells: cells.length });
+      // // // // // addLog('DEBUG', `Built row ${rowIndex}`, { cellsAdded: cellsAddedInRow, totalCells: cells.length });
     }
     
-    addLog('DEBUG', 'buildGridStructure completed', { 
-      totalCellsGenerated: cells.length,
-      layoutType,
-      chosenLayout
-    });
+    // // // // // addLog('DEBUG', 'buildGridStructure completed', { 
+    //   totalCellsGenerated: cells.length,
+    //   layoutType,
+    //   chosenLayout
+    // });
 
     return cells;
   }
@@ -789,7 +789,7 @@
   }
   
   function initializeSystemButtons(grid) {
-    // // // // // // // // // // // // // // // addLog('DEBUG', `initializeSystemButtons called with ${grid.length} cells`);
+    // // // // // // // // // // // // // // // // // // // // addLog('DEBUG', `initializeSystemButtons called with ${grid.length} cells`);
     
     // --- Left Half-Buttons --- //
     const leftHalfCells = grid.filter(cell => 
@@ -1077,27 +1077,27 @@
     const handleWindowResize = () => {
       if (!containerElement) return;
       
-      addLog('DEBUG', 'Window resize event triggered');
+      // // // // // addLog('DEBUG', 'Window resize event triggered');
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         const newWidth = containerElement.clientWidth;
         const newHeight = containerElement.clientHeight;
-        addLog('DEBUG', 'Window resize: container dimensions detected', { 
-          newWidth, 
-          newHeight,
-          previousWidth: containerWidth,
-          previousHeight: containerHeight
-        });
+        // // // // // addLog('DEBUG', 'Window resize: container dimensions detected', { 
+        //   newWidth, 
+        //   newHeight,
+        //   previousWidth: containerWidth,
+        //   previousHeight: containerHeight
+        // });
         if (containerWidth !== newWidth || containerHeight !== newHeight) {
-          addLog('INFO', 'Container size changed, triggering rebuild', {
-            from: `${containerWidth}x${containerHeight}`,
-            to: `${newWidth}x${newHeight}`
-          });
+          // // // // // addLog('INFO', 'Container size changed, triggering rebuild', {
+          //   from: `${containerWidth}x${containerHeight}`,
+          //   to: `${newWidth}x${newHeight}`
+          // });
           containerWidth = newWidth;
           containerHeight = newHeight;
           rebuildGridAndContent();
         } else {
-          addLog('DEBUG', 'Container size unchanged, no rebuild needed');
+          // // // // // addLog('DEBUG', 'Container size unchanged, no rebuild needed');
         }
       }, 300);
     };
@@ -1352,7 +1352,7 @@
 
   async function handleTimeClick() {
     await handleProtectedAction(async () => {
-      // // // // // // // // // // // // // // // addLog('INFO', 'Control Center accessed');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Control Center accessed');
       toggleControlCenter();
     });
   }
@@ -1372,13 +1372,13 @@
         message: message
       });
       
-      // // // // // // // // // // // // // // // addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
     }
   }
   
   async function handleUserButtonLongPress() {
     if ($authStore.isAuthenticated) {
-      // // // // // // // // // // // // // // // addLog('INFO', 'User logout requested');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'User logout requested');
       await authStore.logout();
       
       // After logout, show welcome message and activate pinpad
@@ -1397,7 +1397,7 @@
       // Activate pinpad for PIN entry
       pinpadStore.activate('agent', null, null, 'numeric');
       
-      // // // // // // // // // // // // // // // addLog('INFO', 'User logged out successfully - returning to login');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'User logged out successfully - returning to login');
     }
   }
 
@@ -1480,22 +1480,22 @@
     
     if (isActive && hasActiveTransaction && hasItems && hasTable) {
       // Есть активный заказ с товарами и столом - паркуем БЕЗ обновления времени
-      // // // // // // // // // // // // // // // addLog('INFO', `Collapsing order with table ${hasTable} without time update`);
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', `Collapsing order with table ${hasTable} without time update`);
       try {
         await orderStore.parkCurrentOrder(hasTable, false); // updateTimestamp = false
-        // // // // // // // // // // // // // // // addLog('SUCCESS', 'Order collapsed successfully');
+        // // // // // // // // // // // // // // // // // // // // addLog('SUCCESS', 'Order collapsed successfully');
         await parkedOrdersStore.refresh();
       } catch (error) {
-        // // // // // // // // // // // // // // // addLog('ERROR', `Failed to collapse order: ${error.message}`);
+        // // // // // // // // // // // // // // // // // // // // addLog('ERROR', `Failed to collapse order: ${error.message}`);
         throw error;
       }
     } else if (isActive && hasActiveTransaction && hasItems && !hasTable) {
       // Есть заказ с товарами но БЕЗ стола - ПРИНУДИТЕЛЬНО требуем присвоение стола
-      // // // // // // // // // // // // // // // addLog('WARNING', 'Order has items but no table - forcing table assignment');
+      // // // // // // // // // // // // // // // // // // // // addLog('WARNING', 'Order has items but no table - forcing table assignment');
       throw new Error('FORCE_TABLE_ASSIGNMENT');
     } else if (hasActiveTransaction) {
       // Есть активный заказ без товаров - просто сбрасываем
-      // // // // // // // // // // // // // // // addLog('INFO', 'Resetting empty order');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Resetting empty order');
       orderStore.resetOrder();
     }
   }
@@ -1516,7 +1516,7 @@
     
     if (isActive && hasActiveTransaction && (hasItems || hasTable)) {
       // Есть активный заказ - сворачиваем и возвращаемся к стартовому состоянию
-      // // // // // // // // // // // // // // // addLog('INFO', 'Collapsing current order and returning to start position');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Collapsing current order and returning to start position');
       try {
         await collapseCurrentOrder();
         
@@ -1524,30 +1524,30 @@
         orderStore.resetOrder();
         currentView = 'categories';
         selectedCategory = null;
-        // // // // // // // // // // // // // // // addLog('INFO', 'Returned to start position');
+        // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Returned to start position');
       } catch (error) {
         if (error.message === 'FORCE_TABLE_ASSIGNMENT') {
           // Заказ с товарами но без стола - принудительно открываем пинпад с автосворачиванием
-          // // // // // // // // // // // // // // // addLog('INFO', 'Forcing table assignment for order with items (will auto-collapse)');
+          // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Forcing table assignment for order with items (will auto-collapse)');
           pinpadStore.activateTableEntryWithAutoCollapse();
           return; // Не возвращаемся к стартовому состоянию, ждем присвоения стола
         } else {
-          // // // // // // // // // // // // // // // addLog('ERROR', `Failed to handle table click: ${error.message}`);
+          // // // // // // // // // // // // // // // // // // // // addLog('ERROR', `Failed to handle table click: ${error.message}`);
         }
       }
     } else if (!hasActiveTransaction) {
       // Нет активного заказа - инициализируем новый неинициализированный заказ для ввода стола
-      // // // // // // // // // // // // // // // addLog('INFO', 'No active order - initializing new order for table entry');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'No active order - initializing new order for table entry');
       try {
         await orderStore.initializeOrder({});
-        // // // // // // // // // // // // // // // addLog('INFO', 'Order initialized, activating pinpad for table number entry');
+        // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Order initialized, activating pinpad for table number entry');
         pinpadStore.activateTableEntry();
       } catch (error) {
-        // // // // // // // // // // // // // // // addLog('ERROR', `Failed to initialize order: ${error.message}`);
+        // // // // // // // // // // // // // // // // // // // // addLog('ERROR', `Failed to initialize order: ${error.message}`);
       }
     } else {
       // Активный заказ без товаров и стола - открываем пинпад для ввода стола
-      // // // // // // // // // // // // // // // addLog('INFO', 'Activating pinpad for table number entry');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Activating pinpad for table number entry');
       pinpadStore.activateTableEntry();
     }
     });
@@ -1559,7 +1559,7 @@
     pinpadStore.activateAlphaInput(
       (inputValue) => agentStore.sendMessage(inputValue),
       () => {
-        // // // // // // // // // // // // // // // addLog('INFO', 'Gemini input cancelled.');
+        // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Gemini input cancelled.');
       },
       agentStore
     );
@@ -1571,12 +1571,12 @@
     if ($pinpadStore.isActive) {
       console.log('🔢 [KeyboardToggle] Pinpad already active - deactivating');
       pinpadStore.deactivate();
-      // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard closed');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Keyboard closed');
     } else {
       console.log('🔢 [KeyboardToggle] Activating numeric pinpad for general input');
       // Normal click - activate numeric pinpad 
       pinpadStore.activate('general', null, null, 'numeric');
-      // // // // // // // // // // // // // // // addLog('INFO', 'Numeric pinpad opened');
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', 'Numeric pinpad opened');
     }
   }
 
@@ -1739,7 +1739,7 @@
     const { productId, updates } = event.detail;
     
     try {
-      // // // // // // // // // // // // // // // addLog('INFO', `Saving product changes for ID: ${productId}`);
+      // // // // // // // // // // // // // // // // // // // // addLog('INFO', `Saving product changes for ID: ${productId}`);
       
       // Send updateProduct command via WebSocket
       const response = await wsStore.send({
@@ -1752,19 +1752,19 @@
       });
       
       if (response && response.success) {
-        // // // // // // // // // // // // // // // addLog('SUCCESS', `Product updated successfully: ${JSON.stringify(response)}`);
+        // // // // // // // // // // // // // // // // // // // // addLog('SUCCESS', `Product updated successfully: ${JSON.stringify(response)}`);
         
         // Refresh the current view to show updated data
         if (currentView === 'products' && selectedCategory) {
           await loadProductsForCategory(selectedCategory.id);
         }
       } else {
-        // // // // // // // // // // // // // // // addLog('ERROR', `Failed to update product: ${response?.message || 'Unknown error'}`);
+        // // // // // // // // // // // // // // // // // // // // addLog('ERROR', `Failed to update product: ${response?.message || 'Unknown error'}`);
       }
       
     } catch (error) {
       console.error('Error saving product:', error);
-      // // // // // // // // // // // // // // // addLog('ERROR', `Error saving product: ${error.message}`);
+      // // // // // // // // // // // // // // // // // // // // addLog('ERROR', `Error saving product: ${error.message}`);
     }
     
     // Close the modal
