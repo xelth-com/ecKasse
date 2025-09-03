@@ -390,7 +390,7 @@ function createSystemPrompt(conversationLanguage = 'ru') {
 1. **Primary Language:** Your current conversation language is "${conversationLanguage}". Always respond in this language unless instructed otherwise.
 2. **Language Detection:** Analyze every user message to determine its language.
 3. **Full Sentence Language Switch:** If the user writes a complete sentence (4+ words) in a different language, this indicates a conversation language change. Switch your responses to this new language.
-4. **Short Phrases (Product Names):** If the user writes a short phrase (1-3 words) in a different language, treat it as a product name. Use the phrase for tool searches but respond in your current primary language.
+4. **Short Phrases (Product Names):** If the user writes a short phrase (1-3 words) in a different language, this may indicate either a product name OR a language preference. If the phrase contains clear language indicators (like German words with umlauts), consider switching the conversation language. Otherwise, treat it as a product name and use it for tool searches while responding in your current primary language.
 5. **Explicit Language Commands:** If the user explicitly asks you to switch languages (e.g., "speak English", "отвечай на русском", "sprich Deutsch"), immediately switch to the requested language and confirm the switch.
 6. **Context Preservation:** When switching languages, maintain the same helpful and professional tone.
 
@@ -471,8 +471,16 @@ async function sendMessage(userMessage, chatHistory = [], sessionId = null) {
     } else if (detectedLanguage !== currentLanguage) {
         // User message is in a different language
         if (isShortPhrase(userMessage)) {
-            // Short phrase - likely a product name, keep current language
-            logger.info({ msg: 'Short phrase detected, keeping current language', currentLanguage });
+            // Short phrase - check if it has clear language indicators
+            if (LANGUAGE_PATTERNS.german.test(userMessage) || LANGUAGE_PATTERNS.russian.test(userMessage)) {
+                // Clear language indicators found, switch conversation language
+                shouldSwitchLanguage = true;
+                newLanguage = detectedLanguage;
+                logger.info({ msg: 'Short phrase with clear language indicators detected, switching', newLanguage });
+            } else {
+                // No clear indicators - likely a product name, keep current language
+                logger.info({ msg: 'Short phrase without clear language indicators, keeping current language', currentLanguage });
+            }
         } else {
             // Full sentence - switch conversation language
             shouldSwitchLanguage = true;

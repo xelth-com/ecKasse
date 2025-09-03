@@ -116,7 +116,7 @@ async function performFTSSearch(query, limit = 10) {
     let ftsResults;
 
     if (clientType === 'pg') {
-      // PostgreSQL with tsquery for full-text search
+      // PostgreSQL with simplified tsquery for full-text search
       ftsResults = await db.raw(`
         SELECT 
           items.id,
@@ -127,14 +127,10 @@ async function performFTSSearch(query, limit = 10) {
           0 as distance,
           100 as similarity
         FROM items 
-        WHERE to_tsvector('german', 
-          COALESCE(items.display_names::text, '') || ' ' || 
-          COALESCE(items.description, '')
-        ) @@ to_tsquery('german', ?)
-        ORDER BY ts_rank(to_tsvector('german', 
-          COALESCE(items.display_names::text, '') || ' ' || 
-          COALESCE(items.description, '')
-        ), to_tsquery('german', ?)) DESC
+        WHERE to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')) 
+          @@ to_tsquery('english', ?)
+        ORDER BY ts_rank(to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')), 
+          to_tsquery('english', ?)) DESC
         LIMIT ?
       `, [ftsQuery, ftsQuery, limit]);
     } else {
@@ -156,9 +152,11 @@ async function performFTSSearch(query, limit = 10) {
       `, [ftsQuery, limit]);
     }
 
-    return ftsResults.map(row => ({
+    const results = clientType === 'pg' ? ftsResults.rows : ftsResults;
+    return results.map(row => ({
       ...row,
-      productName: JSON.parse(row.display_names).menu?.de || 'Unknown Product'
+      productName: (typeof row.display_names === 'string' ? 
+        JSON.parse(row.display_names) : row.display_names).menu?.de || 'Unknown Product'
     }));
 
   } catch (error) {
@@ -184,24 +182,44 @@ async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
     let vectorResults;
 
     if (clientType === 'pg') {
-      // PostgreSQL without pgvector (using text-based embeddings for now)
-      // This is a fallback implementation until pgvector is installed
-      const vectorString = JSON.stringify(queryEmbedding);
-      vectorResults = await db.raw(`
-        SELECT 
-          items.id,
-          items.display_names,
-          items.item_price_value as price,
-          items.associated_category_unique_identifier as category_id,
-          'vector' as search_type,
-          0.5 as similarity_score,
-          0.5 as distance
-        FROM item_embeddings 
-        JOIN items ON items.id = item_embeddings.item_id 
-        WHERE item_embedding IS NOT NULL
-        ORDER BY items.id
-        LIMIT ?
-      `, [limit]);
+      // PostgreSQL with pgvector for semantic similarity search (if available)
+      const vectorString = `[${queryEmbedding.join(',')}]`;
+      
+      try {
+        // Try to use pgvector first
+        vectorResults = await db.raw(`
+          SELECT 
+            items.id,
+            items.display_names,
+            items.item_price_value as price,
+            items.associated_category_unique_identifier as category_id,
+            'vector' as search_type,
+            (item_embeddings.item_embedding <=> ?::vector) as distance
+          FROM item_embeddings 
+          JOIN items ON items.id = item_embeddings.item_id 
+          WHERE item_embeddings.item_embedding IS NOT NULL
+          ORDER BY item_embeddings.item_embedding <=> ?::vector
+          LIMIT ?
+        `, [vectorString, vectorString, limit]);
+      } catch (error) {
+        console.warn('pgvector not available, using text-based fallback for vector search');
+        // Fallback: return random sample when pgvector is not available
+        // This provides some results but not true semantic search
+        vectorResults = await db.raw(`
+          SELECT 
+            items.id,
+            items.display_names,
+            items.item_price_value as price,
+            items.associated_category_unique_identifier as category_id,
+            'vector_fallback' as search_type,
+            0.5 as distance
+          FROM item_embeddings 
+          JOIN items ON items.id = item_embeddings.item_id 
+          WHERE item_embeddings.item_embedding IS NOT NULL
+          ORDER BY RANDOM()
+          LIMIT ?
+        `, [limit]);
+      }
     } else {
       // SQLite with sqlite-vec
       vectorResults = await db.raw(`
@@ -220,9 +238,11 @@ async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
       `, [queryEmbeddingBuffer, limit, distanceThreshold]);
     }
 
-    return vectorResults.map(row => ({
+    const results = clientType === 'pg' ? vectorResults.rows : vectorResults;
+    return results.map(row => ({
       ...row,
-      productName: JSON.parse(row.display_names).menu?.de || 'Unknown Product',
+      productName: (typeof row.display_names === 'string' ? 
+        JSON.parse(row.display_names) : row.display_names).menu?.de || 'Unknown Product',
       similarity: clientType === 'pg' ? 
         Math.round(row.similarity_score * 100) : 
         Math.round((1 - row.distance) * 100)
