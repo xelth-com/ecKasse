@@ -3,6 +3,7 @@
 const logger = require('../config/logger');
 const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
 const loggingService = require('./logging.service');
+const { parseJsonIfNeeded } = require('../utils/db-helper');
 
 class ProductService {
     constructor(productRepository, db) {
@@ -186,7 +187,8 @@ class ProductService {
                     throw new Error('Product not found');
                 }
 
-                const permissions = JSON.parse(userSession.permissions);
+                const permissionsData = parseJsonIfNeeded(userSession.permissions);
+                const permissions = Array.isArray(permissionsData) ? permissionsData : [];
                 const canEditProducts = permissions.includes('products.edit') || 
                                        permissions.includes('system.admin') || 
                                        userSession.can_approve_changes;

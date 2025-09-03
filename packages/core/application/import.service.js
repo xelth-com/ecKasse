@@ -475,14 +475,6 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
         firstValues: embedding.slice(0, 5).map(v => v.toFixed(4))
       });
 
-      // TEMPORARY: Skip embedding storage to debug import issues
-      logger.info('⏭️ Skipping embedding storage temporarily for debugging', {
-        itemId,
-        itemName
-      });
-      stats.embeddings++; // Still count it for stats
-      
-      /*
       // FIX: Database-agnostic embedding insertion
       const dbClient = trx.client.config.client;
       logger.debug('📊 Storing embedding in database', {
@@ -493,7 +485,28 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
       });
 
       if (dbClient === 'pg') {
-        */
+        // Try pgvector format first, fallback to text
+        try {
+          const vectorString = `[${embedding.join(',')}]`;
+          await trx('item_embeddings').insert({
+            item_id: itemId,
+            item_embedding: trx.raw('?::vector', [vectorString])
+          });
+          logger.info('✅ Embedding stored as pgvector format', { itemId, itemName });
+        } catch (pgVectorError) {
+          // Fallback to JSON text storage
+          await trx('item_embeddings').insert({
+            item_id: itemId,
+            item_embedding: JSON.stringify(embedding)
+          });
+          logger.info('✅ Embedding stored as JSON text format', { itemId, itemName });
+        }
+        stats.embeddings++;
+      } else {
+        // SQLite with vec_items table
+        await trx.raw('INSERT OR REPLACE INTO vec_items(rowid, item_embedding) VALUES (?, ?)', [itemId, embeddingBuffer]);
+        stats.embeddings++;
+      }
 
       logger.info('🎉 Item import completed successfully', {
         itemId,
