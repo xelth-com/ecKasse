@@ -109,7 +109,7 @@ async function hybridSearch(query, options = {}) {
  */
 async function performFTSSearch(query, limit = 10) {
   try {
-    const ftsQuery = query.replace(/[^\w\s]/g, '').trim();
+    const ftsQuery = query.trim();
     if (!ftsQuery) return [];
 
     const clientType = db.client.config.client;
@@ -128,9 +128,9 @@ async function performFTSSearch(query, limit = 10) {
           100 as similarity
         FROM items 
         WHERE to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')) 
-          @@ to_tsquery('english', ?)
+          @@ plainto_tsquery('english', ?)
         ORDER BY ts_rank(to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')), 
-          to_tsquery('english', ?)) DESC
+          plainto_tsquery('english', ?)) DESC
         LIMIT ?
       `, [ftsQuery, ftsQuery, limit]);
     } else {

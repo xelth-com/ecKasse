@@ -11,7 +11,7 @@ const knex = require('../db/knex');
 const { handleGeminiError, createGeminiErrorLog } = require('../utils/geminiErrorHandler');
 const { searchProducts } = require('./search.service');
 const { generateSalesReport } = require('./reporting.service');
-const { createProduct, updateExistingProduct } = require('./product.service');
+const { ProductService } = require('./product.service');
 const { services } = require('../index');
 
 // Language detection utilities
@@ -343,7 +343,14 @@ const toolFunctions = {
             if (newDescription) updates.description = newDescription;
             
             logger.info({ productId, updates, sessionId }, 'Calling updateExistingProduct with user session');
-            const result = await updateExistingProduct(productId, updates, sessionId);
+            
+            // Create ProductService instance with appropriate repository
+            const { PostgreSQLAdapter } = require('../../adapters/database/postgresql');
+            const databaseAdapter = new PostgreSQLAdapter(knex);
+            const productRepository = databaseAdapter.getProductRepository();
+            const productService = new ProductService(productRepository, knex);
+            
+            const result = await productService.updateExistingProduct(productId, updates, sessionId);
             
             return result;
         } catch (error) {
