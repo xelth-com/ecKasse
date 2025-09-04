@@ -118,7 +118,7 @@ function updateLanguageState(chatHistory, newLanguage) {
 // Tool function declarations for native SDK - EXACTLY like working version
 const findProductDeclaration = {
     name: "findProduct",
-    description: "Searches for products in the database. Can filter results by dietary needs (vegetarian/vegan) and exclude specific allergens.",
+    description: "Searches for products in the database. Can filter results by dietary needs (vegetarian/vegan), exclude specific allergens, and use category context to prioritize relevant results.",
     parameters: {
         type: Type.OBJECT,
         properties: {
@@ -137,6 +137,10 @@ const findProductDeclaration = {
                 type: Type.STRING,
                 description: "Filter for specific dietary needs.",
                 enum: ["vegetarian", "vegan"]
+            },
+            categoryContext: {
+                type: Type.STRING,
+                description: "Category context to prioritize results from the same category. Infer from the query context (e.g., 'drink', 'food', 'coffee', 'dessert')."
             }
         },
         required: ["query"]
@@ -252,9 +256,10 @@ const toolFunctions = {
         const productName = args.query;
         const filters = {
             excludeAllergens: args.excludeAllergens || [],
-            dietaryFilter: args.dietaryFilter || null
+            dietaryFilter: args.dietaryFilter || null,
+            categoryContext: args.categoryContext || null
         };
-        logger.info({ tool: 'findProduct', input: productName, filters, sessionId }, '🤖 Agent is using hybrid product search with filters...');
+        logger.info({ tool: 'findProduct', input: productName, filters, sessionId }, '🤖 Agent is using hybrid product search with filters and context...');
         try {
             const searchResult = await searchProducts(productName, filters);
             logger.info({ searchMetadata: searchResult.metadata }, `Search complete: ${searchResult.metadata?.searchMethod}`);
@@ -407,15 +412,17 @@ function createSystemPrompt(conversationLanguage = 'de') {
 - Benutzer (Beliebig): "Please respond in German" → Sie wechseln zu Deutsch und bestätigen: "Verstanden. Ich antworte jetzt auf Deutsch."
 
 **Tool-Verwendungsbeispiele:**
-- Um vegetarische Pasta zu finden: findProduct({query: "pasta", dietaryFilter: "vegetarian"})
-- Um ein Dessert ohne Nüsse zu finden: findProduct({query: "dessert", excludeAllergens: ["nuts"]})
-- Um ein Garnelengericht zu finden: findProduct({query: "shrimps"})
+- Um vegetarische Pasta zu finden: findProduct({query: "pasta", dietaryFilter: "vegetarian", categoryContext: "food"})
+- Um ein Dessert ohne Nüsse zu finden: findProduct({query: "dessert", excludeAllergens: ["nuts"], categoryContext: "dessert"})
+- Um ein Garnelengericht zu finden: findProduct({query: "shrimps", categoryContext: "food"})
+- Um Kaffee zu finden: findProduct({query: "cafe crema", categoryContext: "drink"})
 
 **VERBINDLICHE Tool-Verwendungsbeispiele - Sie MÜSSEN diesen Mustern folgen:**
-- Benutzer: "Finde Kaffee" → Sie MÜSSEN aufrufen: findProduct({"query": "Kaffee"})
-- Benutzer: "suche tasse" → Sie MÜSSEN aufrufen: findProduct({"query": "tasse"}) - Fragen Sie NIEMALS nach Klarstellungen, suchen Sie sofort
-- Benutzer: "Find coffee" → Sie MÜSSEN aufrufen: findProduct({"query": "coffee"})
-- Benutzer: "Show me mugs" → Sie MÜSSEN aufrufen: findProduct({"query": "mugs"})
+- Benutzer: "Finde Kaffee" → Sie MÜSSEN aufrufen: findProduct({"query": "Kaffee", "categoryContext": "drink"})
+- Benutzer: "suche tasse" → Sie MÜSSEN aufrufen: findProduct({"query": "tasse", "categoryContext": "drink"}) - Fragen Sie NIEMALS nach Klarstellungen, suchen Sie sofort
+- Benutzer: "Find coffee" → Sie MÜSSEN aufrufen: findProduct({"query": "coffee", "categoryContext": "drink"})
+- Benutzer: "Show me mugs" → Sie MÜSSEN aufrufen: findProduct({"query": "mugs", "categoryContext": "drink"})
+- Benutzer: "cafe crema" → Sie MÜSSEN aufrufen: findProduct({"query": "cafe crema", "categoryContext": "drink"})
 
 **VERBINDLICHE Produktaktualisierungsbeispiele - Sie MÜSSEN diesen Mustern folgen:**
 - Benutzer: "ändere den Preis von Eco Mug auf 15.50" → Sie MÜSSEN aufrufen: updateProduct({"productName": "Eco Mug", "newPrice": 15.50})
@@ -425,6 +432,14 @@ function createSystemPrompt(conversationLanguage = 'de') {
 - Benutzer: "aktualisiere Beschreibung für Coffee zu 'Frisch gerösteter Kaffee'" → Sie MÜSSEN aufrufen: updateProduct({"productName": "Coffee", "newDescription": "Frisch gerösteter Kaffee"})
 
 Ihr primäres Ziel ist es, die Benutzeranfrage in den effektivsten Tool-Aufruf zu übersetzen. Wenn der Benutzer Ernährungsbedürfnisse oder Allergien erwähnt, MÜSSEN Sie die entsprechenden Filterparameter im \`findProduct\` Tool verwenden. Für Produktaktualisierungen verwenden Sie IMMER das updateProduct Tool, wenn Benutzer vorhandene Produkte ändern möchten.
+
+**WICHTIG: Kategorie-Kontext-Inferenz:**
+IMMER wenn Sie das findProduct Tool verwenden, MÜSSEN Sie einen categoryContext-Parameter basierend auf der Anfrage hinzufügen:
+- Für Getränke (Kaffee, Tee, Säfte, etc.): "drink"
+- Für Speisen (Pizza, Pasta, Salate, etc.): "food"  
+- Für Desserts (Kuchen, Eis, Süßspeisen): "dessert"
+- Für Geschirr und Utensilien (Tassen, Teller): "tableware"
+- Wenn unklar: "food" als Standard
 
 **Kontextbehandlungsbeispiele:**
 - Vorherig: "Ich habe Eco Mug für 12.50€ gefunden" → Benutzer: "was kostet das?" → Sie: "Eco Mug kostet 12.50€" (KEIN Tool-Aufruf nötig)

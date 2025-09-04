@@ -2,12 +2,12 @@
 
 const db = require('../db/knex');
 const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
-const { calculateLevenshtein, isSimilar } = require('../utils/levenshtein');
+const { normalizeString, calculateLevenshteinFast } = require('../utils/string-normalization');
 
 /**
  * Generates a consistent, canonical cache key for a query and its filters.
  * @param {string} query - The base search query.
- * @param {object} filters - The filter object ({ excludeAllergens, dietaryFilter }).
+ * @param {object} filters - The filter object ({ excludeAllergens, dietaryFilter, categoryContext }).
  * @returns {string} A consistent string key.
  */
 function generateCacheKey(query, filters) {
@@ -34,7 +34,8 @@ async function hybridSearch(query, options = {}) {
     ftsOnly = false,
     vectorOnly = false,
     levenshteinThreshold = 8,  // Increased threshold for better cafe/coffee matching
-    vectorDistanceThreshold = 0.5  // Fixed threshold for proper embeddings
+    vectorDistanceThreshold = 0.5,  // Fixed threshold for proper embeddings
+    categoryContext = null  // Category context for prioritizing results
   } = options;
 
   console.log(`🔍 Hybrid search for: "${query}"`);
@@ -115,21 +116,11 @@ async function hybridSearch(query, options = {}) {
       for (const item of allItems) {
         const menuName = item.display_names?.menu?.de || '';
         if (menuName) {
-          // Normalize both strings for accent-insensitive comparison
-          const normalizeString = (str) => str
-            .toLowerCase()
-            .replace(/[àáâãäå]/g, 'a')
-            .replace(/[èéêë]/g, 'e') 
-            .replace(/[ìíîï]/g, 'i')
-            .replace(/[òóôõö]/g, 'o')
-            .replace(/[ùúûü]/g, 'u')
-            .replace(/[ç]/g, 'c')
-            .replace(/[ñ]/g, 'n');
+          // Use advanced string normalization and optimized Levenshtein
+          const normalizedQuery = normalizeString(query);
+          const normalizedMenuName = normalizeString(menuName);
           
-          const distance = require('../utils/levenshtein').calculateLevenshtein(
-            normalizeString(query),
-            normalizeString(menuName)
-          );
+          const distance = calculateLevenshteinFast(normalizedQuery, normalizedMenuName);
           
           // More generous threshold for suggestions
           if (distance <= 8) {
@@ -141,6 +132,15 @@ async function hybridSearch(query, options = {}) {
                   lowerName.includes('cappuccino') || lowerName.includes('espresso') ||
                   lowerName.includes('latte') || lowerName.includes('creme')) {
                 adjustedDistance = Math.max(0, distance - 3);
+              }
+            }
+            
+            // Category context boost - prioritize items from the same category
+            if (categoryContext) {
+              const itemCategoryId = item.associated_category_unique_identifier;
+              // Simple category matching - this could be enhanced with category hierarchy lookup
+              if (itemCategoryId && String(itemCategoryId).toLowerCase().includes(categoryContext.toLowerCase())) {
+                adjustedDistance = Math.max(0, adjustedDistance - 2);
               }
             }
             
@@ -453,9 +453,12 @@ async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
  * @returns {Promise<Array>} - Filtered results with Levenshtein scores
  */
 async function applyLevenshteinFilter(vectorResults, query, threshold = 2) {
+  const normalizedQuery = normalizeString(query);
+  
   const filteredResults = vectorResults.map(result => {
-    const levenshteinDistance = calculateLevenshtein(query, result.productName);
-    const isCloseMatch = isSimilar(query, result.productName, threshold);
+    const normalizedProductName = normalizeString(result.productName);
+    const levenshteinDistance = calculateLevenshteinFast(normalizedQuery, normalizedProductName);
+    const isCloseMatch = levenshteinDistance <= threshold;
 
     return {
       ...result,
@@ -485,7 +488,7 @@ async function applyLevenshteinFilter(vectorResults, query, threshold = 2) {
  */
 async function searchProducts(productName, filters = {}) {
   try {
-    const { excludeAllergens = [], dietaryFilter = null } = filters;
+    const { excludeAllergens = [], dietaryFilter = null, categoryContext = null } = filters;
     const cacheKey = generateCacheKey(productName, filters);
     const CACHE_TTL_MS = 3600 * 1000; // 1 hour
 
@@ -507,7 +510,8 @@ async function searchProducts(productName, filters = {}) {
     const searchResult = await hybridSearch(productName, {
       maxResults: 5,
       levenshteinThreshold: 8,  // Increased for better fuzzy matching
-      vectorDistanceThreshold: 0.5  // Fixed threshold for proper embeddings
+      vectorDistanceThreshold: 0.5,  // Fixed threshold for proper embeddings
+      categoryContext  // Pass through category context
     });
 
     let { results, metadata } = searchResult;
