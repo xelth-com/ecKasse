@@ -301,7 +301,7 @@ async function performFTSSearch(query, limit = 10) {
     let ftsResults;
 
     if (clientType === 'pg') {
-      // PostgreSQL with full-text search + accent-insensitive fallback
+      // PostgreSQL with accent-insensitive full-text search using unaccent
       ftsResults = await db.raw(`
         SELECT 
           items.id,
@@ -312,18 +312,18 @@ async function performFTSSearch(query, limit = 10) {
           0 as distance,
           100 as similarity
         FROM items 
-        WHERE to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')) 
-          @@ plainto_tsquery('english', ?)
-          OR translate(lower(display_names::text), 'áàâäéèêëíìîïóòôöúùûüç', 'aaaaeeeeiiiioooouuuuc') ~ translate(lower(?), 'áàâäéèêëíìîïóòôöúùûüç', 'aaaaeeeeiiiioooouuuuc')
+        WHERE to_tsvector('simple', unaccent(display_names::text || ' ' || COALESCE(additional_item_attributes::text, ''))) 
+          @@ plainto_tsquery('simple', unaccent(?))
+          OR unaccent(lower(display_names::text)) ILIKE '%' || unaccent(lower(?)) || '%'
         ORDER BY 
           CASE 
-            WHEN to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')) @@ plainto_tsquery('english', ?) THEN 1
+            WHEN to_tsvector('simple', unaccent(display_names::text || ' ' || COALESCE(additional_item_attributes::text, ''))) @@ plainto_tsquery('simple', unaccent(?)) THEN 1
             ELSE 2
           END,
-          ts_rank(to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')), 
-            plainto_tsquery('english', ?)) DESC
+          ts_rank(to_tsvector('simple', unaccent(display_names::text || ' ' || COALESCE(additional_item_attributes::text, ''))), 
+            plainto_tsquery('simple', unaccent(?))) DESC
         LIMIT ?
-      `, [ftsQuery, `%${ftsQuery}%`, ftsQuery, ftsQuery, limit]);
+      `, [ftsQuery, ftsQuery, ftsQuery, ftsQuery, limit]);
     } else {
       // SQLite with FTS5
       ftsResults = await db.raw(`
