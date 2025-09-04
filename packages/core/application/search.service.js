@@ -61,6 +61,7 @@ async function hybridSearch(query, options = {}) {
     // Step 2: Vector Search (semantic similarity) - try if API available
     let vectorResults = [];
     let vectorFailed = false;
+    const minDesiredResults = 3; // Define early for use in Levenshtein logic
     
     if (!ftsOnly) {
       // Check if we have embeddings available
@@ -87,10 +88,22 @@ async function hybridSearch(query, options = {}) {
       }
     }
 
-    // Step 2b: Levenshtein as universal fallback for Vector (always runs if Vector fails or has no results)
+    // Step 2b: Levenshtein as universal fallback (runs when Vector fails OR when we need more results)
     let levenshteinSuggestions = [];
-    if (vectorResults.length === 0 || vectorFailed) {
-      console.log(`🔄 Getting Levenshtein suggestions as Vector fallback`);
+    
+    // Check if we need Levenshtein - either Vector failed OR we have few unique results OR query looks like it might have accents/typos
+    const uniqueIds = new Set([
+      ...ftsResults.map(r => r.id),
+      ...vectorResults.map(r => r.id)
+    ]);
+    const needsMoreResults = uniqueIds.size < minDesiredResults;
+    const queryHasAccentChars = /[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/i.test(query) || 
+                               /[aeiou][aeiou]/.test(query.toLowerCase()) || // double vowels often indicate foreign terms
+                               query.length >= 4; // longer terms often have variations
+    
+    if (vectorFailed || needsMoreResults || (ftsResults.length === 0 && queryHasAccentChars)) {
+      const reason = vectorFailed ? 'Vector fallback' : `Need more results (have ${uniqueIds.size}, want ${minDesiredResults})`;
+      console.log(`🔄 Getting Levenshtein suggestions: ${reason}`);
       const levenshteinStart = Date.now();
       
       // Get all items and calculate Levenshtein distance  
@@ -102,9 +115,20 @@ async function hybridSearch(query, options = {}) {
       for (const item of allItems) {
         const menuName = item.display_names?.menu?.de || '';
         if (menuName) {
+          // Normalize both strings for accent-insensitive comparison
+          const normalizeString = (str) => str
+            .toLowerCase()
+            .replace(/[àáâãäå]/g, 'a')
+            .replace(/[èéêë]/g, 'e') 
+            .replace(/[ìíîï]/g, 'i')
+            .replace(/[òóôõö]/g, 'o')
+            .replace(/[ùúûü]/g, 'u')
+            .replace(/[ç]/g, 'c')
+            .replace(/[ñ]/g, 'n');
+          
           const distance = require('../utils/levenshtein').calculateLevenshtein(
-            query.toLowerCase(), 
-            menuName.toLowerCase()
+            normalizeString(query),
+            normalizeString(menuName)
           );
           
           // More generous threshold for suggestions
@@ -141,51 +165,104 @@ async function hybridSearch(query, options = {}) {
       
       const levenshteinTime = Date.now() - levenshteinStart;
       console.log(`📏 Levenshtein fallback: ${levenshteinSuggestions.length} suggestions in ${levenshteinTime}ms`);
+      
+      // Debug: Show top Levenshtein matches for troubleshooting
+      if (levenshteinSuggestions.length > 0) {
+        console.log(`🔍 Top Levenshtein matches:`);
+        levenshteinSuggestions.forEach((item, i) => {
+          console.log(`  ${i+1}. ${item.productName} (distance: ${item.distance})`);
+        });
+      } else {
+        console.log(`⚠️ No Levenshtein matches found within threshold of 8`);
+        console.log(`🔍 Checked ${allItems.length} total items`);
+      }
     }
 
-    // Step 3: Combine FTS, Vector and Levenshtein results intelligently
-    if (ftsResults.length > 0 && (vectorResults.length > 0 || levenshteinSuggestions.length > 0)) {
-      // Best case: exact match + semantic suggestions (Vector or Levenshtein)
-      const suggestionSource = vectorResults.length > 0 ? 'vector' : 'levenshtein';
-      searchMethod = `fts+${suggestionSource}`;
-      
-      // Take the first FTS result as primary
-      results = [ftsResults[0]];
-      
-      // Add suggestions that aren't already in FTS results
-      const ftsIds = new Set(ftsResults.map(item => item.id));
-      const suggestions = (vectorResults.length > 0 ? vectorResults : levenshteinSuggestions)
-        .filter(item => !ftsIds.has(item.id))
-        .slice(0, 3); // Top 3 suggestions
-      
-      results = [...results, ...suggestions];
-      console.log(`✅ Combined: 1 exact match + ${suggestions.length} ${suggestionSource} suggestions`);
-      
-    } else if (ftsResults.length > 0 && vectorResults.length === 0 && levenshteinSuggestions.length === 0) {
-      // Only FTS results, no suggestions available
-      results = ftsResults;
-      searchMethod = 'fts';
-      console.log(`✅ Using FTS results only (no suggestions available)`);
-      
-    } else if (vectorResults.length > 0) {
-      // Only vector results
-      searchMethod = 'vector';
-      
-      // Apply Levenshtein filtering to vector results
-      const levenshteinStart = Date.now();
-      results = await applyLevenshteinFilter(vectorResults, query, levenshteinThreshold);
-      const levenshteinTime = Date.now() - levenshteinStart;
-      console.log(`📏 Levenshtein filtering: ${results.length} results in ${levenshteinTime}ms`);
-      
-      if (results.length > 0) {
-        searchMethod = 'hybrid';
+    // Step 3: Intelligent combination - use all 3 methods if needed for better coverage
+    // minDesiredResults is already defined above
+    
+    // Collect all unique results from different sources
+    const allResults = [];
+    const seenIds = new Set();
+    
+    // Add FTS results first (highest priority)
+    ftsResults.forEach(item => {
+      if (!seenIds.has(item.id)) {
+        allResults.push({ ...item, source: 'fts', priority: 1 });
+        seenIds.add(item.id);
       }
-    } else if (levenshteinSuggestions.length > 0) {
-      // Only Levenshtein suggestions (Vector failed or no Vector results)
-      results = levenshteinSuggestions;
-      searchMethod = 'levenshtein';
-      console.log(`✅ Using Levenshtein fallback suggestions`);
+    });
+    
+    // Add Vector results (semantic matches)
+    vectorResults.forEach(item => {
+      if (!seenIds.has(item.id)) {
+        allResults.push({ ...item, source: 'vector', priority: 2 });
+        seenIds.add(item.id);
+      }
+    });
+    
+    // Add Levenshtein suggestions - always add if we have them, especially for very close matches
+    if (levenshteinSuggestions.length > 0) {
+      console.log(`🔧 Adding ${levenshteinSuggestions.length} Levenshtein suggestions to results`);
+      levenshteinSuggestions.forEach(item => {
+        console.log(`  🔍 Checking item: ${item.productName} (ID: ${item.id}, distance: ${item.distance})`);
+        console.log(`    Already seen? ${seenIds.has(item.id)}, AllResults count: ${allResults.length}/${maxResults}`);
+        
+        if (!seenIds.has(item.id)) {
+          // For very close matches (distance <= 2), allow exceeding maxResults or replace worse matches
+          const isVeryCloseMatch = item.distance <= 2;
+          const canAdd = allResults.length < maxResults || isVeryCloseMatch;
+          
+          if (canAdd) {
+            const priority = isVeryCloseMatch ? 1.5 : 3; // Between FTS (1) and Vector (2), or after Vector
+            allResults.push({ ...item, source: 'levenshtein', priority });
+            seenIds.add(item.id);
+            console.log(`    ✅ Added to results with priority ${priority} (close match: ${isVeryCloseMatch})`);
+          } else {
+            console.log(`    ❌ Skipped: results full and not a close match`);
+          }
+        } else {
+          console.log(`    ❌ Skipped: already seen`);
+        }
+      });
     }
+    
+    // Sort by priority (FTS first, then Vector, then Levenshtein)
+    allResults.sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      // Within same priority, sort by relevance metrics
+      if (a.source === 'fts') return (b.similarity || 0) - (a.similarity || 0);
+      if (a.source === 'vector') return parseFloat(a.distance || 1) - parseFloat(b.distance || 1);
+      if (a.source === 'levenshtein') return a.distance - b.distance;
+      return 0;
+    });
+    
+    results = allResults.slice(0, maxResults);
+    
+    // Determine search method based on what was used
+    if (ftsResults.length > 0 && vectorResults.length > 0 && levenshteinSuggestions.some(item => results.find(r => r.id === item.id))) {
+      searchMethod = 'fts+vector+levenshtein';
+    } else if (ftsResults.length > 0 && vectorResults.length > 0) {
+      searchMethod = 'fts+vector';
+    } else if (ftsResults.length > 0 && levenshteinSuggestions.some(item => results.find(r => r.id === item.id))) {
+      searchMethod = 'fts+levenshtein';
+    } else if (vectorResults.length > 0 && levenshteinSuggestions.some(item => results.find(r => r.id === item.id))) {
+      searchMethod = 'vector+levenshtein';
+    } else if (ftsResults.length > 0) {
+      searchMethod = 'fts';
+    } else if (vectorResults.length > 0) {
+      searchMethod = 'vector';
+    } else if (levenshteinSuggestions.length > 0) {
+      searchMethod = 'levenshtein';
+    }
+    
+    const sourceCounts = {
+      fts: results.filter(r => r.source === 'fts').length,
+      vector: results.filter(r => r.source === 'vector').length,
+      levenshtein: results.filter(r => r.source === 'levenshtein').length
+    };
+    
+    console.log(`✅ Combined results: ${sourceCounts.fts} FTS + ${sourceCounts.vector} Vector + ${sourceCounts.levenshtein} Levenshtein = ${results.length} total`);
 
     // Levenshtein is now integrated above as universal fallback
 
@@ -224,7 +301,7 @@ async function performFTSSearch(query, limit = 10) {
     let ftsResults;
 
     if (clientType === 'pg') {
-      // PostgreSQL with simplified tsquery for full-text search
+      // PostgreSQL with full-text search + accent-insensitive fallback
       ftsResults = await db.raw(`
         SELECT 
           items.id,
@@ -237,10 +314,16 @@ async function performFTSSearch(query, limit = 10) {
         FROM items 
         WHERE to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')) 
           @@ plainto_tsquery('english', ?)
-        ORDER BY ts_rank(to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')), 
-          plainto_tsquery('english', ?)) DESC
+          OR translate(lower(display_names::text), 'áàâäéèêëíìîïóòôöúùûüç', 'aaaaeeeeiiiioooouuuuc') ~ translate(lower(?), 'áàâäéèêëíìîïóòôöúùûüç', 'aaaaeeeeiiiioooouuuuc')
+        ORDER BY 
+          CASE 
+            WHEN to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')) @@ plainto_tsquery('english', ?) THEN 1
+            ELSE 2
+          END,
+          ts_rank(to_tsvector('english', display_names::text || ' ' || COALESCE(additional_item_attributes::text, '')), 
+            plainto_tsquery('english', ?)) DESC
         LIMIT ?
-      `, [ftsQuery, ftsQuery, limit]);
+      `, [ftsQuery, `%${ftsQuery}%`, ftsQuery, ftsQuery, limit]);
     } else {
       // SQLite with FTS5
       ftsResults = await db.raw(`
@@ -473,7 +556,7 @@ async function searchProducts(productName, filters = {}) {
     if (results.length === 0) {
       finalResponse = {
         success: false,
-        message: `Товар "${productName}" не найден. Попробуйте поискать по другому названию.`,
+        message: `Leider wurde kein Produkt für Ihre Anfrage gefunden.`,
         results: [],
         metadata
       };
@@ -495,10 +578,22 @@ async function searchProducts(productName, filters = {}) {
             results: topResults,
             metadata
           };
+        } else if (results.length > 1) {
+          // Show exact match + suggestions (from FTS+Vector or FTS+Levenshtein combinations)
+          const mainResult = exactMatch;
+          const suggestions = results.slice(1, 4); // Up to 3 additional suggestions
+          const allResults = [mainResult, ...suggestions];
+          
+          finalResponse = {
+            success: true,
+            message: `Gefunden: "${exactMatch.productName}" - ${exactMatch.price}€. Ähnliche Produkte: ${suggestions.map(r => r.productName).join(', ')}`,
+            results: allResults,
+            metadata
+          };
         } else {
           finalResponse = {
             success: true,
-            message: `Найден товар: "${exactMatch.productName}" - ${exactMatch.price}€`,
+            message: `Gefunden: "${exactMatch.productName}" - ${exactMatch.price}€`,
             results: [exactMatch],
             metadata
           };
@@ -517,7 +612,7 @@ async function searchProducts(productName, filters = {}) {
           const bestMatch = closeMatches[0];
           finalResponse = {
             success: true,
-            message: `Точное совпадение не найдено, но есть похожий товар: "${bestMatch.productName}" - ${bestMatch.price}€`,
+            message: `Exakte Übereinstimmung nicht gefunden, aber ähnliches Produkt gefunden: "${bestMatch.productName}" - ${bestMatch.price}€`,
             results: closeMatches,
             metadata
           };
@@ -526,7 +621,7 @@ async function searchProducts(productName, filters = {}) {
           const suggestions = results.slice(0, 3).map(r => r.productName);
           finalResponse = {
             success: false,
-            message: `Товар "${productName}" не найден. Возможно, вы имели в виду: ${suggestions.join(', ')}?`,
+            message: `"${productName}" wurde nicht gefunden. Meinten Sie vielleicht: ${suggestions.join(', ')}?`,
             results: results.slice(0, 3),
             metadata
           };
