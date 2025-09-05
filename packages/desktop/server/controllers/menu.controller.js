@@ -153,8 +153,11 @@ async function cleanDatabase() {
       // Then delete the active transactions themselves  
       await trx('active_transactions').del();
       
-      // Then delete item embeddings and items
-      await trx('item_embeddings').del();
+      // Then delete item embeddings and items (if table exists)
+      const clientType = trx.client.config.client;
+      if (clientType === 'pg') {
+        await trx('item_embeddings').del();
+      }
       await trx('items').del();
       await trx('categories').del();
       await trx('pos_devices').del();

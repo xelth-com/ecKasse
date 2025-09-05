@@ -374,7 +374,13 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
       await db.transaction(async (trx) => {
         await trx('active_transaction_items').del();
         await trx('active_transactions').del();
-        await trx('item_embeddings').del();
+        
+        // Delete embeddings table only for PostgreSQL
+        const clientType = trx.client.config.client;
+        if (clientType === 'pg') {
+          await trx('item_embeddings').del();
+        }
+        
         await trx('items').del();
         await trx('categories').del();
         await trx('pos_devices').del();

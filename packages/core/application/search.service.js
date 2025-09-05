@@ -66,8 +66,14 @@ async function hybridSearch(query, options = {}) {
     
     if (!ftsOnly) {
       // Check if we have embeddings available
-      const embeddingCount = await db('item_embeddings').count('* as count').first();
-      const hasEmbeddings = embeddingCount && embeddingCount.count > 0;
+      let hasEmbeddings = false;
+      try {
+        const embeddingCount = await db('item_embeddings').count('* as count').first();
+        hasEmbeddings = embeddingCount && embeddingCount.count > 0;
+      } catch (error) {
+        console.log(`⚠️ Embeddings table not available (${error.message}), will use Levenshtein fallback`);
+        hasEmbeddings = false;
+      }
       
       if (hasEmbeddings) {
         try {
