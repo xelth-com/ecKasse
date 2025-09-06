@@ -518,7 +518,26 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
 
     } catch (error) {
       const errorMsg = `Failed to import item "${itemName}": ${error.message}`;
-      logger.error('💥 CRITICAL: Item import failed completely', {
+      
+      // Определяем тип ошибки для более понятного логирования
+      let errorType = 'UNKNOWN';
+      let errorIcon = '💥';
+      
+      if (error.message && error.message.includes('overloaded')) {
+        errorType = 'GEMINI_API_OVERLOADED';
+        errorIcon = '🚨';
+      } else if (error.message && error.message.includes('UNAVAILABLE')) {
+        errorType = 'API_UNAVAILABLE';
+        errorIcon = '🚨';
+      } else if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.message.includes('unique')) {
+        errorType = 'DUPLICATE_ID';
+        errorIcon = '🔄';
+      } else if (error.message && error.message.includes('embedding')) {
+        errorType = 'EMBEDDING_ERROR';
+        errorIcon = '🤖';
+      }
+      
+      logger.error(`${errorIcon} CRITICAL: Item import failed [${errorType}]`, {
         itemName,
         itemUniqueId: item.item_unique_identifier,
         categoryId,
@@ -526,6 +545,7 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
         posDeviceId,
         itemIndex: i + 1,
         totalItems: items.length,
+        errorType,
         errorMessage: error.message,
         errorCode: error.code,
         errorStack: error.stack,

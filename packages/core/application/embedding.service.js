@@ -67,6 +67,7 @@ async function generateEmbedding(text, options = {}) {
       console.warn('   Retry in:', errorLog.retryDelay + 's');
     } else {
       console.error('❌ GEMINI EMBEDDING ERROR:', errorLog.userMessage);
+      console.error('   This will cause item import to FAIL!');
     }
     
     throw error;

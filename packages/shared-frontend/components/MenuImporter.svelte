@@ -221,7 +221,8 @@
     agentStore.addMessage({
       timestamp,
       type: 'agent',
-      message: `Starting menu import from ${fileCount} file(s): ${fileNames}\n\nThis process will:\n1. Parse the menu(s) with AI\n2. Clean existing data\n3. Import new menu structure\n4. Create optimized layouts\n\nPlease wait...`
+      message: `Starting menu import from ${fileCount} file(s): ${fileNames}\n\nThis process will:\n1. Parse the menu(s) with AI\n2. Clean existing data\n3. Import new menu structure\n4. Create optimized layouts\n\nPlease wait...`,
+      style: 'info'
     });
     
     try {
@@ -233,7 +234,8 @@
         agentStore.addMessage({
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: `Import failed: ${result.message}`
+          message: `Import failed: ${result.message}`,
+          style: 'error'
         });
         isImporting = false;
         return;
@@ -276,7 +278,8 @@
       agentStore.addMessage({
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
-        message: `Uploading ${selectedFiles.length} files...`
+        message: `Uploading ${selectedFiles.length} files...`,
+        style: 'info'
       });
       
       const formData = new FormData();

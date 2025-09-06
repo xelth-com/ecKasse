@@ -1369,7 +1369,8 @@
       agentStore.addMessage({
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
-        message: message
+        message: message,
+        style: 'success'
       });
       
       // // // // // // // // // // // // // // // // // // // // addLog('INFO', `Benutzer: ${user.full_name} (${user.role}) - Lange drücken zum Abmelden`);
@@ -1391,7 +1392,8 @@
       agentStore.addMessage({
         timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         type: 'agent',
-        message: 'Willkommen bei ecKasse!\n\n👥 Verfügbare Benutzer:\n• Admin (Vollzugriff)\n• Kassier (Kassenfunktionen)\n• Aushilfe (Grundfunktionen)\n\n⏰ Überprüfe Systemzeit und ausstehende Transaktionen...\n\n💡 Geben Sie einfach Ihre 4-6 stellige PIN ein - das System erkennt Sie automatisch.\n\n🔑 Bei neuer oder Testkasse: Admin-PIN ist 1234'
+        message: 'Willkommen bei ecKasse!\n\n👥 Verfügbare Benutzer:\n• Admin (Vollzugriff)\n• Kassier (Kassenfunktionen)\n• Aushilfe (Grundfunktionen)\n\n⏰ Überprüfe Systemzeit und ausstehende Transaktionen...\n\n💡 Geben Sie einfach Ihre 4-6 stellige PIN ein - das System erkennt Sie automatisch.\n\n🔑 Bei neuer oder Testkasse: Admin-PIN ist 1234',
+        style: 'info'
       });
       
       // Activate pinpad for PIN entry
@@ -1693,7 +1695,8 @@
         agentStore.addMessage({
           type: 'agent',
           message: `Advanced Edit - ${entityType === 'category' ? 'Category' : 'Item'} Data:\n\n${formattedJson}`,
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          style: 'info'
         });
         
         // Start a new draft message and pre-fill it with the JSON data
