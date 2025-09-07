@@ -578,9 +578,9 @@
                   {#if $pinpadStore.layout === 'numeric'}
                     <!-- Show stars for numeric PIN input -->
                     {'*'.repeat($pinpadStore.liveValue.length)}<span class="cursor">|</span>
-                  {:else if $pinpadStore.layout === 'alpha' && $agentStore.draftMessage}
-                    <!-- Show normal text for alpha inputs -->
-                    {$agentStore.draftMessage.message}<span class="cursor">|</span>
+                  {:else if $pinpadStore.layout === 'alpha'}
+                    <!-- Show normal text for alpha inputs - use draftMessage first, fallback to liveValue -->
+                    {($agentStore.draftMessage?.message || $pinpadStore.liveValue?.text || '')}<span class="cursor">|</span>
                   {:else}
                     <!-- Fallback -->
                     <span class="cursor">|</span>

@@ -341,10 +341,10 @@ function createPinpadStore() {
                 const { agentStore } = await import('./agentStore.js');
                 
                 try {
-                    // Send message using centralized method
-                    await agentStore.sendMessage(value);
+                    // Send message using centralized method (fire-and-forget)
+                    agentStore.sendMessage(value);
                     
-                    // Deactivate after sending message to prevent keyboard focus issues
+                    // Deactivate immediately to prevent keyboard focus issues
                     this.deactivate();
                 } catch (error) {
                     console.error('Agent message send failed:', error);

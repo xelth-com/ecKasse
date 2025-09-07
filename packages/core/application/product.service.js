@@ -5,6 +5,9 @@ const { generateEmbedding, embeddingToBuffer } = require('./embedding.service');
 const loggingService = require('./logging.service');
 const { parseJsonIfNeeded } = require('../utils/db-helper');
 
+// In-memory lock mechanism to prevent race conditions during product updates
+const productUpdateLocks = new Set();
+
 class ProductService {
     constructor(productRepository, db) {
         this.productRepository = productRepository;
@@ -157,7 +160,15 @@ class ProductService {
             sessionId
         }, 'Processing product update request');
 
+        // Check if product is already being updated to prevent race conditions
+        if (productUpdateLocks.has(id)) {
+            throw new Error('Product is currently being updated. Please try again in a moment.');
+        }
+
         try {
+            // Acquire lock for this product
+            productUpdateLocks.add(id);
+            
             return await this.db.transaction(async (trx) => {
                 // Get current user session and permissions
                 const userSession = await trx('user_sessions')
@@ -215,6 +226,9 @@ class ProductService {
                 message: 'Error updating product: ' + error.message,
                 error: error.message
             };
+        } finally {
+            // Always release the lock, even if an error occurred
+            productUpdateLocks.delete(id);
         }
     }
 

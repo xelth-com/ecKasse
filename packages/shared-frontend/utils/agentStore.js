@@ -188,9 +188,8 @@ function createAgentStore() {
             // Check if user is still on agent view
             const currentViewValue = get(currentView);
             if (currentViewValue === 'agent') {
-              // Start new draft message and activate pinpad
-              self.startDraftMessage();
-              pinpadStore.activate('agent', null, null, 'alpha');
+              // Start new draft message and activate alpha keyboard
+              pinpadStore.activateAlphaInput(null, null, self);
             }
           });
         }, 500); // Small delay to let the response message render first
@@ -218,9 +217,8 @@ function createAgentStore() {
             // Check if user is still on agent view
             const currentViewValue = get(currentView);
             if (currentViewValue === 'agent') {
-              // Start new draft message and activate pinpad
-              self.startDraftMessage();
-              pinpadStore.activate('agent', null, null, 'alpha');
+              // Start new draft message and activate alpha keyboard
+              pinpadStore.activateAlphaInput(null, null, self);
             }
           });
         }, 500);
