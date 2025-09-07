@@ -59,7 +59,7 @@ ecKasse uses a **Core and Adapters** architecture with dual licensing:
 ![WebSocket](https://img.shields.io/badge/-WebSocket-010101?logoColor=white)
 
 ### Frontend
-![Vanilla JS](https://img.shields.io/badge/-Vanilla%20JS-F7DF1E?logo=javascript&logoColor=black)
+![Svelte](https://img.shields.io/badge/-Svelte-FF3E00?logo=svelte&logoColor=white)
 ![HTML5](https://img.shields.io/badge/-HTML5-E34F26?logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/-CSS3-1572B6?logo=css3&logoColor=white)
 
@@ -72,7 +72,6 @@ ecKasse uses a **Core and Adapters** architecture with dual licensing:
 ![pgvector](https://img.shields.io/badge/-pgvector-4169E1?logoColor=white)
 
 ### AI/ML
-![LangChain](https://img.shields.io/badge/-LangChain-1C3C3C?logoColor=white)
 ![Google Gemini](https://img.shields.io/badge/-Google%20Gemini-4285F4?logoColor=white)
 
 ---
@@ -83,7 +82,7 @@ ecKasse uses a **Core and Adapters** architecture with dual licensing:
 
 * **Node.js** (v20.x or higher)
 * **npm** (latest version)
-* **Database:** SQLite (desktop) or PostgreSQL (web)
+* **Database:** SQLite (desktop) or PostgreSQL v17+ (web, required for pgvector support)
 * **AI API Key:** Google Gemini API key for AI features
 
 ### Desktop Installation (AGPL v3)
@@ -153,8 +152,126 @@ ecKasse/
 
 ## 🤖 For AI Agent Operation
 
-### 1. How to Read The Project Snapshot
+### Development Environment Setup
 
-This project may be provided as a self-contained, single-file snapshot.
-* **Source of Truth:** Treat the snapshot as the complete and authoritative source code.
-* **Structure:** The file contains a directory tree, followed by the full content of each file, demarcated by `
+When working with AI agents (like Claude Code) on this project:
+
+#### 1. Project Structure Understanding
+* **Monorepo Architecture:** The project uses npm workspaces with multiple packages
+* **Core Business Logic:** Located in `packages/core/` (domain models, use cases)
+* **Infrastructure:** Located in `packages/adapters/` (database, external services)
+* **Applications:** Desktop (`packages/desktop/`) and Web (`packages/web/`)
+
+#### 2. Key Development Commands
+```bash
+# Start desktop development environment
+npm run dev
+
+# Run individual package commands
+npm run dev:backend --workspace=@eckasse/desktop
+npm run migrate:backend
+npm run seed:backend
+
+# Database operations
+npx knex migrate:latest --knexfile packages/core/db/knexfile.js
+npx knex seed:run --knexfile packages/core/db/knexfile.js
+```
+
+#### 3. Database Considerations
+* **Desktop Version:** Uses SQLite with automatic migrations
+* **Web Version:** Requires PostgreSQL v17+ for pgvector support
+* **Vector Storage:** AI embeddings stored using pgvector extension
+
+#### 4. AI Integration Points
+* **Menu Parsing:** `packages/core/application/services/menu-parser.service.js`
+* **LLM Service:** `packages/adapters/ai/gemini.adapter.js`
+* **Vector Search:** `packages/adapters/database/vector.adapter.js`
+
+#### 5. Configuration Files
+* **Environment:** `.env` files in root and package directories
+* **Database:** `packages/core/db/knexfile.js`
+* **Build:** Individual `package.json` in each workspace
+
+#### 6. Testing Strategy
+```bash
+# Run all tests
+npm run test:all
+
+# Lint all packages
+npm run lint:all
+
+# Format code
+npm run format:all
+```
+
+#### 7. Deployment Notes
+* **Desktop:** Built with Electron, distributed as executable
+* **Web:** Requires Docker deployment with PostgreSQL v17+
+* **Licensing:** Respect dual-license model (AGPL v3 for desktop, Commercial for web)
+
+---
+
+## 🤝 Partnership & Integration Opportunities
+
+### 🖥️ Hardware Partners
+We are seeking **hardware manufacturers** for our POS ecosystem:
+
+**✅ Mobile PDA Solution - FOUND**
+We've partnered with **[MovFast.com](https://movfast.com)** - offering unbeatable price-quality ratio for mobile PDA cash registers.
+
+**🔍 SEEKING: Stationary POS Hardware**
+- All-in-one POS terminals
+- Touch screen displays (15" - 22")
+- Competitive pricing for restaurant market
+- Reliable build quality and warranty
+
+**🔍 SEEKING: POS Printer Manufacturers** 
+- Thermal receipt printers
+- Kitchen display systems
+- Label printers for orders
+- Cost-effective solutions with driver support
+
+**Contact us:** hardware@eckasse.com
+
+### 💳 Payment Processing Partners
+We are actively seeking **competitive payment card processing providers** to integrate into our POS system. If you offer:
+- Competitive transaction fees
+- Reliable API integration
+- Multi-currency support
+- Quick settlement times
+
+**Contact us:** partnerships@eckasse.com
+
+### 🇩🇪 TSE/TSS Integration (Deutsche Markt)
+**Wir suchen die günstigsten Anbieter für TSE (Technische Sicherheitseinrichtung) und TSS (Technische Sicherheitssystem) Lösungen für den deutschen Markt.**
+
+Wenn Sie Hersteller oder Anbieter sind von:
+- **TSE-Hardware** mit wettbewerbsfähigen Preisen
+- **TSS-Software** mit einfacher API-Integration
+- **Cloud-TSE** Lösungen mit niedrigen laufenden Kosten
+- **Zertifizierte Lösungen** nach KassenSichV
+
+**Kontakt:** deutschland@eckasse.com
+
+### 🌍 International Expansion Partners
+We are looking for **international partners** to adapt ecKasse for different countries' fiscal regulations on **mutually beneficial terms**.
+
+**Ideal Partners:**
+- Local POS system integrators
+- Fiscal compliance consultants  
+- Software development companies
+- Restaurant technology providers
+
+**Partnership Models:**
+- Revenue sharing agreements
+- Joint development projects
+- Regional licensing deals
+- White-label solutions
+
+**Countries of Interest:**
+- European Union (fiscal compliance adaptation)
+- United States (tax regulation compliance)
+- Canada (provincial tax systems)
+- Australia & New Zealand (GST integration)
+
+**Contact us:** international@eckasse.com
