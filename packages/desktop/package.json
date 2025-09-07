@@ -2,6 +2,7 @@
   "name": "@eckasse/desktop",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "description": "Desktop client for ecKasse POS system",
   "main": "electron/main.js",
   "scripts": {

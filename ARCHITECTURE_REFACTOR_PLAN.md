@@ -7,7 +7,7 @@ This document provides a complete, actionable specification for refactoring ecKa
 ### Executive Summary
 
 **Goal**: Transform ecKasse into a "Core and Adapters" architecture enabling:
-1. **Open Source Desktop Version** (MIT License) - SQLite-based, single-tenant POS
+1. **Open Source Desktop Version** (AGPL v3) - SQLite-based, single-tenant POS
 2. **Closed Source Web Version** (Commercial License) - PostgreSQL-based, multi-tenant SaaS
 
 ### Current State (Pre-Refactor)
@@ -33,18 +33,18 @@ This document provides a complete, actionable specification for refactoring ecKa
 ```
 /home/xelth/ecKasse/
 ├── packages/
-│   ├── core/                       # MIT License - Shared business logic
+│   ├── core/                       # AGPL v3 - Shared business logic
 │   │   ├── domain/                 # Entities, value objects, domain services
 │   │   ├── application/            # Use cases, ports (interfaces)
 │   │   ├── shared/                 # UUID, logging, validation utilities
 │   │   └── llm/                    # LangChain agent abstraction
-│   ├── adapters/                   # MIT License - Infrastructure adapters
+│   ├── adapters/                   # AGPL v3 - Infrastructure adapters
 │   │   ├── database/
 │   │   │   ├── sqlite/            # Desktop SQLite implementation
 │   │   │   └── postgresql/        # Web PostgreSQL implementation
 │   │   ├── auth/                  # Local vs JWT authentication
 │   │   └── storage/               # Local vs cloud file storage
-│   ├── desktop/                    # MIT License - Open source desktop app
+│   ├── desktop/                    # AGPL v3 - Open source desktop app
 │   │   ├── electron/              # Electron wrapper
 │   │   ├── frontend/              # Desktop-specific UI
 │   │   └── server/                # Express + SQLite adapter
@@ -52,7 +52,7 @@ This document provides a complete, actionable specification for refactoring ecKa
 │   │   ├── frontend/              # Multi-tenant web UI
 │   │   ├── server/                # Express + PostgreSQL adapter
 │   │   └── multi-tenant/          # Tenant isolation logic
-│   └── shared-frontend/            # MIT License - Common UI components
+│   └── shared-frontend/            # AGPL v3 - Common UI components
 │       ├── components/            # Reusable UI elements
 │       ├── styles/                # Shared CSS
 │       └── utils/                 # Frontend utilities
@@ -223,7 +223,7 @@ DUAL LICENSE NOTICE
 
 This repository contains both open source and proprietary components:
 
-Open Source Components (MIT License):
+Open Source Components (AGPL v3):
 - packages/core/
 - packages/adapters/  
 - packages/desktop/
@@ -232,12 +232,12 @@ Open Source Components (MIT License):
 Proprietary Components (Commercial License):
 - packages/web/
 
-See LICENSE-MIT and LICENSE-COMMERCIAL for full terms.
+See LICENSE-AGPL-3.0 and LICENSE-COMMERCIAL for full terms.
 ```
 
-**LICENSE-MIT** (Open Source Components):
+**LICENSE-AGPL-3.0** (Open Source Components):
 ```
-MIT License
+AGPL v3
 
 Copyright (c) 2025 ecKasse Contributors
 
@@ -248,7 +248,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-[Standard MIT License text]
+[Standard AGPL v3 text]
 ```
 
 **LICENSE-COMMERCIAL** (Web Components):

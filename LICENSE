@@ -2,16 +2,16 @@ DUAL LICENSE NOTICE
 
 This repository contains both open source and proprietary components:
 
-Open Source Components (MIT License):
+Open Source Components (GNU AGPL v3):
 - packages/core/
-- packages/adapters/  
+- packages/adapters/
 - packages/desktop/
 - packages/shared-frontend/
 
 Proprietary Components (Commercial License):
 - packages/web/
 
-See LICENSE-MIT and LICENSE-COMMERCIAL for full terms.
+See LICENSE-AGPL-3.0 and LICENSE-COMMERCIAL for full terms.
 
-For open source components, you may use, modify, and distribute under the MIT License.
-For proprietary components, contact licensing@company.com for usage rights.
+For open source components, you may use, modify, and distribute under the GNU AGPL v3.
+For proprietary components, contact licensing@eckasse.com for usage rights.

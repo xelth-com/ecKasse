@@ -2,7 +2,7 @@
   "name": "@eckasse/shared-frontend",
   "version": "1.0.0",
   "private": true, 
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "description": "Shared frontend components for ecKasse",
   "main": "utils/grid/gridManager.js",
   "engines": {

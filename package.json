@@ -52,7 +52,7 @@
   "contributors": [
     "Dmytro Surovtsev <dmytro@betruger.com>"
   ],
-  "license": "EUPL-1.2",
+  "license": "AGPL-3.0-only",
   "homepage": "https://betruger.com",
   "bugs": {
     "url": "https://github.com/betruger/eckasse/issues"
