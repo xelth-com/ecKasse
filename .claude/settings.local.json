@@ -33,7 +33,17 @@
       "Bash(sudo nginx:*)",
       "Bash(sudo systemctl:*)",
       "Bash(chmod:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(sudo journalctl:*)",
+      "Bash(sudo tail:*)",
+      "Read(/root/.pm2/logs/**)",
+      "Read(/root/.pm2/logs/**)",
+      "Bash(npm run:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],

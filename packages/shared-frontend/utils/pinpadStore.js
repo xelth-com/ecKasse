@@ -344,20 +344,13 @@ function createPinpadStore() {
                     // Send message using centralized method
                     await agentStore.sendMessage(value);
                     
-                    // Don't deactivate - let user close keyboard manually
-                    // Clear the input for next message
-                    update(state => ({
-                        ...state,
-                        liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : ''
-                    }));
+                    // Deactivate after sending message to prevent keyboard focus issues
+                    this.deactivate();
                 } catch (error) {
                     console.error('Agent message send failed:', error);
                     
-                    // Clear input on error but keep keyboard open
-                    update(state => ({
-                        ...state,
-                        liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : ''
-                    }));
+                    // Deactivate on error to prevent keyboard focus issues
+                    this.deactivate();
                 }
                 return;
             }

@@ -180,6 +180,21 @@ function createAgentStore() {
           history: result.history
         }));
         
+        // Automatically prepare for next message by starting a new draft
+        const self = this;
+        setTimeout(() => {
+          // Import pinpadStore dynamically to avoid circular dependency
+          import('./pinpadStore.js').then(({ pinpadStore }) => {
+            // Check if user is still on agent view
+            const currentViewValue = get(currentView);
+            if (currentViewValue === 'agent') {
+              // Start new draft message and activate pinpad
+              self.startDraftMessage();
+              pinpadStore.activate('agent', null, null, 'alpha');
+            }
+          });
+        }, 500); // Small delay to let the response message render first
+        
       } catch (error) {
         console.error('Failed to send message to AI:', error);
         
@@ -194,6 +209,21 @@ function createAgentStore() {
           ...store,
           messages: [...store.messages, errorMessage]
         }));
+        
+        // Also prepare for next message after error
+        const self = this;
+        setTimeout(() => {
+          // Import pinpadStore dynamically to avoid circular dependency
+          import('./pinpadStore.js').then(({ pinpadStore }) => {
+            // Check if user is still on agent view
+            const currentViewValue = get(currentView);
+            if (currentViewValue === 'agent') {
+              // Start new draft message and activate pinpad
+              self.startDraftMessage();
+              pinpadStore.activate('agent', null, null, 'alpha');
+            }
+          });
+        }, 500);
       }
     },
     

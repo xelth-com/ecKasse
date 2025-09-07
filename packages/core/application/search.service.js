@@ -373,6 +373,12 @@ async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
   try {
     // Generate embedding for query
     const queryEmbedding = await generateEmbedding(query, { taskType: 'RETRIEVAL_QUERY' });
+    
+    // Validate embedding
+    if (!queryEmbedding || !Array.isArray(queryEmbedding) || queryEmbedding.length !== 768) {
+      throw new Error(`Invalid embedding: expected 768 dimensions, got ${queryEmbedding ? queryEmbedding.length : 'null'}`);
+    }
+    
     const queryEmbeddingBuffer = embeddingToBuffer(queryEmbedding);
 
     const clientType = db.client.config.client;
@@ -381,6 +387,7 @@ async function performVectorSearch(query, limit = 10, distanceThreshold = 0.8) {
     if (clientType === 'pg') {
       // PostgreSQL with pgvector for semantic similarity search (if available)
       const vectorString = `[${queryEmbedding.join(',')}]`;
+      console.log(`🧠 Generated vector string length: ${vectorString.length} characters for ${queryEmbedding.length} dimensions`);
       
       try {
         // Try to use pgvector first

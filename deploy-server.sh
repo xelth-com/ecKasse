@@ -108,6 +108,35 @@ npm install
 echo "🗄️ Running database migrations..."
 NODE_ENV=production npx knex migrate:latest --knexfile packages/core/db/knexfile.js
 
+# Fix pgvector column type if needed
+echo "🔧 Checking and fixing pgvector configuration..."
+PGPASSWORD=gK76543n2PqX5bV9zR4m psql -h localhost -p 5432 -U wms_user -d eckwms -c "
+DO \$\$
+BEGIN
+    -- Check if item_embedding column exists and is text type
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'item_embeddings' 
+        AND column_name = 'item_embedding' 
+        AND data_type = 'text'
+    ) THEN
+        -- Convert text column to vector type
+        RAISE NOTICE 'Converting item_embedding from text to vector(768)...';
+        ALTER TABLE item_embeddings ALTER COLUMN item_embedding TYPE vector(768) USING item_embedding::vector;
+        RAISE NOTICE 'Column converted successfully.';
+    ELSE
+        RAISE NOTICE 'item_embedding column is already vector type or does not exist.';
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error converting column: %', SQLERRM;
+END
+\$\$;
+
+-- Create HNSW index for optimal vector search performance
+CREATE INDEX IF NOT EXISTS idx_item_embeddings_hnsw ON item_embeddings USING hnsw (item_embedding vector_cosine_ops);
+" || echo "✅ pgvector configuration completed"
+
 
 # Fix logging issue in SelectionArea.svelte (if not already fixed)
 echo "🔧 Checking and fixing logging issues..."
