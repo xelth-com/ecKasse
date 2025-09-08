@@ -145,13 +145,14 @@ process.on('uncaughtException', (error) => {
 // IPC handler for showing file dialog
 ipcMain.handle('show-open-dialog', async () => {
   try {
-    // Define allowed directory - only menu_inputs
-    const allowedDir = path.resolve(__dirname, '../../../menu_inputs');
+    // Define allowed directory - only ecKasseIn
+    const allowedDir = path.resolve(__dirname, '../../../ecKasseIn');
     
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Select Menu File',
       filters: [
-        { name: 'Menu Files', extensions: ['pdf', 'jpg', 'jpeg', 'png'] },
+        { name: 'Menu Files', extensions: ['pdf', 'jpg', 'jpeg', 'png', 'json'] },
+        { name: 'MDF JSON Files', extensions: ['json'] },
         { name: 'PDF Files', extensions: ['pdf'] },
         { name: 'Image Files', extensions: ['jpg', 'jpeg', 'png'] }
       ],
@@ -165,14 +166,14 @@ ipcMain.handle('show-open-dialog', async () => {
     
     const selectedFile = result.filePaths[0];
     
-    // Security check: ensure selected file is within menu_inputs directory
+    // Security check: ensure selected file is within ecKasseIn directory
     const normalizedSelected = path.resolve(selectedFile);
     const normalizedAllowed = path.resolve(allowedDir);
     
     if (!normalizedSelected.startsWith(normalizedAllowed)) {
       console.error('Security violation: File outside allowed directory', selectedFile);
       return { 
-        error: 'File must be located in the menu_inputs directory for security reasons.' 
+        error: 'File must be located in the ecKasseIn directory for security reasons.' 
       };
     }
     
@@ -194,11 +195,11 @@ ipcMain.handle('show-open-dialog', async () => {
 // IPC handler for listing menu files
 ipcMain.handle('list-menu-files', async () => {
   try {
-    const menuInputsDir = path.resolve(__dirname, '../../../menu_inputs');
+    const menuInputsDir = path.resolve(__dirname, '../../../ecKasseIn');
     
     // Check if directory exists
     if (!fs.existsSync(menuInputsDir)) {
-      console.log('Creating menu_inputs directory:', menuInputsDir);
+      console.log('Creating ecKasseIn directory:', menuInputsDir);
       fs.mkdirSync(menuInputsDir, { recursive: true });
       return [];
     }
@@ -207,7 +208,7 @@ ipcMain.handle('list-menu-files', async () => {
     const files = fs.readdirSync(menuInputsDir);
     
     // Filter for supported file types and add file info
-    const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.json'];
     const menuFiles = [];
     
     for (const file of files) {
@@ -257,7 +258,7 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
       return { success: false, message: 'No files specified for import.' };
     }
     
-    const allowedDir = path.resolve(__dirname, '../../../menu_inputs');
+    const allowedDir = path.resolve(__dirname, '../../../ecKasseIn');
     const validFiles = [];
     
     // Validate all files first
@@ -269,7 +270,7 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
         console.error('Security violation: Import file outside allowed directory', filePath);
         return { 
           success: false, 
-          message: `Security violation: ${path.basename(filePath)} must be in menu_inputs directory.` 
+          message: `Security violation: ${path.basename(filePath)} must be in ecKasseIn directory.` 
         };
       }
       

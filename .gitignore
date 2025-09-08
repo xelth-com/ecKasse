@@ -147,10 +147,10 @@ build/Release
 secrets.json
 
 # Menu processing files
-menu_inputs/*
-!menu_inputs/.gitkeep
-menu_outputs/*
-!menu_outputs/.gitkeep
+ecKasseIn/*
+!ecKasseIn/.gitkeep
+ecKasseOut/*
+!ecKasseOut/.gitkeep
 
 # feur mich
 ideasHistory.md

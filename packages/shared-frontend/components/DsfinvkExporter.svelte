@@ -1,6 +1,7 @@
 <script>
   import { wsStore } from '../utils/wsStore.js';
   import { agentStore } from '../utils/agentStore.js';
+  import { hideControlCenter } from '../utils/controlCenterStore.js';
 
   let startDate = new Date().toISOString().split('T')[0];
   let endDate = new Date().toISOString().split('T')[0];
@@ -18,6 +19,9 @@
   async function generateExport() {
     isExporting = true;
     exportStatus = null;
+    
+    // Close Control Center so user can see progress in agent console
+    hideControlCenter();
     downloadUrl = null;
     errorMessage = null;
     

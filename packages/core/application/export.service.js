@@ -16,7 +16,11 @@
 
 const db = require('../db/knex');
 const logger = require('../config/logger');
+const fs = require('fs');
+const fsp = require('fs').promises;
+const path = require('path');
 const crypto = require('crypto');
+const archiver = require('archiver');
 const { bufferToEmbedding, jsonToEmbedding } = require('./embedding.service');
 
 /**
@@ -58,9 +62,9 @@ async function exportToOopMdf(options = {}) {
         try {
           return {
             ...r, 
-            permissions: JSON.parse(r.permissions || '{}'), 
-            role_display_names: JSON.parse(r.role_display_names || '{}'), 
-            audit_trail: JSON.parse(r.audit_trail || '{}')
+            permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions || '{}') : (r.permissions || {}), 
+            role_display_names: typeof r.role_display_names === 'string' ? JSON.parse(r.role_display_names || '{}') : (r.role_display_names || {}), 
+            audit_trail: typeof r.audit_trail === 'string' ? JSON.parse(r.audit_trail || '{}') : (r.audit_trail || {})
           };
         } catch (e) {
           logger.warn('Invalid JSON in role data', { role_id: r.role_unique_identifier, error: e.message });
@@ -76,8 +80,8 @@ async function exportToOopMdf(options = {}) {
         try {
           return {
             ...u, 
-            user_preferences: JSON.parse(u.user_preferences || '{}'), 
-            audit_trail: JSON.parse(u.audit_trail || '{}')
+            user_preferences: typeof u.user_preferences === 'string' ? JSON.parse(u.user_preferences || '{}') : (u.user_preferences || {}), 
+            audit_trail: typeof u.audit_trail === 'string' ? JSON.parse(u.audit_trail || '{}') : (u.audit_trail || {})
           };
         } catch (e) {
           logger.warn('Invalid JSON in user data', { user_id: u.user_unique_identifier, error: e.message });
@@ -99,14 +103,14 @@ async function exportToOopMdf(options = {}) {
         
         // Parse and update meta information
         meta_information: {
-          ...JSON.parse(company.meta_information || '{}'),
+          ...(typeof company.meta_information === 'string' ? JSON.parse(company.meta_information || '{}') : (company.meta_information || {})),
           export_timestamp: new Date().toISOString(),
           exported_by: "eckasse-cli-export-v2.0.0",
           export_version: "2.0.0"
         },
         
         // Parse global configurations
-        global_configurations: JSON.parse(company.global_configurations || '{}'),
+        global_configurations: typeof company.global_configurations === 'string' ? JSON.parse(company.global_configurations || '{}') : (company.global_configurations || {}),
 
         user_management,
         
@@ -117,8 +121,39 @@ async function exportToOopMdf(options = {}) {
 
     const duration = Date.now() - startTime;
     
+    // Generate filename with timestamp and embedding suffix
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const embeddingSuffix = includeEmbeddings ? '_emb' : '';
+    const jsonFilename = `oop-pos-mdf-export-${timestamp}${embeddingSuffix}.json`;
+    const zipFilename = `oop-pos-mdf-export-${timestamp}${embeddingSuffix}.zip`;
+    
+    // Use external output directory for exports  
+    const outputDir = path.join(__dirname, '../../../../ecKasseOut');
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    // Create JSON content and save to ZIP archive
+    const jsonContent = JSON.stringify(exportedConfig, null, 2);
+    const zipPath = path.join(outputDir, zipFilename);
+    
+    // Create ZIP archive with JSON file inside
+    await new Promise((resolve, reject) => {
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      const output = fs.createWriteStream(zipPath);
+      
+      output.on('close', resolve);
+      archive.on('error', reject);
+      
+      archive.pipe(output);
+      archive.append(jsonContent, { name: jsonFilename });
+      archive.finalize();
+    });
+
     logger.info('OOP-POS-MDF export completed', {
       duration,
+      filePath: zipPath,
+      fileSize: jsonContent.length,
       stats: {
         companies: companies.length,
         branches: branches.length,
@@ -129,7 +164,9 @@ async function exportToOopMdf(options = {}) {
     return {
       success: true,
       configuration: exportedConfig,
-      metadata: { /* metadata */ }
+      path: zipPath,
+      filename: zipFilename,
+      metadata: { fileSize: jsonContent.length, archiveFormat: 'zip' }
     };
 
   } catch (error) {
@@ -174,27 +211,42 @@ async function exportHierarchicalDataOptimized(companyId, includeEmbeddings = tr
   const items = await itemsQuery;
   
   const posDevicesByBranch = new Map();
-  posDevices.forEach(d => (posDevicesByBranch.get(d.branch_id) || posDevicesByBranch.set(d.branch_id, [])).get(d.branch_id).push(d));
+  posDevices.forEach(d => {
+    if (!posDevicesByBranch.has(d.branch_id)) {
+      posDevicesByBranch.set(d.branch_id, []);
+    }
+    posDevicesByBranch.get(d.branch_id).push(d);
+  });
 
   const categoriesByPosDevice = new Map();
-  categories.forEach(c => (categoriesByPosDevice.get(c.pos_device_id) || categoriesByPosDevice.set(c.pos_device_id, [])).get(c.pos_device_id).push(c));
+  categories.forEach(c => {
+    if (!categoriesByPosDevice.has(c.pos_device_id)) {
+      categoriesByPosDevice.set(c.pos_device_id, []);
+    }
+    categoriesByPosDevice.get(c.pos_device_id).push(c);
+  });
   
   const itemsByPosDevice = new Map();
-  items.forEach(i => (itemsByPosDevice.get(i.pos_device_id) || itemsByPosDevice.set(i.pos_device_id, [])).get(i.pos_device_id).push(i));
+  items.forEach(i => {
+    if (!itemsByPosDevice.has(i.pos_device_id)) {
+      itemsByPosDevice.set(i.pos_device_id, []);
+    }
+    itemsByPosDevice.get(i.pos_device_id).push(i);
+  });
   const processedBranches = branches.map(branch => {
     const branchPosDevices = posDevicesByBranch.get(branch.id) || [];
     const processedPosDevices = branchPosDevices.map(device => ({
       pos_device_unique_identifier: device.id,
-      pos_device_names: JSON.parse(device.pos_device_name || '{}'),
+      pos_device_names: typeof device.pos_device_name === 'string' ? JSON.parse(device.pos_device_name || '{}') : (device.pos_device_name || {}),
       pos_device_type: device.pos_device_type,
       pos_device_external_number: device.pos_device_external_number,
-      pos_device_settings: JSON.parse(device.pos_device_settings || '{}'),
+      pos_device_settings: typeof device.pos_device_settings === 'string' ? JSON.parse(device.pos_device_settings || '{}') : (device.pos_device_settings || {}),
       categories_for_this_pos: processCategories(categoriesByPosDevice.get(device.id) || []),
       items_for_this_pos: processItems(itemsByPosDevice.get(device.id) || [], includeEmbeddings, dbClient)
     }));
     return {
       branch_unique_identifier: branch.id,
-      branch_names: JSON.parse(branch.branch_name || '{}'),
+      branch_names: typeof branch.branch_name === 'string' ? JSON.parse(branch.branch_name || '{}') : (branch.branch_name || {}),
       branch_address: branch.branch_address,
       point_of_sale_devices: processedPosDevices
     };
@@ -286,7 +338,7 @@ function processItems(items, includeEmbeddings, dbClient) {
 
       exportedItem.embedding_data = {
         model: process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001",
-        vector: `[${vector.length} dimensions: ${vector.slice(0,3).join(', ')}...]`,
+        vector: includeEmbeddings ? vector : `[${vector.length} dimensions: ${vector.slice(0,3).join(', ')}...]`,
         vector_length: vector.length,
         source_hash: sourceHash
       };

@@ -7,7 +7,7 @@ const menuController = require('../controllers/menu.controller');
 const router = express.Router();
 
 // Use a temporary directory for uploads within the project that is gitignored
-const uploadDir = path.resolve(__dirname, '../../../../menu_inputs/temp_uploads');
+const uploadDir = path.resolve(__dirname, '../../../../ecKasseIn/temp_uploads');
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir, { recursive: true });
 }

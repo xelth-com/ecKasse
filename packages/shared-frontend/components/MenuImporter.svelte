@@ -73,13 +73,23 @@
     if (!files || files.length === 0) return;
     
     for (const file of files) {
-      // Check file type
+      // Check file extension for JSON (MDF) files
+      const fileName = file.name.toLowerCase();
+      const isJsonFile = fileName.endsWith('.json');
+      
+      if (isJsonFile) {
+        // Handle JSON MDF file import directly
+        await handleMdfImport(file);
+        continue;
+      }
+      
+      // Check file type for regular menu files
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
         agentStore.addMessage({
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: `File "${file.name}" has unsupported format. Please select PDF, JPG, or PNG files.`
+          message: `File "${file.name}" has unsupported format. Please select PDF, JPG, PNG, or JSON files.`
         });
         continue;
       }
@@ -367,6 +377,67 @@
     }
   }
   
+  // Handle MDF JSON file import
+  async function handleMdfImport(file) {
+    try {
+      // Close control center and switch to agent view
+      dispatch('close');
+      currentView.set('agent');
+      
+      const timestamp = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      agentStore.addMessage({
+        timestamp,
+        type: 'agent',
+        message: `🚀 Starting MDF import from ${file.name}\n\nThis process will:\n1. Parse JSON menu data\n2. Clean existing data\n3. Import menu structure\n4. Create optimized layouts\n\nPlease wait...`,
+        style: 'info'
+      });
+      
+      // Read and parse JSON file
+      const fileContent = await file.text();
+      let mdfData;
+      try {
+        mdfData = JSON.parse(fileContent);
+      } catch (parseError) {
+        throw new Error('Invalid JSON format in MDF file');
+      }
+      
+      // Send MDF data to backend via WebSocket
+      const response = await wsStore.send({
+        command: 'importMdf',
+        payload: { mdfData, filename: file.name }
+      });
+      
+      if (response.status === 'success' && response.payload.success) {
+        agentStore.addMessage({
+          timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          type: 'agent',
+          message: `✅ MDF import completed successfully!\n\nImported ${response.payload.itemCount || 0} menu items.\n\nYou can now navigate back to the selection area to see your new menu items.`,
+          style: 'success'
+        });
+        
+        // Refresh categories
+        addLog('INFO', 'Refreshing categories after successful MDF import');
+        wsStore.send({ command: 'getCategories' });
+      } else {
+        throw new Error(response.payload?.message || response.error || 'MDF import failed');
+      }
+      
+    } catch (error) {
+      console.error('Error importing MDF file:', error);
+      agentStore.addMessage({
+        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        type: 'agent',
+        message: `❌ MDF import failed: ${error.message}`,
+        style: 'error'
+      });
+    } finally {
+      // Clear the file input
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    }
+  }
+  
   // Listen for import progress
   if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.onImportProgress) {
     window.electronAPI.onImportProgress((progress) => {
@@ -403,9 +474,9 @@
   <h3>Menu Import</h3>
   <p>
     {#if isElectron}
-      Select one or more menu files from the menu_inputs directory
+      Select one or more menu files from the ecKasseIn directory
     {:else}
-      Upload and import menu files (PDF, JPG, PNG)
+      Upload and import menu files (PDF, JPG, PNG, JSON)
     {/if}
   </p>
   <p class="size-limit">Max file size: {isDemoMode ? '10MB (demo mode)' : '50MB'}</p>
@@ -416,7 +487,7 @@
       type="file" 
       bind:this={fileInput}
       on:change={handleFileUpload}
-      accept=".pdf,.jpg,.jpeg,.png"
+      accept=".pdf,.jpg,.jpeg,.png,.json"
       multiple
       style="display: none;"
     />
@@ -449,13 +520,13 @@
               </svg>
               Choose Files
             </button>
-            <p class="upload-hint">Select multiple PDF, JPG, or PNG files</p>
+            <p class="upload-hint">Select multiple PDF, JPG, PNG, or JSON files</p>
           </div>
         </div>
       {:else if isElectron && availableFiles.length === 0}
         <div class="no-files">
-          <p>No menu files found in the menu_inputs directory.</p>
-          <p>Please add PDF, JPG, or PNG files to the menu_inputs folder.</p>
+          <p>No menu files found in the ecKasseIn directory.</p>
+          <p>Please add PDF, JPG, or PNG files to the ecKasseIn folder.</p>
         </div>
       {:else}
         <!-- File list controls -->

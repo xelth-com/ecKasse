@@ -306,6 +306,27 @@ class DesktopServer {
     return field;
   }
 
+  async cleanDatabaseForImport() {
+    // Clean database before MDF import
+    try {
+      const db = this.services.database.getConnection();
+      
+      // Clear existing data in correct order (respecting foreign key constraints)
+      await db('active_transaction_items').del();
+      await db('active_transactions').del();
+      await db('receipt_items').del();
+      await db('receipts').del();
+      await db('items').del();
+      await db('categories').del();
+      
+      logger.info('Database cleaned successfully for MDF import');
+      return { success: true };
+    } catch (error) {
+      logger.error({ msg: 'Failed to clean database for import', error: error.message });
+      throw error;
+    }
+  }
+
   async handleWebSocketMessage(ws, rawMessage, db) {
     let parsedMessage;
     try {
@@ -645,6 +666,19 @@ class DesktopServer {
           const { handleGenerateExport } = require('./controllers/export.controller');
           responsePayload = await handleGenerateExport(payload);
           responseCommand = 'generateDsfinvkExportResponse';
+        } else if (command === 'exportMdf') {
+          const { includeEmbeddings } = payload;
+          responsePayload = await this.services.export.exportToOopMdf({ includeEmbeddings });
+          responseCommand = 'exportMdfResponse';
+        } else if (command === 'importMdf') {
+          const { mdfData, filename } = payload;
+          // Clean database first
+          await this.cleanDatabaseForImport();
+          // Import MDF data
+          responsePayload = await this.services.import.importFromOopMdf(mdfData);
+          // Broadcast UI refresh request
+          this.services.websocket.broadcast('refreshUI', { reason: 'mdf-import-complete' });
+          responseCommand = 'importMdfResponse';
         } else {
           status = 'error';
           responsePayload = { message: 'Unknown command', originalCommand: command };

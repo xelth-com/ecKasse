@@ -43,7 +43,15 @@
       "Bash(npm run:*)",
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git branch:*)",
+      "Read(/home/xelth/**)",
+      "Read(/home/**)",
+      "Read(/home/xelth/ecKasseOut/**)",
+      "Read(/home/xelth/ecKasseOut/**)",
+      "Read(/home/xelth/ecKasseOut/**)",
+      "Read(/home/xelth/ecKasseOut/**)",
+      "Read(/home/xelth/ecKasseOut/**)"
     ],
     "deny": [],
     "ask": [],

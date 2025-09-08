@@ -4,6 +4,7 @@
   import { localeStore, setLocale } from '../utils/localeStore.js';
   import MenuImporter from './MenuImporter.svelte';
   import DsfinvkExporter from './DsfinvkExporter.svelte';
+  import MdfExporter from './MdfExporter.svelte';
   import { createEventDispatcher } from 'svelte';
   
   const dispatch = createEventDispatcher();
@@ -78,6 +79,10 @@
         
         <div class="section">
           <DsfinvkExporter />
+        </div>
+        
+        <div class="section">
+          <MdfExporter />
         </div>
         
         <div class="section">
