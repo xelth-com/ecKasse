@@ -21,6 +21,9 @@ const db = require('../db/knex');
 const { generateEmbedding, embeddingToBuffer, embeddingToJson } = require('./embedding.service');
 const logger = require('../config/logger');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const JSZip = require('jszip');
 // FIX: Using the robust JSON parsing utility from db-helper
 const { parseJsonIfNeeded } = require('../utils/db-helper');
 
@@ -485,16 +488,27 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
       });
 
       if (dbClient === 'pg') {
-        // Try pgvector format first, fallback to text
-        try {
+        // Check the actual column type to determine insertion method
+        const columnTypeResult = await trx.raw(`
+          SELECT data_type 
+          FROM information_schema.columns 
+          WHERE table_name = 'item_embeddings' 
+          AND column_name = 'item_embedding'
+        `);
+        
+        const columnType = columnTypeResult.rows[0]?.data_type;
+        logger.debug('📊 Column type detected', { columnType, itemId, itemName });
+        
+        if (columnType === 'vector') {
+          // Use pgvector format
           const vectorString = `[${embedding.join(',')}]`;
           await trx('item_embeddings').insert({
             item_id: itemId,
             item_embedding: trx.raw('?::vector', [vectorString])
           });
           logger.info('✅ Embedding stored as pgvector format', { itemId, itemName });
-        } catch (pgVectorError) {
-          // Fallback to JSON text storage
+        } else {
+          // Use JSON text storage (fallback)
           await trx('item_embeddings').insert({
             item_id: itemId,
             item_embedding: JSON.stringify(embedding)
@@ -558,8 +572,10 @@ async function importItemsWithVectorization(trx, items, posDeviceId, categoryIdM
           flags: item.item_flags
         }
       });
-      stats.errors.push(errorMsg);
-      // Continue with the next item instead of failing the entire import
+      
+      // Re-throw the error to ensure the entire transaction rolls back
+      // This prevents cascade errors and maintains database integrity
+      throw error;
     }
   }
 }
@@ -769,7 +785,117 @@ async function updateEntityFromOopMdf(entityType, entityId, jsonSnippet) {
   }
 }
 
+/**
+ * Clean database before MDF import
+ * This is needed when importing from ZIP files in separate processes
+ */
+async function cleanDatabaseForMdfImport() {
+  try {
+    await db.transaction(async (trx) => {
+      // Delete in correct order to avoid foreign key constraints
+      await trx('active_transaction_items').del();
+      await trx('active_transactions').del();
+      
+      // Delete item embeddings and items
+      const clientType = trx.client.config.client;
+      if (clientType === 'pg') {
+        await trx('item_embeddings').del();
+      }
+      await trx('items').del();
+      await trx('categories').del();
+      await trx('pos_devices').del();
+      await trx('branches').del();
+      await trx('companies').del();
+      
+      // For SQLite, also clear the vector table if it exists
+      if (clientType === 'sqlite3') {
+        try {
+          await trx.raw('DELETE FROM vec_items');
+        } catch (error) {
+          // Table might not exist, ignore error
+        }
+      }
+    });
+    
+    logger.info('✅ Database cleaned successfully for MDF import');
+  } catch (error) {
+    logger.error('❌ Error cleaning database for MDF import:', error);
+    throw error;
+  }
+}
+
+/**
+ * Import OOP-POS-MDF data from ZIP archive
+ * @param {string} base64ZipData - Base64 encoded ZIP file data
+ * @param {string} filename - Original filename for logging
+ * @returns {Promise<Object>} - Import result
+ */
+async function importFromOopMdfZip(base64ZipData, filename) {
+  logger.info('🗜️ Starting OOP-POS-MDF ZIP import', { filename });
+  
+  try {
+    // Convert base64 to buffer
+    const zipBuffer = Buffer.from(base64ZipData, 'base64');
+    
+    // Extract ZIP contents
+    const zip = new JSZip();
+    const zipContents = await zip.loadAsync(zipBuffer);
+    
+    // Find JSON file in ZIP archive
+    let jsonFile = null;
+    let jsonFilename = null;
+    
+    for (const [filename, fileData] of Object.entries(zipContents.files)) {
+      if (filename.toLowerCase().endsWith('.json') && !fileData.dir) {
+        jsonFile = fileData;
+        jsonFilename = filename;
+        break;
+      }
+    }
+    
+    if (!jsonFile) {
+      throw new Error('No JSON file found in ZIP archive');
+    }
+    
+    // Extract and parse JSON content
+    const jsonContent = await jsonFile.async('text');
+    let mdfData;
+    try {
+      mdfData = JSON.parse(jsonContent);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON format in ${jsonFilename}: ${parseError.message}`);
+    }
+    
+    logger.info('📋 Successfully extracted JSON from ZIP', { 
+      jsonFilename, 
+      companyName: mdfData.company_details?.company_full_name 
+    });
+    
+    // Clean database before import since we're in a separate process
+    logger.info('🧹 Cleaning database before MDF ZIP import');
+    await cleanDatabaseForMdfImport();
+    
+    // Import the extracted MDF data
+    const result = await importFromOopMdf(mdfData);
+    
+    return {
+      ...result,
+      sourceType: 'zip',
+      extractedFile: jsonFilename
+    };
+    
+  } catch (error) {
+    logger.error('💥 ZIP import failed', { 
+      filename, 
+      error: error.message, 
+      stack: error.stack 
+    });
+    throw new Error(`ZIP import failed: ${error.message}`);
+  }
+}
+
 module.exports = {
   importFromOopMdf,
+  importFromOopMdfZip,
   updateEntityFromOopMdf
 };

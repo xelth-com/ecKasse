@@ -146,13 +146,13 @@ process.on('uncaughtException', (error) => {
 ipcMain.handle('show-open-dialog', async () => {
   try {
     // Define allowed directory - only ecKasseIn
-    const allowedDir = path.resolve(__dirname, '../../../ecKasseIn');
+    const allowedDir = path.resolve(__dirname, '../../../../ecKasseIn');
     
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Select Menu File',
       filters: [
-        { name: 'Menu Files', extensions: ['pdf', 'jpg', 'jpeg', 'png', 'json'] },
-        { name: 'MDF JSON Files', extensions: ['json'] },
+        { name: 'Menu Files', extensions: ['pdf', 'jpg', 'jpeg', 'png', 'json', 'zip'] },
+        { name: 'MDF Files', extensions: ['json', 'zip'] },
         { name: 'PDF Files', extensions: ['pdf'] },
         { name: 'Image Files', extensions: ['jpg', 'jpeg', 'png'] }
       ],
@@ -195,7 +195,7 @@ ipcMain.handle('show-open-dialog', async () => {
 // IPC handler for listing menu files
 ipcMain.handle('list-menu-files', async () => {
   try {
-    const menuInputsDir = path.resolve(__dirname, '../../../ecKasseIn');
+    const menuInputsDir = path.resolve(__dirname, '../../../../ecKasseIn');
     
     // Check if directory exists
     if (!fs.existsSync(menuInputsDir)) {
@@ -208,7 +208,7 @@ ipcMain.handle('list-menu-files', async () => {
     const files = fs.readdirSync(menuInputsDir);
     
     // Filter for supported file types and add file info
-    const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.json'];
+    const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.json', '.zip'];
     const menuFiles = [];
     
     for (const file of files) {
@@ -248,6 +248,42 @@ ipcMain.handle('list-menu-files', async () => {
   }
 });
 
+// Helper function to check if file contains OOP-POS-MDF schema
+async function isOopPosMdfFile(filePath) {
+  try {
+    let jsonContent = '';
+    
+    if (filePath.toLowerCase().endsWith('.json')) {
+      // Direct JSON file
+      jsonContent = fs.readFileSync(filePath, 'utf8');
+    } else if (filePath.toLowerCase().endsWith('.zip')) {
+      // ZIP file - extract and check JSON inside
+      const JSZip = require('jszip');
+      const zipData = fs.readFileSync(filePath);
+      const zip = new JSZip();
+      const zipContents = await zip.loadAsync(zipData);
+      
+      // Find JSON file in ZIP
+      for (const [filename, fileData] of Object.entries(zipContents.files)) {
+        if (filename.toLowerCase().endsWith('.json') && !fileData.dir) {
+          jsonContent = await fileData.async('text');
+          break;
+        }
+      }
+    }
+    
+    if (!jsonContent) return false;
+    
+    // Parse and check for OOP-POS-MDF schema
+    const data = JSON.parse(jsonContent);
+    return data.$schema === 'https://schemas.eckasse.com/oop-pos-mdf/v2.0.0/schema.json';
+    
+  } catch (error) {
+    console.warn(`Failed to check MDF schema for ${filePath}:`, error.message);
+    return false;
+  }
+}
+
 // IPC handler for starting menu import
 ipcMain.handle('start-menu-import', async (event, filePaths) => {
   try {
@@ -258,7 +294,7 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
       return { success: false, message: 'No files specified for import.' };
     }
     
-    const allowedDir = path.resolve(__dirname, '../../../ecKasseIn');
+    const allowedDir = path.resolve(__dirname, '../../../../ecKasseIn');
     const validFiles = [];
     
     // Validate all files first
@@ -295,9 +331,28 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
       validFiles.push({ path: filePath, size: sizeCheck.sizeMB });
     }
     
-    const totalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
-    console.log(`Starting menu import for ${validFiles.length} file(s) (${totalSize.toFixed(2)}MB total):`);
-    validFiles.forEach(file => console.log(`  - ${path.basename(file.path)} (${file.size}MB)`));
+    // Separate MDF files from regular menu files
+    const mdfFiles = [];
+    const menuFiles = [];
+    
+    for (const file of validFiles) {
+      const isMdf = await isOopPosMdfFile(file.path);
+      if (isMdf) {
+        mdfFiles.push(file);
+      } else {
+        menuFiles.push(file);
+      }
+    }
+    
+    console.log(`Found ${mdfFiles.length} MDF files and ${menuFiles.length} menu files`);
+    if (mdfFiles.length > 0) {
+      console.log('MDF files:');
+      mdfFiles.forEach(file => console.log(`  - ${path.basename(file.path)} (${file.size}MB)`));
+    }
+    if (menuFiles.length > 0) {
+      console.log('Menu files:');
+      menuFiles.forEach(file => console.log(`  - ${path.basename(file.path)} (${file.size}MB)`));
+    }
     
     // Use internal services instead of external script
     const MenuParserLLM = require('../../core/lib/menu_parser_llm.js');
@@ -390,6 +445,65 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
       });
     }
     
+    // Handle MDF files first (direct import without enrichment)
+    if (mdfFiles.length > 0) {
+      console.log('Processing MDF files directly...');
+      
+      for (const mdfFile of mdfFiles) {
+        try {
+          sendProgress(`Processing MDF file: ${path.basename(mdfFile.path)}`);
+          
+          if (mdfFile.path.toLowerCase().endsWith('.json')) {
+            // Direct JSON import via WebSocket
+            const jsonContent = fs.readFileSync(mdfFile.path, 'utf8');
+            const mdfData = JSON.parse(jsonContent);
+            
+            // Clean database first
+            await cleanDatabase();
+            
+            // Import MDF data directly
+            const result = await importFromOopMdf(mdfData);
+            if (result.success) {
+              sendProgress(`✅ MDF file imported successfully: ${result.itemCount || 0} items`);
+            }
+            
+          } else if (mdfFile.path.toLowerCase().endsWith('.zip')) {
+            // ZIP import via import service
+            const { importFromOopMdfZip } = require('../../core/application/import.service.js');
+            const zipData = fs.readFileSync(mdfFile.path);
+            const base64ZipData = zipData.toString('base64');
+            
+            // Import ZIP MDF data (cleaning happens inside the function)
+            const result = await importFromOopMdfZip(base64ZipData, path.basename(mdfFile.path));
+            if (result.success) {
+              sendProgress(`✅ MDF ZIP file imported successfully: ${result.itemCount || 0} items`);
+            }
+          }
+          
+        } catch (error) {
+          console.error(`Failed to import MDF file ${mdfFile.path}:`, error);
+          sendProgress(`❌ Failed to import MDF file: ${error.message}`);
+        }
+      }
+      
+      // If we only had MDF files, we're done
+      if (menuFiles.length === 0) {
+        sendProgress('All MDF files processed successfully!', true);
+        if (mainWindow) {
+          mainWindow.webContents.send('menu-import-complete', true, 'MDF import completed successfully!');
+          setTimeout(() => {
+            mainWindow.webContents.send('request-ui-refresh');
+          }, 2000);
+        }
+        return { success: true, message: 'MDF import completed' };
+      }
+    }
+
+    // Process regular menu files (if any) with AI parsing + enrichment
+    if (menuFiles.length > 0) {
+      console.log('Processing regular menu files with AI parsing...');
+      const validFiles = menuFiles; // Use menuFiles for the rest of the process
+    
     // Start the import process using internal services
     (async () => {
       try {
@@ -469,6 +583,7 @@ ipcMain.handle('start-menu-import', async (event, filePaths) => {
         }
       }
     })();
+    } // End of menuFiles.length > 0 check
     
     return { success: true, message: 'Import process started' };
     

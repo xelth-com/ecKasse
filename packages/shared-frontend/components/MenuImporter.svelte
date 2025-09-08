@@ -73,12 +73,13 @@
     if (!files || files.length === 0) return;
     
     for (const file of files) {
-      // Check file extension for JSON (MDF) files
+      // Check file extension for MDF files (JSON or ZIP)
       const fileName = file.name.toLowerCase();
       const isJsonFile = fileName.endsWith('.json');
+      const isZipFile = fileName.endsWith('.zip');
       
-      if (isJsonFile) {
-        // Handle JSON MDF file import directly
+      if (isJsonFile || isZipFile) {
+        // Handle MDF file import (JSON or ZIP with JSON inside)
         await handleMdfImport(file);
         continue;
       }
@@ -89,7 +90,7 @@
         agentStore.addMessage({
           timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           type: 'agent',
-          message: `File "${file.name}" has unsupported format. Please select PDF, JPG, PNG, or JSON files.`
+          message: `File "${file.name}" has unsupported format. Please select PDF, JPG, PNG, JSON, or ZIP files.`
         });
         continue;
       }
@@ -392,20 +393,40 @@
         style: 'info'
       });
       
-      // Read and parse JSON file
-      const fileContent = await file.text();
-      let mdfData;
-      try {
-        mdfData = JSON.parse(fileContent);
-      } catch (parseError) {
-        throw new Error('Invalid JSON format in MDF file');
-      }
+      let response = null;
       
-      // Send MDF data to backend via WebSocket
-      const response = await wsStore.send({
-        command: 'importMdf',
-        payload: { mdfData, filename: file.name }
-      });
+      // Handle different file types
+      if (file.name.toLowerCase().endsWith('.json')) {
+        // Handle JSON file directly
+        const fileContent = await file.text();
+        let mdfData;
+        try {
+          mdfData = JSON.parse(fileContent);
+        } catch (parseError) {
+          throw new Error('Invalid JSON format in MDF file');
+        }
+        
+        // Send MDF data to backend via WebSocket
+        response = await wsStore.send({
+          command: 'importMdf',
+          payload: { mdfData, filename: file.name }
+        });
+      } else if (file.name.toLowerCase().endsWith('.zip')) {
+        // Handle ZIP file - need to send file to backend for extraction
+        const arrayBuffer = await file.arrayBuffer();
+        const base64File = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        
+        response = await wsStore.send({
+          command: 'importMdfZip',
+          payload: { 
+            zipData: base64File, 
+            filename: file.name,
+            originalSize: file.size
+          }
+        });
+      } else {
+        throw new Error(`Unsupported file type: ${file.name}`);
+      }
       
       if (response.status === 'success' && response.payload.success) {
         agentStore.addMessage({
@@ -487,7 +508,7 @@
       type="file" 
       bind:this={fileInput}
       on:change={handleFileUpload}
-      accept=".pdf,.jpg,.jpeg,.png,.json"
+      accept=".pdf,.jpg,.jpeg,.png,.json,.zip"
       multiple
       style="display: none;"
     />
@@ -520,13 +541,13 @@
               </svg>
               Choose Files
             </button>
-            <p class="upload-hint">Select multiple PDF, JPG, PNG, or JSON files</p>
+            <p class="upload-hint">Select multiple PDF, JPG, PNG, JSON, or ZIP files</p>
           </div>
         </div>
       {:else if isElectron && availableFiles.length === 0}
         <div class="no-files">
           <p>No menu files found in the ecKasseIn directory.</p>
-          <p>Please add PDF, JPG, or PNG files to the ecKasseIn folder.</p>
+          <p>Please add PDF, JPG, PNG, JSON, or ZIP files to the ecKasseIn folder.</p>
         </div>
       {:else}
         <!-- File list controls -->

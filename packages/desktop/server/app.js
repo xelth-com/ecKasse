@@ -679,6 +679,15 @@ class DesktopServer {
           // Broadcast UI refresh request
           this.services.websocket.broadcast('refreshUI', { reason: 'mdf-import-complete' });
           responseCommand = 'importMdfResponse';
+        } else if (command === 'importMdfZip') {
+          const { zipData, filename, originalSize } = payload;
+          // Clean database first
+          await this.cleanDatabaseForImport();
+          // Extract and import MDF data from ZIP
+          responsePayload = await this.services.import.importFromOopMdfZip(zipData, filename);
+          // Broadcast UI refresh request
+          this.services.websocket.broadcast('refreshUI', { reason: 'mdf-import-complete' });
+          responseCommand = 'importMdfResponse';
         } else {
           status = 'error';
           responsePayload = { message: 'Unknown command', originalCommand: command };
