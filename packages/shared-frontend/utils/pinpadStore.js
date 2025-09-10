@@ -265,96 +265,6 @@ function createPinpadStore() {
                 return;
             }
             
-            // Handle agent mode specially
-            if (state.mode === 'agent') {
-                // Check if this is a direct login attempt (numeric PIN)
-                if (state.layout === 'numeric' && /^\d{4,6}$/.test(value)) {
-                    // Import authStore dynamically to avoid circular dependency
-                    const { authStore } = await import('./authStore.js');
-                    
-                    try {
-                        // Use PIN-only login by passing null as username
-                        const loginResult = await authStore.login(null, value);
-                        
-                        if (loginResult.success) {
-                            // Login successful - send success message to agent
-                            const { agentStore } = await import('./agentStore.js');
-                            
-                            // Get current user info
-                            let currentAuthState;
-                            authStore.subscribe(state => currentAuthState = state)();
-                            
-                            const welcomeMessage = `✅ Erfolgreich angemeldet als ${currentAuthState.currentUser.full_name}!\n\n⏰ Überprüfe Systemzeit...\n🔍 Prüfe ausstehende Transaktionen...\n\nBitte warten Sie einen Moment...`;
-                            
-                            agentStore.addMessage({
-                                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                                type: 'agent',
-                                message: welcomeMessage
-                            });
-                            
-                            // Add AI tools welcome message
-                            agentStore.addMessage({
-                                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                                type: 'agent',
-                                message: `🤖 KI-Assistent bereit!\n\nVerfügbare Tools:\n• findProduct - Produkte suchen und finden\n• createProduct - Neue Produkte erstellen\n• updateProduct - Produktdaten aktualisieren\n• getSalesReport - Verkaufsberichte abrufen\n• generateDsfinvkExport - DSFinV-K konforme Datenexporte erstellen\n\nIch wähle automatisch das richtige Tool für Ihre Anfrage aus. Stellen Sie einfach Ihre Frage!`
-                            });
-                            
-                            // Check for system issues asynchronously
-                            setTimeout(async () => {
-                                await this.checkSystemStatus(currentAuthState.currentUser, agentStore);
-                            }, 1000);
-                            
-                            // Clear input and deactivate pinpad
-                            update(state => ({
-                                ...state,
-                                liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
-                                errorMessage: null
-                            }));
-                            
-                            // Deactivate pinpad after successful login
-                            this.deactivate();
-                            return;
-                        } else {
-                            // Login failed - send error message to agent
-                            const { agentStore } = await import('./agentStore.js');
-                            agentStore.addMessage({
-                                timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                                type: 'agent',
-                                message: '❌ Ungültige PIN-Eingabe!\n\nBitte überprüfen Sie Ihre PIN und versuchen Sie es erneut. Sie können eine 4-6 stellige PIN über das Tastenfeld eingeben.'
-                            });
-                            
-                            // Clear input but keep pinpad active for retry
-                            update(state => ({
-                                ...state,
-                                liveValue: state.layout === 'alpha' ? { text: '', cursor: 0 } : '',
-                                errorMessage: null
-                            }));
-                            return;
-                        }
-                        
-                    } catch (error) {
-                        console.log('Direct login failed, falling back to agent message');
-                    }
-                }
-                
-                // Import agentStore dynamically to avoid circular dependency
-                const { agentStore } = await import('./agentStore.js');
-                
-                try {
-                    // Send message using centralized method (fire-and-forget)
-                    agentStore.sendMessage(value);
-                    
-                    // Deactivate immediately to prevent keyboard focus issues
-                    this.deactivate();
-                } catch (error) {
-                    console.error('Agent message send failed:', error);
-                    
-                    // Deactivate on error to prevent keyboard focus issues
-                    this.deactivate();
-                }
-                return;
-            }
-            
             // Handle other modes with callback
             if (!state.confirmCallback) return;
             
@@ -407,11 +317,8 @@ function createPinpadStore() {
                     const callback = state.cancelCallback;
                     
                     // Cancel draft message if in agent mode
-                    if (state.mode === 'agent') {
-                        // Import agentStore to cancel draft message
-                        import('./agentStore.js').then(({ agentStore }) => {
-                            agentStore.cancelDraftMessage();
-                        });
+                    if (state.mode === 'agent' && agentStore) {
+                        agentStore.cancelDraftMessage();
                     }
                     
                     const newState = {
@@ -601,98 +508,6 @@ function createPinpadStore() {
                     currentLanguage: languages[nextIndex]
                 };
             });
-        },
-
-        // Check system status after successful login
-        async checkSystemStatus(user, agentStore) {
-            try {
-                // Import wsStore dynamically
-                const { wsStore } = await import('./wsStore.js');
-                
-                // Check system time difference first
-                let timeDiff = 0;
-                let timeCheckPassed = true;
-                
-                try {
-                    const timeCheckResponse = await wsStore.send({
-                        command: 'systemTimeCheck',
-                        payload: { clientTime: new Date().toISOString() }
-                    });
-                    
-                    if (timeCheckResponse.status === 'success') {
-                        timeDiff = timeCheckResponse.payload.timeDifferenceSeconds;
-                        timeCheckPassed = Math.abs(timeDiff) <= 30; // Within acceptable range
-                    } else {
-                        timeCheckPassed = false;
-                    }
-                } catch (timeError) {
-                    timeCheckPassed = false;
-                }
-                
-                // If time is OK, show simple welcome message
-                if (timeCheckPassed) {
-                    agentStore.addMessage({
-                        timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                        type: 'agent',
-                        message: `✅ Erfolgreich angemeldet als ${user.full_name}!`
-                    });
-                    return;
-                }
-                
-                // If time check failed, show detailed status message
-                let statusMessage = `🎉 Willkommen zurück, ${user.full_name}!\n\n`;
-                
-                if (!timeCheckPassed) {
-                    if (timeDiff !== 0) {
-                        statusMessage += `⚠️ Zeitabweichung erkannt: ${Math.abs(timeDiff)} Sekunden ${timeDiff > 0 ? 'voraus' : 'zurück'}\n`;
-                    } else {
-                        statusMessage += `⚠️ Zeitprüfung fehlgeschlagen\n`;
-                    }
-                }
-                
-                // Check for pending transactions if user has sufficient permissions
-                if (user.permissions.includes('all') || user.permissions.includes('manage_transactions')) {
-                    try {
-                        const pendingResponse = await wsStore.send({
-                            command: 'getPendingTransactions',
-                            payload: {}
-                        });
-                        
-                        if (pendingResponse.status === 'success' && pendingResponse.payload.length > 0) {
-                            statusMessage += `\n🔄 ${pendingResponse.payload.length} ausstehende Transaktionen gefunden!\n\n`;
-                            statusMessage += `Als ${user.role} können Sie diese Transaktionen verwalten:\n`;
-                            statusMessage += `• Fiskalisieren (abschließen)\n`;
-                            statusMessage += `• Stornieren (rückgängig machen)\n`;
-                            statusMessage += `• Verschieben (später bearbeiten)\n\n`;
-                            statusMessage += `Möchten Sie diese jetzt bearbeiten? Verwenden Sie die entsprechenden Schaltflächen oder fragen Sie mich nach Hilfe.`;
-                        } else {
-                            statusMessage += `\n✅ Keine ausstehenden Transaktionen\n`;
-                        }
-                    } catch (pendingError) {
-                        statusMessage += `\n⚠️ Konnte ausstehende Transaktionen nicht überprüfen\n`;
-                    }
-                } else {
-                    statusMessage += `\n📋 Ihre Rolle: ${user.role}\n`;
-                    statusMessage += `Sie haben Zugriff auf grundlegende Kassenfunktionen.\n`;
-                }
-                
-                statusMessage += `\n🚀 System ist bereit! Sie können mit der Arbeit beginnen.`;
-                
-                // Send final status message
-                agentStore.addMessage({
-                    timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                    type: 'agent',
-                    message: statusMessage
-                });
-                
-            } catch (error) {
-                // Send error message if system check fails
-                agentStore.addMessage({
-                    timestamp: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                    type: 'agent',
-                    message: `❌ Systemprüfung fehlgeschlagen: ${error.message}\n\nSie können trotzdem mit der Arbeit beginnen, aber einige Funktionen sind möglicherweise eingeschränkt.`
-                });
-            }
         }
     };
 }

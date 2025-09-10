@@ -47,12 +47,21 @@
   function handleKeydown(event) {
     if (event.key === 'Escape') handleClose();
   }
+
+  function handleOverlayKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleClose();
+    } else if (event.key === 'Escape') {
+      handleClose();
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 {#if visible && category}
-  <div class="modal-overlay" on:click={handleOverlayClick}>
+  <div class="modal-overlay" role="button" tabindex="0" on:click={handleOverlayClick} on:keydown={handleOverlayKeydown}>
     <div class="modal-content">
       <div class="modal-header">
         <h2>Edit Category</h2>

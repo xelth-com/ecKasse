@@ -35,12 +35,20 @@
       closeControlCenter();
     }
   }
+  
+  // Handle keyboard interactions for overlay
+  function handleOverlayKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      closeControlCenter();
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 {#if $controlCenterVisible}
-  <div class="control-center-overlay" on:click|self={closeControlCenter}>
+  <div class="control-center-overlay" role="button" tabindex="0" on:click|self={closeControlCenter} on:keydown={handleOverlayKeydown}>
     <div class="control-center-panel">
       <div class="panel-header">
         <h2>Control Center</h2>

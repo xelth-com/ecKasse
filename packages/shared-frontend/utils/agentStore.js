@@ -58,7 +58,9 @@ function createAgentStore() {
         type: messageObject.type,
         message: messageObject.message?.substring(0, 100) + (messageObject.message?.length > 100 ? '...' : ''),
         style: messageObject.style,
-        hasStyle: !!messageObject.style
+        hasStyle: !!messageObject.style,
+        messageLength: messageObject.message?.length,
+        fullMessagePreview: messageObject.message?.substring(0, 200)
       });
       
       update(store => ({
@@ -68,10 +70,18 @@ function createAgentStore() {
       
       // Trigger notification if message has a style
       if (messageObject.style) {
-        console.log('🟢 [AgentStore] Message has style, triggering notification:', messageObject.style);
+        console.log('🟢 [AgentStore] Message has style, triggering notification:', {
+          style: messageObject.style,
+          currentView: get(currentView),
+          willTriggerNotification: true
+        });
         notificationStore.setNotification(messageObject.style);
       } else {
-        console.log('🔴 [AgentStore] Message has NO style, no notification triggered');
+        console.log('🔴 [AgentStore] Message has NO style, no notification triggered:', {
+          messageType: messageObject.type,
+          hasActions: !!messageObject.actions,
+          timestamp: messageObject.timestamp
+        });
       }
     },
     setHistory: (history) => {
@@ -181,15 +191,18 @@ function createAgentStore() {
         }));
         
         // Automatically prepare for next message by starting a new draft
-        const self = this;
+        const agentStoreInstance = this;
         setTimeout(() => {
           // Import pinpadStore dynamically to avoid circular dependency
           import('./pinpadStore.js').then(({ pinpadStore }) => {
             // Check if user is still on agent view
             const currentViewValue = get(currentView);
             if (currentViewValue === 'agent') {
+              console.log('🔷 [AgentStore] Activating alpha input after successful message send');
               // Start new draft message and activate alpha keyboard
-              pinpadStore.activateAlphaInput(null, null, self);
+              pinpadStore.activateAlphaInput(null, null, agentStoreInstance);
+            } else {
+              console.log('🔷 [AgentStore] Not activating alpha input - user switched away from agent view');
             }
           });
         }, 500); // Small delay to let the response message render first
@@ -210,15 +223,18 @@ function createAgentStore() {
         }));
         
         // Also prepare for next message after error
-        const self = this;
+        const agentStoreInstance = this;
         setTimeout(() => {
           // Import pinpadStore dynamically to avoid circular dependency
           import('./pinpadStore.js').then(({ pinpadStore }) => {
             // Check if user is still on agent view
             const currentViewValue = get(currentView);
             if (currentViewValue === 'agent') {
+              console.log('🔷 [AgentStore] Activating alpha input after error recovery');
               // Start new draft message and activate alpha keyboard
-              pinpadStore.activateAlphaInput(null, null, self);
+              pinpadStore.activateAlphaInput(null, null, agentStoreInstance);
+            } else {
+              console.log('🔷 [AgentStore] Not activating alpha input after error - user switched away from agent view');
             }
           });
         }, 500);

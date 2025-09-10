@@ -413,13 +413,11 @@
     box-shadow: 0 0 0 0.2rem rgba(102, 102, 102, 0.25);
   }
 
-  .form-group input.error,
-  .form-group textarea.error {
+  .form-group input.error {
     border-color: #dc3545;
   }
 
-  .form-group input.error:focus,
-  .form-group textarea.error:focus {
+  .form-group input.error:focus {
     border-color: #dc3545;
     box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
   }
